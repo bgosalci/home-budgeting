@@ -261,12 +261,9 @@
       learnAdd: document.getElementById('learn-add'),
       learnList: document.getElementById('learn-list'),
 
-      // Charts
-      barCategories: document.getElementById('bar-categories'),
-      donutActual: document.getElementById('donut-actual'),
-      donutBudget: document.getElementById('donut-budget'),
-      barPerCat: document.getElementById('bar-percat')
-    };
+        // Charts
+        barPerCat: document.getElementById('bar-percat')
+      };
 
     let currentMonthKey = Utils.monthKey();
     let editingIncomeId = null;
@@ -384,27 +381,19 @@
       refreshKPIs();
     }
 
-    function refreshKPIs(){
-      const month = Store.getMonth(currentMonthKey);
-      const t = Model.totals(month);
-      els.totalIncome.textContent = Utils.fmt(t.income);
-      els.leftoverActual.textContent = Utils.fmt(t.leftoverActual);
-      els.leftoverPill.textContent = `Left Over ${Utils.fmt(t.leftoverActual)}`;
+      function refreshKPIs(){
+        const month = Store.getMonth(currentMonthKey);
+        const t = Model.totals(month);
+        els.totalIncome.textContent = Utils.fmt(t.income);
+        els.leftoverActual.textContent = Utils.fmt(t.leftoverActual);
+        els.leftoverPill.textContent = `Left Over ${Utils.fmt(t.leftoverActual)}`;
 
-      // Charts
-      const groups = Object.keys(t.groups).sort();
-      const budgetSeries = groups.map(g=>t.groups[g].budget);
-      const actualSeries = groups.map(g=>t.groups[g].actual);
-      Charts.bar(els.barCategories, groups, [budgetSeries, actualSeries]);
-      Charts.donut(els.donutBudget, Object.fromEntries(groups.map(g=>[g,t.groups[g].budget])));
-      Charts.donut(els.donutActual, Object.fromEntries(groups.map(g=>[g,t.groups[g].actual])));
-
-      // Per-category bar
-      const cats = Object.keys(month.categories).sort();
-      const b2 = cats.map(c=>month.categories[c].budget||0);
-      const a2 = cats.map(c=>t.actualPerCat[c]||0);
-      Charts.bar(els.barPerCat, cats, [b2,a2]);
-    }
+        // Per-category bar
+        const cats = Object.keys(month.categories).sort();
+        const b2 = cats.map(c=>month.categories[c].budget||0);
+        const a2 = cats.map(c=>t.actualPerCat[c]||0);
+        Charts.bar(els.barPerCat, cats, [b2,a2]);
+      }
 
     // ---- Event wiring
     els.addIncome.onclick = ()=>{
