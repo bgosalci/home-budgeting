@@ -14,5 +14,8 @@ Delete and edit buttons now mirror the shape of primary actions while using a di
 ### Money In Editing
 Income entries can now be edited. Use the new edit button next to each income to modify its name or amount.
 
+### Transactions Layout
+The Expenditure per Category chart has been removed. The Transactions tab now uses a two-column layout with Monthly Transactions on the left and the Add Transaction form on the right.
+
 ## Tests
 Run `npm test` to verify the project is set up correctly.
