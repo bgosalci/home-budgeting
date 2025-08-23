@@ -100,7 +100,33 @@
       ctx.fillStyle='#111'; ctx.font='28px system-ui'; ctx.textAlign='center'; ctx.fillText('Budget',cx,cy+10);
     };
 
-    return {bar,donut};
+    const barH = (canvas, labels, values)=>{
+      if(!canvas) return; const ctx = canvas.getContext('2d');
+      const step=40, left=160, right=40, top=30, bottom=40;
+      const height = labels.length*step + top + bottom;
+      canvas.style.height = height + 'px';
+      const W = canvas.width = canvas.clientWidth*2; const H = canvas.height = canvas.clientHeight*2;
+      ctx.clearRect(0,0,W,H); ctx.font = '24px system-ui';
+      const plotW = W-left-right, plotH = H-top-bottom;
+      const band = plotH/Math.max(1,labels.length); const barHt = band*0.6;
+      const max = Math.max(1, ...values);
+      // axes
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(left,top); ctx.lineTo(left,H-bottom); ctx.lineTo(W-right,H-bottom); ctx.stroke();
+      // bars
+      labels.forEach((lab,i)=>{
+        const val = values[i]||0; const w = (val/max)*plotW; const y = top + i*band + (band-barHt)/2;
+        ctx.fillStyle = '#ec4899'; ctx.fillRect(left,y,w,barHt);
+        ctx.fillStyle = '#374151'; ctx.textAlign='right'; ctx.textBaseline='middle';
+        ctx.fillText(lab,left-10,y+barHt/2);
+        ctx.textAlign='left'; ctx.fillStyle='#111'; ctx.fillText(Utils.fmt(val), left + w + 10, y + barHt/2);
+      });
+      // legend
+      ctx.textAlign='left'; ctx.textBaseline='top'; const txt='Total Amount per Category';
+      const lx = W - right - ctx.measureText(txt).width - 40;
+      ctx.fillStyle = '#ec4899'; ctx.fillRect(lx,8,28,18); ctx.fillStyle='#111'; ctx.fillText(txt,lx+36,8);
+    };
+
+    return {bar,donut,barH};
   })();
 
   // ===== Predictor (learn tokens)
@@ -390,9 +416,8 @@
 
       // Per-category bar
       const cats = Object.keys(month.categories).sort();
-      const b2 = cats.map(c=>month.categories[c].budget||0);
-      const a2 = cats.map(c=>t.actualPerCat[c]||0);
-      Charts.bar(els.barPerCat, cats, [b2,a2]);
+      const actuals = cats.map(c=>t.actualPerCat[c]||0);
+      Charts.barH(els.barPerCat, cats, actuals);
     }
 
     // ---- Event wiring
