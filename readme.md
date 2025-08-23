@@ -25,5 +25,8 @@ The Overview charts have been removed. The Money Out – Categories table now ap
 ### Transactions Layout
 The transactions screen now shows the monthly transaction list next to the add transaction form in an 80/20 two-column layout (list left, form right). The former Expenditure per Category chart has been removed.
 
+### Description Prediction
+As you type a transaction description, the app now suggests a previously used description based on your past entries. The most likely match is shown next to the Add button and updates as you type.
+
 ## Tests
 Run `npm test` to verify the project is set up correctly.
