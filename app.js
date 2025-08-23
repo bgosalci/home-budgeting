@@ -259,10 +259,7 @@
       learnDesc: document.getElementById('learn-desc'),
       learnCat: document.getElementById('learn-cat'),
       learnAdd: document.getElementById('learn-add'),
-      learnList: document.getElementById('learn-list'),
-
-        // Charts
-        barPerCat: document.getElementById('bar-percat')
+      learnList: document.getElementById('learn-list')
       };
 
     let currentMonthKey = Utils.monthKey();
@@ -388,11 +385,6 @@
         els.leftoverActual.textContent = Utils.fmt(t.leftoverActual);
         els.leftoverPill.textContent = `Left Over ${Utils.fmt(t.leftoverActual)}`;
 
-        // Per-category bar
-        const cats = Object.keys(month.categories).sort();
-        const b2 = cats.map(c=>month.categories[c].budget||0);
-        const a2 = cats.map(c=>t.actualPerCat[c]||0);
-        Charts.bar(els.barPerCat, cats, [b2,a2]);
       }
 
     // ---- Event wiring
