@@ -254,7 +254,6 @@
       catGroup: document.getElementById('cat-group'),
       catBudget: document.getElementById('cat-budget'),
       addCategory: document.getElementById('add-category'),
-      resetTemplate: document.getElementById('reset-template'),
       collapseAll: document.getElementById('collapse-all'),
       expandAll: document.getElementById('expand-all'),
       catTable: document.getElementById('category-table').querySelector('tbody'),
@@ -427,13 +426,6 @@
       if(!name) return;
       const m = Store.getMonth(currentMonthKey); Model.setCat(m,name,group,bud); Store.setMonth(currentMonthKey,m);
       els.catName.value=''; els.catGroup.value=''; els.catBudget.value=''; loadMonth(currentMonthKey);
-    };
-
-    els.resetTemplate.onclick = ()=>{
-      if(!confirm('Clear all categories and incomes for this month?')) return;
-      const base = Model.template(); const m = Store.getMonth(currentMonthKey);
-      m.categories = base.categories; m.incomes = base.incomes;
-      Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey);
     };
 
     // Collapse/Expand all groups
