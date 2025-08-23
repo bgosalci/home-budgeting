@@ -299,7 +299,9 @@
     }
 
     function refreshMonthPicker(){
-      els.openMonth.innerHTML = Store.allMonths().map(mk=>`<option value="${mk}" ${mk===currentMonthKey?'selected':''}>${new Date(mk+'-01').toLocaleString(undefined,{month:'short',year:'numeric'})}</option>`).join('');
+      const opts = Store.allMonths().map(mk=>`<option value="${mk}" ${mk===currentMonthKey?'selected':''}>${new Date(mk+'-01').toLocaleString(undefined,{month:'short',year:'numeric'})}</option>`).join('');
+      els.openMonth.innerHTML = `<option value="">Select Month</option>` + opts;
+      els.openMonth.value = currentMonthKey;
     }
 
     function addIncomeRow(x){
@@ -467,7 +469,7 @@
       const dup = Utils.clone(Store.getMonth(prev)); dup.transactions=[]; // carry categories & incomes, not tx
       Store.setMonth(mk, dup); loadMonth(mk);
     };
-    els.openMonth.onchange = (e)=> loadMonth(e.target.value);
+    els.openMonth.onchange = (e)=>{ if(e.target.value) loadMonth(e.target.value); };
 
     // Export/Import
     function download(name, data){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})); a.download=name; a.click(); }

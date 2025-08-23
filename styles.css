@@ -22,11 +22,12 @@
     .pill{background:rgba(255,255,255,.16);padding:6px 10px;border-radius:999px}
 
     .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
-    .toolbar select,.toolbar button,.toolbar input[type="month"]{
-      appearance:none;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);
-      color:#fff;border-radius:8px;padding:6px 10px;backdrop-filter: blur(4px);
-    }
-    .toolbar button{cursor:pointer}
+      .toolbar select,.toolbar button,.toolbar input[type="month"]{
+        appearance:none;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);
+        color:#fff;border-radius:8px;padding:6px 10px;backdrop-filter: blur(4px);
+      }
+      .toolbar button{cursor:pointer}
+      .inline-field{display:inline-flex;align-items:center;gap:6px}
 
     main{padding:18px;max-width:1400px;margin:0 auto;}
     .tabs{display:flex;gap:8px;margin-bottom:12px}
