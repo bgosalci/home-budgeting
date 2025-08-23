@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "This repository contains a simple monthly home budgeting app. Open `index.html` in a browser to track your income and expenses for each month.",
   "scripts": {
-    "test": "node test.js"
+    "test": "node app/js/test.js"
   },
   "keywords": [],
   "author": "",
