@@ -478,7 +478,7 @@
       const m = Store.getMonth(currentMonthKey); Model.addTx(m,{date,desc,amount:amt,category:cat}); Store.setMonth(currentMonthKey,m);
       Predictor.learn(desc,cat);
       DescPredictor.learn(desc);
-      els.txDesc.value=''; els.txAmt.value=''; renderTransactions(m);
+      els.txDesc.value=''; els.txAmt.value=''; renderTransactions(m); renderCategories(m);
       els.descPredictHint.textContent = 'Desc: –';
       els.descTooltip.classList.add('hidden');
       descSuggestion = '';
