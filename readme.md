@@ -25,7 +25,7 @@ The Overview charts have been removed. The Money Out – Categories table now ap
 ### Transactions Layout
 The transactions screen now shows the monthly transaction list next to the add transaction form in an 80/20 two-column layout (list left, form right). The former Expenditure per Category chart has been removed.
 
-The transaction list now occupies the full screen height and scrolls within its card, while the add transaction form retains its original size.
+The transaction list now fills nearly the entire screen without overflowing and scrolls within its card, while the add transaction form retains its original size.
 
 ### Description Prediction
 As you type a transaction description, the app suggests a previously used description based on your past entries. A tooltip beneath the field shows the best match; press the space bar to accept the suggestion and the description will auto‑fill.
