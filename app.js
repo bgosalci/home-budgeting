@@ -262,11 +262,10 @@
       learnList: document.getElementById('learn-list'),
 
       // Charts
-      barCategories: document.getElementById('bar-categories'),
-      donutActual: document.getElementById('donut-actual'),
-      donutBudget: document.getElementById('donut-budget'),
-      barPerCat: document.getElementById('bar-percat')
-    };
+        barCategories: document.getElementById('bar-categories'),
+        donutActual: document.getElementById('donut-actual'),
+        donutBudget: document.getElementById('donut-budget')
+      };
 
     let currentMonthKey = Utils.monthKey();
     let editingIncomeId = null;
@@ -399,12 +398,7 @@
       Charts.donut(els.donutBudget, Object.fromEntries(groups.map(g=>[g,t.groups[g].budget])));
       Charts.donut(els.donutActual, Object.fromEntries(groups.map(g=>[g,t.groups[g].actual])));
 
-      // Per-category bar
-      const cats = Object.keys(month.categories).sort();
-      const b2 = cats.map(c=>month.categories[c].budget||0);
-      const a2 = cats.map(c=>t.actualPerCat[c]||0);
-      Charts.bar(els.barPerCat, cats, [b2,a2]);
-    }
+      }
 
     // ---- Event wiring
     els.addIncome.onclick = ()=>{
