@@ -139,33 +139,8 @@
       transactions:[] // {id,date,desc,amount,category}
     });
 
-    // Default categories template (based on the provided sheet)
-    const template = ()=>{
-      const t = emptyMonth();
-      // Housing
-      addCat(t,'Housing','Housing',1610.95);
-      ;[['Rent',1217.19],['Shed Rent',8.30],['Council Tax',170.00],['Electricity',96.29],['Water',49.00],['Hot Water & Heating',30.00],['Internet',40.17]].forEach(([n,b])=>addCat(t,n,'Housing',b));
-      // Food
-      addCat(t,'Food','Food',1700.00); [['Groceries',1600.00],['Takeout',100.00]].forEach(([n,b])=>addCat(t,n,'Food',b));
-      // Savings
-      addCat(t,'Savings','Savings',300.00); [['JVB - £20 each',0],['Investing',0],['Saving',300.00]].forEach(([n,b])=>addCat(t,n,'Savings',b));
-      // Subscriptions
-      addCat(t,'Subscriptions','Subscriptions',204.56);
-      ;[['Epidemic Sound',15.98],['Apple Music',24.95],['Amazon Prime',0],['Audible',8.99],['Burim Gym',0],['V&B Math Tutoring',0],['Apple iCloud',0],['Google Suite for nyoki.co.uk',14.40],['Amazon Photos',7.99],['Piano Lesson',0],['BioGaia',0],['Appliances Insurance',20.99],['WSJ',2.00],['Life Insurance',40.67],['Apple Care',33.43],['StockCharts',15.17],['ChatGPT',19.99]].forEach(([n,b])=>addCat(t,n,'Subscriptions',b));
-      // Travel
-      addCat(t,'Travel','Travel',577.01); [['Fuel',120.00],['Public Transport',35.00],['Parking',0],['Car Lease + Running Costs',336.05],['Car Insurance',85.96]].forEach(([n,b])=>addCat(t,n,'Travel',b));
-      // Loan
-      addCat(t,'Loan','Loan',10.52); [['Ora e Njomzes',10.52]].forEach(([n,b])=>addCat(t,n,'Loan',b));
-      // Mobile Phones
-      addCat(t,'Mobile Phones','Mobile Phones',167.74);
-      ;[['Mobile Burim',21.38],['Mobile Njomza',17.21],['Mobile Jeta',15.74],['Mobile Emin',17.21],['Mobile Vala',12.68],['Mobile Bleta',12.68],['Apple Watch',14.46],['Mobili i Jetes',33.24],['Ora e Njomzes',10.52],['Apple AirPods',12.62]].forEach(([n,b])=>addCat(t,n,'Mobile Phones',b));
-      // Shopping
-      addCat(t,'Shopping','Shopping',300.00);
-      ;[['Clothing',50.00],['Home Appliances',0],['Home Furniture',50.00],['Medical',50.00],['School Equipment',0],['Books',20.00],['Amazon',100.00],['Temu',30.00],['Nyoki',0]].forEach(([n,b])=>addCat(t,n,'Shopping',b));
-      // Other
-      addCat(t,'Other','Other',300.00); [['Other',100.00],['Non-Sterling Transaction',0],['Jetes',200.00],['Holiday Spending',0],['Credit Card Payment',0]].forEach(([n,b])=>addCat(t,n,'Other',b));
-      return t;
-    };
+    // Default empty template – start with no categories or incomes
+    const template = () => emptyMonth();
 
     const addCat = (month, name, group, budget)=>{
       month.categories[name] = {group, budget: Number(budget)||0};
@@ -411,7 +386,7 @@
     };
 
     els.resetTemplate.onclick = ()=>{
-      if(!confirm('Replace current month categories with default template?')) return;
+      if(!confirm('Clear all categories for this month?')) return;
       const base = Model.template(); const m = Store.getMonth(currentMonthKey);
       m.categories = base.categories; Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey);
     };
