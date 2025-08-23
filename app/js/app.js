@@ -18,8 +18,12 @@
   const Store = (()=>{
     const KEY = 'budget.local.v1';
     const load = ()=>{
-      try{ return JSON.parse(localStorage.getItem(KEY)) || {version:1, months:{}, mapping:{exact:{}, tokens:{}}, ui:{collapsed:{}}}; }
-      catch{ return {version:1, months:{}, mapping:{exact:{}, tokens:{}}, ui:{collapsed:{}}}; }
+      try{
+        return JSON.parse(localStorage.getItem(KEY)) || {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}};
+      }
+      catch{
+        return {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}};
+      }
     };
     const save = (state)=>localStorage.setItem(KEY, JSON.stringify(state));
     const state = load();
@@ -28,10 +32,12 @@
     const allMonths = ()=> Object.keys(state.months).sort();
     const mapping = ()=> state.mapping;
     const setMapping = (m)=>{ state.mapping = m; save(state); };
+    const descMap = ()=> state.descMap || (state.descMap={exact:{},tokens:{}});
+    const setDescMap = (m)=>{ state.descMap = m; save(state); };
     const exportMonths = (filterFn)=>{
       const months = {};
       for(const k of Object.keys(state.months)) if(!filterFn || filterFn(k)) months[k]=state.months[k];
-      return {version:state.version, months, mapping: state.mapping};
+      return {version:state.version, months, mapping: state.mapping, descMap: state.descMap};
     };
     const importData = (json)=>{
       const incoming = typeof json === 'string' ? JSON.parse(json) : json;
@@ -43,6 +49,13 @@
         for(const [cat,cnt] of Object.entries(v)) cur[cat] = (cur[cat]||0)+cnt;
         state.mapping.tokens[k] = cur;
       }
+      state.descMap = state.descMap || {exact:{},tokens:{}};
+      state.descMap.exact = {...state.descMap.exact, ...(incoming.descMap?.exact||{})};
+      for(const [k,v] of Object.entries(incoming.descMap?.tokens||{})){
+        const cur = state.descMap.tokens[k] || {};
+        for(const [desc,cnt] of Object.entries(v)) cur[desc] = (cur[desc]||0)+cnt;
+        state.descMap.tokens[k] = cur;
+      }
       for(const [mk,month] of Object.entries(incoming.months)) state.months[mk]=month; // last-write-wins
       save(state);
     };
@@ -52,7 +65,7 @@
     const setCollapsed = (mk,g,val)=>{ collapsedFor(mk)[g]=!!val; save(state); };
     const toggleCollapsed = (mk,g)=>{ setCollapsed(mk,g,!isCollapsed(mk,g)); };
     const setAllCollapsed = (mk, groups, val)=>{ const obj = collapsedFor(mk); (groups||[]).forEach(g=>obj[g]=!!val); save(state); };
-    return {state,getMonth,setMonth,allMonths,mapping,setMapping,exportMonths,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed};
+    return {state,getMonth,setMonth,allMonths,mapping,setMapping,descMap,setDescMap,exportMonths,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed};
   })();
 
   // ===== Charts (vanilla Canvas)
@@ -127,6 +140,34 @@
         const bag = map.tokens[t]||{}; bag[cat]=(bag[cat]||0)+1; map.tokens[t]=bag;
       }
       Store.setMapping(map);
+    };
+    return {predict,learn};
+  })();
+
+  // ===== Description Predictor (learn full descriptions)
+  const DescPredictor = (()=>{
+    const tokensOf = (s)=> (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
+    const predict = (partial)=>{
+      const map = Store.descMap();
+      const exact = map.exact[partial?.trim().toLowerCase()];
+      if(exact) return exact;
+      const tok = tokensOf(partial);
+      const scores = {};
+      for(const t of tok){
+        const counts = map.tokens[t];
+        if(counts) for(const [desc,v] of Object.entries(counts)) scores[desc]=(scores[desc]||0)+v;
+      }
+      let best=null, bestScore=0; for(const [desc,score] of Object.entries(scores)) if(score>bestScore){best=desc;bestScore=score;}
+      return best || '';
+    };
+    const learn = (desc)=>{
+      if(!desc) return; const map = Store.descMap();
+      const key = desc.trim().toLowerCase();
+      map.exact[key]=desc;
+      for(const t of tokensOf(desc)){
+        const bag = map.tokens[t]||{}; bag[desc]=(bag[desc]||0)+1; map.tokens[t]=bag;
+      }
+      Store.setDescMap(map);
     };
     return {predict,learn};
   })();
@@ -229,6 +270,8 @@
       addTx: document.getElementById('add-tx'),
       txList: document.getElementById('tx-list'),
       predictHint: document.getElementById('predict-hint'),
+      descPredictHint: document.getElementById('desc-predict-hint'),
+      descTooltip: document.getElementById('desc-tooltip'),
 
       // Learning
       learnDesc: document.getElementById('learn-desc'),
@@ -239,6 +282,9 @@
 
     let currentMonthKey = Utils.monthKey();
     let editingIncomeId = null;
+    els.descPredictHint.textContent = 'Desc: –';
+    els.descTooltip.classList.add('hidden');
+    let descSuggestion = '';
 
     // ---- init data if empty
     (function bootstrap(){
@@ -408,6 +454,27 @@
       const guess = Predictor.predict(els.txDesc.value, cats);
       els.predictHint.textContent = 'Prediction: '+(guess||'–');
       if(guess){ els.txCat.value = guess; }
+      const val = els.txDesc.value;
+      const dGuess = DescPredictor.predict(val);
+      els.descPredictHint.textContent = 'Desc: '+(dGuess||'–');
+      if(dGuess && dGuess.toLowerCase() !== val.trim().toLowerCase()){
+        descSuggestion = dGuess;
+        els.descTooltip.textContent = `${dGuess} (press space to accept)`;
+        els.descTooltip.classList.remove('hidden');
+      }else{
+        descSuggestion = '';
+        els.descTooltip.classList.add('hidden');
+      }
+    });
+
+    els.txDesc.addEventListener('keydown', (e)=>{
+      if(e.key === ' ' && descSuggestion){
+        e.preventDefault();
+        els.txDesc.value = descSuggestion + ' ';
+        descSuggestion = '';
+        els.descTooltip.classList.add('hidden');
+        els.txDesc.dispatchEvent(new Event('input'));
+      }
     });
 
     els.addTx.onclick = ()=>{
@@ -415,11 +482,15 @@
       const desc = els.txDesc.value.trim(); const amt = parseFloat(els.txAmt.value||'0'); const cat = els.txCat.value;
       const m = Store.getMonth(currentMonthKey); Model.addTx(m,{date,desc,amount:amt,category:cat}); Store.setMonth(currentMonthKey,m);
       Predictor.learn(desc,cat);
+      DescPredictor.learn(desc);
       els.txDesc.value=''; els.txAmt.value=''; renderTransactions(m);
+      els.descPredictHint.textContent = 'Desc: –';
+      els.descTooltip.classList.add('hidden');
+      descSuggestion = '';
     };
 
     // Learning panel
-    els.learnAdd.onclick = ()=>{ Predictor.learn(els.learnDesc.value, els.learnCat.value); els.learnDesc.value=''; renderLearnList(); };
+    els.learnAdd.onclick = ()=>{ Predictor.learn(els.learnDesc.value, els.learnCat.value); DescPredictor.learn(els.learnDesc.value); els.learnDesc.value=''; renderLearnList(); };
 
     function renderLearnList(){
       const map = Store.mapping();
