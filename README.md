@@ -17,5 +17,8 @@ Income entries can now be edited. Use the new edit button next to each income to
 ### Budget Layout
 The Overview charts have been removed. The Money Out – Categories table now appears alongside Money In on the budget screen for easier access.
 
+### Transactions Layout
+The transactions screen now shows the monthly transaction list next to the add transaction form in an 80/20 two-column layout (list left, form right). The former Expenditure per Category chart has been removed.
+
 ## Tests
 Run `npm test` to verify the project is set up correctly.
