@@ -245,9 +245,7 @@
       if(Store.allMonths().length===0){
         const mk = Utils.monthKey(new Date());
         const month = Model.template();
-        // Seed example incomes (can be edited)
-        Model.addIncome(month,'Salary',4705.66);
-        Model.addIncome(month,'Vala',212.28);
+        // Initialize with an empty month; no default incomes
         Store.setMonth(mk, month);
       }
       currentMonthKey = Store.allMonths().slice(-1)[0] || Utils.monthKey();
