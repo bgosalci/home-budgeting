@@ -143,3 +143,6 @@ vite.config.ts.timestamp-*
 .DS_Store
 Thumbs.db
 
+# Ignore duplicate README
+README.md
+
