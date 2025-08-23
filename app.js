@@ -77,7 +77,8 @@
         },
         options:{
           responsive:true,
-          maintainAspectRatio:false,
+          aspectRatio:2,
+          maintainAspectRatio:true,
           scales:{y:{beginAtZero:true}}
         }
       });
@@ -96,7 +97,8 @@
         },
         options:{
           responsive:true,
-          maintainAspectRatio:false,
+          aspectRatio:1,
+          maintainAspectRatio:true,
         }
       });
     };
