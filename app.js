@@ -175,6 +175,10 @@
     const delCat = (month, name)=>{ delete month.categories[name]; };
 
     const addIncome = (month, name, amount)=>{ month.incomes.push({id:Utils.id(), name, amount:Number(amount)||0}); };
+    const setIncome = (month, id, name, amount)=>{
+      const inc = month.incomes.find(x=>x.id===id);
+      if(inc){ inc.name = name; inc.amount = Number(amount)||0; }
+    };
     const delIncome = (month, id)=>{ month.incomes = month.incomes.filter(x=>x.id!==id); };
 
     const addTx = (month, {date,desc,amount,category})=>{ month.transactions.push({id:Utils.id(),date,desc,amount:Number(amount)||0,category}); };
@@ -196,7 +200,7 @@
       return {income,budgetPerCat,actualPerCat,groups,budgetTotal,actualTotal,leftoverActual: income-actualTotal,leftoverBudget: income-budgetTotal};
     };
 
-    return {emptyMonth,template,addCat,setCat,delCat,addIncome,delIncome,addTx,delTx,totals};
+    return {emptyMonth,template,addCat,setCat,delCat,addIncome,setIncome,delIncome,addTx,delTx,totals};
   })();
 
   // ===== UI Controller
@@ -265,6 +269,7 @@
     };
 
     let currentMonthKey = Utils.monthKey();
+    let editingIncomeId = null;
 
     // ---- init data if empty
     (function bootstrap(){
@@ -283,6 +288,7 @@
     function loadMonth(mk){
       const month = Store.getMonth(mk);
       if(!month) return;
+      editingIncomeId = null; els.addIncome.textContent='Add Income';
       currentMonthKey = mk; els.headerMonth.textContent = new Date(mk+'-01').toLocaleString(undefined,{month:'long',year:'numeric'});
       // populate incomes
       els.incomeList.innerHTML = '';
@@ -306,9 +312,14 @@
 
     function addIncomeRow(x){
       const row = document.createElement('div'); row.className='list-item';
-      row.innerHTML = `<div><strong>${x.name}</strong><div><small>${Utils.fmt(x.amount)}</small></div></div>
-                       <button class="secondary" data-id="${x.id}">Delete</button>`;
-      row.querySelector('button').onclick = ()=>{ const m=Store.getMonth(currentMonthKey); Model.delIncome(m,x.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); };
+      row.innerHTML = `<div><strong>${x.name}</strong><div><small>${Utils.fmt(x.amount)}</small></div></div>`+
+                      `<div><button class="secondary" data-act="edit">Edit</button> <button class="secondary" data-act="del">Delete</button></div>`;
+      row.onclick = (e)=>{
+        const act = e.target?.dataset?.act; if(!act) return;
+        const m=Store.getMonth(currentMonthKey);
+        if(act==='del'){ Model.delIncome(m,x.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
+        if(act==='edit'){ els.incomeName.value=x.name; els.incomeAmount.value=x.amount; editingIncomeId=x.id; els.addIncome.textContent='Update Income'; }
+      };
       els.incomeList.appendChild(row);
     }
 
@@ -399,8 +410,16 @@
     els.addIncome.onclick = ()=>{
       const name = els.incomeName.value.trim() || 'Income';
       const amt = parseFloat(els.incomeAmount.value||'0');
-      const m = Store.getMonth(currentMonthKey); Model.addIncome(m,name,amt); Store.setMonth(currentMonthKey,m);
-      els.incomeName.value=''; els.incomeAmount.value=''; loadMonth(currentMonthKey);
+      const m = Store.getMonth(currentMonthKey);
+      if(editingIncomeId){
+        Model.setIncome(m, editingIncomeId, name, amt);
+        editingIncomeId = null; els.addIncome.textContent='Add Income';
+      }else{
+        Model.addIncome(m,name,amt);
+      }
+      Store.setMonth(currentMonthKey,m);
+      els.incomeName.value=''; els.incomeAmount.value='';
+      loadMonth(currentMonthKey);
     };
 
     els.addCategory.onclick = ()=>{
