@@ -468,10 +468,12 @@
         els.txDesc.dispatchEvent(new Event('input'));
       }
     });
-
-    els.addTx.onclick = ()=>{
-      const date = els.txDate.value || new Date().toISOString().slice(0,10);
-      const desc = els.txDesc.value.trim(); const amt = parseFloat(els.txAmt.value||'0'); const cat = els.txCat.value;
+    const handleAddTx = ()=>{
+      const date = els.txDate.value.trim();
+      const desc = els.txDesc.value.trim();
+      const amt = parseFloat(els.txAmt.value);
+      const cat = els.txCat.value;
+      if(!date || !desc || isNaN(amt)) return;
       const m = Store.getMonth(currentMonthKey); Model.addTx(m,{date,desc,amount:amt,category:cat}); Store.setMonth(currentMonthKey,m);
       Predictor.learn(desc,cat);
       DescPredictor.learn(desc);
@@ -479,7 +481,16 @@
       els.descPredictHint.textContent = 'Desc: –';
       els.descTooltip.classList.add('hidden');
       descSuggestion = '';
+      els.txDesc.focus();
     };
+
+    els.addTx.onclick = handleAddTx;
+
+    [els.txDate, els.txDesc, els.txAmt, els.txCat].forEach(el=>{
+      el.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter') handleAddTx();
+      });
+    });
 
     // Learning panel
     els.learnAdd.onclick = ()=>{ Predictor.learn(els.learnDesc.value, els.learnCat.value); DescPredictor.learn(els.learnDesc.value); els.learnDesc.value=''; renderLearnList(); };
