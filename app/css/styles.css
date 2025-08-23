@@ -65,6 +65,8 @@
     .list{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px}
     .list-item{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border)}
     .list-item small{color:var(--sub)}
+    .list-item .right>div:first-child{padding-right:10px;font-weight:bold;font-size:1.2em}
+    .list-item .right button{padding-right:10px}
 
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--muted)}
     .tooltip{display:inline-block;padding:4px 8px;border-radius:4px;background:var(--muted);font-size:12px;margin-top:4px}
