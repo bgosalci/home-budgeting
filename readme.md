@@ -8,5 +8,8 @@ Open `index.html` in a browser to track your income and expenses for each month.
 ### Month Controls
 You can now add a new budget month or switch between months using the inline controls in the header.
 
+### Button Styles
+Delete and edit buttons now match the styling of primary action buttons like **Add Income** for a more consistent interface.
+
 ## Tests
 Run `npm test` to verify the project is set up correctly.

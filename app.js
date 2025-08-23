@@ -307,7 +307,7 @@
     function addIncomeRow(x){
       const row = document.createElement('div'); row.className='list-item';
       row.innerHTML = `<div><strong>${x.name}</strong><div><small>${Utils.fmt(x.amount)}</small></div></div>
-                       <button data-id="${x.id}">Delete</button>`;
+                       <button class="secondary" data-id="${x.id}">Delete</button>`;
       row.querySelector('button').onclick = ()=>{ const m=Store.getMonth(currentMonthKey); Model.delIncome(m,x.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); };
       els.incomeList.appendChild(row);
     }
@@ -339,7 +339,7 @@
                           <td class="right">${Utils.fmt(meta.budget||0)}</td>
                           <td class="right">${Utils.fmt(act)}</td>
                           <td class="right ${cls}">${Utils.fmt(diff)}</td>
-                          <td class="right"><button data-act="edit">Edit</button> <button data-act="del">Del</button></td>`;
+                          <td class="right"><button class="secondary" data-act="edit">Edit</button> <button class="secondary" data-act="del">Del</button></td>`;
           tr.onclick = (e)=>{
             const actn = e.target?.dataset?.act; if(!actn) return;
             if(actn==='del'){ delete month.categories[name]; Store.setMonth(currentMonthKey,month); renderCategories(month); refreshKPIs(); refreshCategoryDropdowns(month); }
@@ -366,7 +366,7 @@
       for(const t of items){
         const row = document.createElement('div'); row.className='list-item';
         row.innerHTML = `<div><strong>${t.desc}</strong><div><small>${t.date} • ${t.category||'Uncategorised'}</small></div></div>
-                         <div class="right"><div>${Utils.fmt(t.amount)}</div><small><button data-id="${t.id}">Delete</button></small></div>`;
+                         <div class="right"><div>${Utils.fmt(t.amount)}</div><small><button class="secondary" data-id="${t.id}">Delete</button></small></div>`;
         row.querySelector('button').onclick = ()=>{ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); };
         els.txList.appendChild(row);
       }
