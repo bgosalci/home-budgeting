@@ -40,82 +40,66 @@
       <button class="tab" role="tab" id="tab-learning" aria-selected="false">Prediction Map</button>
     </div>
 
-    <section id="panel-budget" role="tabpanel">
-      <div class="grid">
-        <div class="card">
-          <h2>Money In</h2>
-          <div class="content">
-            <div class="row">
-              <input id="income-name" placeholder="Income name e.g. Salary, Interest"/>
-              <input id="income-amount" type="number" step="0.01" placeholder="Amount"/>
-              <button class="primary" id="add-income">Add Income</button>
-            </div>
-            <div class="list" id="income-list"></div>
-            <div class="kpi" style="margin-top:10px">
-              <div><span>Total Income</span><strong id="total-income">£0.00</strong></div>
-              <div><span>Income − Actual Expenses</span><strong id="leftover-actual">£0.00</strong></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>Overview</h2>
-          <div class="content charts">
-            <canvas id="bar-categories" height="360"></canvas>
-            <div class="two-col">
-              <div>
-                <h3 style="margin:0 0 8px 0">Actual Split</h3>
-                <canvas id="donut-actual" height="360"></canvas>
+      <section id="panel-budget" role="tabpanel">
+        <div class="grid">
+          <div class="card">
+            <h2>Money In</h2>
+            <div class="content">
+              <div class="row">
+                <input id="income-name" placeholder="Income name e.g. Salary, Interest"/>
+                <input id="income-amount" type="number" step="0.01" placeholder="Amount"/>
+                <button class="primary" id="add-income">Add Income</button>
               </div>
-              <div>
-                <h3 style="margin:0 0 8px 0">Budget Split</h3>
-                <canvas id="donut-budget" height="360"></canvas>
+              <div class="list" id="income-list"></div>
+              <div class="kpi" style="margin-top:10px">
+                <div><span>Total Income</span><strong id="total-income">£0.00</strong></div>
+                <div><span>Income − Actual Expenses</span><strong id="leftover-actual">£0.00</strong></div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="card" style="margin-top:18px">
-        <h2>Money Out – Categories</h2>
-        <div class="content">
-          <div class="row" style="margin-bottom:10px">
-            <input id="cat-name" placeholder="Category name (e.g. Groceries)"/>
-            <input id="cat-group" placeholder="Group (e.g. Food)"/>
-            <input id="cat-budget" type="number" step="0.01" placeholder="Budget"/>
-            <button class="primary" id="add-category">Add/Update Category</button>
-            <button class="ghost" id="reset-template" title="Reset current month categories to default template">Template</button>
-            <button class="ghost" id="collapse-all" title="Collapse all groups">Collapse All</button>
-            <button class="ghost" id="expand-all" title="Expand all groups">Expand All</button>
+          <div class="card">
+            <h2>Money Out – Categories</h2>
+            <div class="content">
+              <div class="row" style="margin-bottom:10px">
+                <input id="cat-name" placeholder="Category name (e.g. Groceries)"/>
+                <input id="cat-group" placeholder="Group (e.g. Food)"/>
+                <input id="cat-budget" type="number" step="0.01" placeholder="Budget"/>
+                <button class="primary" id="add-category">Add/Update Category</button>
+                <button class="ghost" id="reset-template" title="Reset current month categories to default template">Template</button>
+                <button class="ghost" id="collapse-all" title="Collapse all groups">Collapse All</button>
+                <button class="ghost" id="expand-all" title="Expand all groups">Expand All</button>
+              </div>
+
+              <table class="table" id="category-table">
+                <thead>
+                  <tr>
+                    <th>Group</th>
+                    <th>Category</th>
+                    <th class="right">Budget</th>
+                    <th class="right">Actual</th>
+                    <th class="right">Difference</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot>
+                  <tr>
+                    <td><strong>Totals</strong></td>
+                    <td></td>
+                    <td class="right" id="tot-bud">£0.00</td>
+                    <td class="right" id="tot-act">£0.00</td>
+                    <td class="right" id="tot-diff">£0.00</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+              <div class="footer-note">Tip: Click a row to edit. Difference = Budget − Actual.</div>
+            </div>
           </div>
 
-          <table class="table" id="category-table">
-            <thead>
-              <tr>
-                <th>Group</th>
-                <th>Category</th>
-                <th class="right">Budget</th>
-                <th class="right">Actual</th>
-                <th class="right">Difference</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr>
-                <td><strong>Totals</strong></td>
-                <td></td>
-                <td class="right" id="tot-bud">£0.00</td>
-                <td class="right" id="tot-act">£0.00</td>
-                <td class="right" id="tot-diff">£0.00</td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-          <div class="footer-note">Tip: Click a row to edit. Difference = Budget − Actual.</div>
         </div>
-      </div>
-    </section>
+      </section>
 
     <section id="panel-transactions" role="tabpanel" class="hidden">
       <div class="grid">

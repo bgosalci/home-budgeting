@@ -14,5 +14,8 @@ Delete and edit buttons now mirror the shape of primary actions while using a di
 ### Money In Editing
 Income entries can now be edited. Use the new edit button next to each income to modify its name or amount.
 
+### Budget Layout
+The Overview charts have been removed. The Money Out – Categories table now appears alongside Money In on the budget screen for easier access.
+
 ## Tests
 Run `npm test` to verify the project is set up correctly.
