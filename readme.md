@@ -32,5 +32,8 @@ Prices in the monthly transaction list are now larger, bold, and include extra r
 ### Description Prediction
 As you type a transaction description, the app suggests a previously used description based on your past entries. A tooltip beneath the field shows the best match; press the space bar to accept the suggestion and the description will auto‑fill.
 
+### Add Transaction Shortcuts
+The add transaction form now requires a date, description and amount before a transaction can be added. Pressing <kbd>Enter</kbd> in any field triggers the add action, and focus returns to the description field to speed up entry of multiple transactions.
+
 ## Tests
 Run `npm test` to verify the project is set up correctly.
