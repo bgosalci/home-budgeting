@@ -271,6 +271,7 @@
       txList: document.getElementById('tx-list'),
       predictHint: document.getElementById('predict-hint'),
       descPredictHint: document.getElementById('desc-predict-hint'),
+      descTooltip: document.getElementById('desc-tooltip'),
 
       // Learning
       learnDesc: document.getElementById('learn-desc'),
@@ -282,6 +283,8 @@
     let currentMonthKey = Utils.monthKey();
     let editingIncomeId = null;
     els.descPredictHint.textContent = 'Desc: –';
+    els.descTooltip.classList.add('hidden');
+    let descSuggestion = '';
 
     // ---- init data if empty
     (function bootstrap(){
@@ -451,8 +454,27 @@
       const guess = Predictor.predict(els.txDesc.value, cats);
       els.predictHint.textContent = 'Prediction: '+(guess||'–');
       if(guess){ els.txCat.value = guess; }
-      const dGuess = DescPredictor.predict(els.txDesc.value);
+      const val = els.txDesc.value;
+      const dGuess = DescPredictor.predict(val);
       els.descPredictHint.textContent = 'Desc: '+(dGuess||'–');
+      if(dGuess && dGuess.toLowerCase() !== val.trim().toLowerCase()){
+        descSuggestion = dGuess;
+        els.descTooltip.textContent = `${dGuess} (press space to accept)`;
+        els.descTooltip.classList.remove('hidden');
+      }else{
+        descSuggestion = '';
+        els.descTooltip.classList.add('hidden');
+      }
+    });
+
+    els.txDesc.addEventListener('keydown', (e)=>{
+      if(e.key === ' ' && descSuggestion){
+        e.preventDefault();
+        els.txDesc.value = descSuggestion + ' ';
+        descSuggestion = '';
+        els.descTooltip.classList.add('hidden');
+        els.txDesc.dispatchEvent(new Event('input'));
+      }
     });
 
     els.addTx.onclick = ()=>{
@@ -463,6 +485,8 @@
       DescPredictor.learn(desc);
       els.txDesc.value=''; els.txAmt.value=''; renderTransactions(m);
       els.descPredictHint.textContent = 'Desc: –';
+      els.descTooltip.classList.add('hidden');
+      descSuggestion = '';
     };
 
     // Learning panel

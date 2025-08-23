@@ -67,6 +67,7 @@
     .list-item small{color:var(--sub)}
 
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--muted)}
+    .tooltip{display:inline-block;padding:4px 8px;border-radius:4px;background:var(--muted);font-size:12px;margin-top:4px}
     .right{text-align:right}
     .success{color:var(--ok)}
     .danger{color:var(--err)}
