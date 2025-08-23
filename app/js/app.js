@@ -19,10 +19,10 @@
     const KEY = 'budget.local.v1';
     const load = ()=>{
       try{
-        return JSON.parse(localStorage.getItem(KEY)) || {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}};
+        return JSON.parse(localStorage.getItem(KEY)) || {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[]};
       }
       catch{
-        return {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}};
+        return {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[]};
       }
     };
     const save = (state)=>localStorage.setItem(KEY, JSON.stringify(state));
@@ -34,10 +34,12 @@
     const setMapping = (m)=>{ state.mapping = m; save(state); };
     const descMap = ()=> state.descMap || (state.descMap={exact:{},tokens:{}});
     const setDescMap = (m)=>{ state.descMap = m; save(state); };
+    const descList = ()=> state.descList || (state.descList=[]);
+    const setDescList = (list)=>{ state.descList = list; save(state); };
     const exportMonths = (filterFn)=>{
       const months = {};
       for(const k of Object.keys(state.months)) if(!filterFn || filterFn(k)) months[k]=state.months[k];
-      return {version:state.version, months, mapping: state.mapping, descMap: state.descMap};
+      return {version:state.version, months, mapping: state.mapping, descMap: state.descMap, descList: state.descList||[]};
     };
     const importData = (json)=>{
       const incoming = typeof json === 'string' ? JSON.parse(json) : json;
@@ -56,6 +58,12 @@
         for(const [desc,cnt] of Object.entries(v)) cur[desc] = (cur[desc]||0)+cnt;
         state.descMap.tokens[k] = cur;
       }
+      const inList = incoming.descList || [];
+      const curList = descList();
+      for(const d of inList){
+        if(!curList.some(x=>x.toLowerCase()===d.toLowerCase())) curList.push(d);
+      }
+      state.descList = curList;
       for(const [mk,month] of Object.entries(incoming.months)) state.months[mk]=month; // last-write-wins
       save(state);
     };
@@ -65,7 +73,7 @@
     const setCollapsed = (mk,g,val)=>{ collapsedFor(mk)[g]=!!val; save(state); };
     const toggleCollapsed = (mk,g)=>{ setCollapsed(mk,g,!isCollapsed(mk,g)); };
     const setAllCollapsed = (mk, groups, val)=>{ const obj = collapsedFor(mk); (groups||[]).forEach(g=>obj[g]=!!val); save(state); };
-    return {state,getMonth,setMonth,allMonths,mapping,setMapping,descMap,setDescMap,exportMonths,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed};
+    return {state,getMonth,setMonth,allMonths,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportMonths,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed};
   })();
 
   // ===== Charts (vanilla Canvas)
@@ -146,28 +154,21 @@
 
   // ===== Description Predictor (learn full descriptions)
   const DescPredictor = (()=>{
-    const tokensOf = (s)=> (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
     const predict = (partial)=>{
-      const map = Store.descMap();
-      const exact = map.exact[partial?.trim().toLowerCase()];
-      if(exact) return exact;
-      const tok = tokensOf(partial);
-      const scores = {};
-      for(const t of tok){
-        const counts = map.tokens[t];
-        if(counts) for(const [desc,v] of Object.entries(counts)) scores[desc]=(scores[desc]||0)+v;
-      }
-      let best=null, bestScore=0; for(const [desc,score] of Object.entries(scores)) if(score>bestScore){best=desc;bestScore=score;}
-      return best || '';
+      if(!partial) return '';
+      const list = Store.descList();
+      const lower = partial.trim().toLowerCase();
+      return list.find(d=>d.toLowerCase().startsWith(lower)) || '';
     };
     const learn = (desc)=>{
-      if(!desc) return; const map = Store.descMap();
-      const key = desc.trim().toLowerCase();
-      map.exact[key]=desc;
-      for(const t of tokensOf(desc)){
-        const bag = map.tokens[t]||{}; bag[desc]=(bag[desc]||0)+1; map.tokens[t]=bag;
+      if(!desc) return;
+      const list = Store.descList();
+      const norm = desc.trim();
+      const exists = list.some(d=>d.toLowerCase()===norm.toLowerCase());
+      if(!exists){
+        list.push(norm);
+        Store.setDescList(list);
       }
-      Store.setDescMap(map);
     };
     return {predict,learn};
   })();
