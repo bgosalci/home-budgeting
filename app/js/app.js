@@ -386,9 +386,10 @@
     };
 
     els.resetTemplate.onclick = ()=>{
-      if(!confirm('Clear all categories for this month?')) return;
+      if(!confirm('Clear all categories and incomes for this month?')) return;
       const base = Model.template(); const m = Store.getMonth(currentMonthKey);
-      m.categories = base.categories; Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey);
+      m.categories = base.categories; m.incomes = base.incomes;
+      Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey);
     };
 
     // Collapse/Expand all groups

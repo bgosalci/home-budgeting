@@ -5,7 +5,7 @@ This repository contains a simple monthly home budgeting app.
 ## Usage
 Open `index.html` in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace.
 
-The app now starts with no pre-filled categories or incomes. Use the provided controls to add your own data from scratch. The *Clear* button in the categories section removes all categories for the current month.
+The app now starts with no pre-filled categories or incomes. Use the provided controls to add your own data from scratch. The *Clear* button in the categories section removes all categories and incomes for the current month.
 
 ## File Structure
 JavaScript files are located in `app/js` and stylesheets in `app/css`.
