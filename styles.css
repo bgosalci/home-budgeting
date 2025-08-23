@@ -29,7 +29,7 @@
       .toolbar button{cursor:pointer}
       .inline-field{display:inline-flex;align-items:center;gap:6px}
 
-    main{padding:18px;max-width:1400px;margin:0 auto;}
+    main{padding:18px;width:95%;margin:0 auto;}
     .tabs{display:flex;gap:8px;margin-bottom:12px}
     .tab{border:1px solid var(--border);background:var(--card);padding:8px 12px;border-radius:10px;cursor:pointer}
     .tab[aria-selected="true"]{background:#111827;color:#fff;border-color:#111827}
