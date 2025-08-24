@@ -74,7 +74,7 @@
     .tx-date .tx-count{margin-left:8px;font-weight:400}
 
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--muted)}
-    .tooltip{display:inline-block;padding:0;border-radius:4px;background:var(--muted);font-size:12px;margin-top:4px}
+    .tooltip{display:block;width:100%;padding:0;border-radius:4px;background:var(--muted);font-size:12px;margin-top:4px}
     .tooltip .option{padding:4px 8px;cursor:pointer}
     .tooltip .option.selected,.tooltip .option:hover{background:var(--sub);color:#fff}
     .right{text-align:right}

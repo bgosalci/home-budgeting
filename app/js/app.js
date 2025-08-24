@@ -635,7 +635,7 @@
         e.preventDefault();
         descSelIdx = (descSelIdx - 1 + descSuggestions.length) % descSuggestions.length;
         highlightDescSuggestion();
-      }else if(e.key === 'Tab'){
+      }else if(e.key === 'Enter'){
         e.preventDefault();
         chooseDescSuggestion(descSelIdx);
       }
@@ -672,7 +672,13 @@
 
     [els.txDate, els.txDesc, els.txAmt, els.txCat].forEach(el=>{
       el.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter') handleAddTx();
+        if(e.key === 'Enter'){
+          if(el === els.txDesc && descSuggestions.length){
+            e.preventDefault();
+            return;
+          }
+          handleAddTx();
+        }
       });
     });
 

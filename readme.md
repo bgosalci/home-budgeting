@@ -63,7 +63,7 @@ The Money Out – Categories table refreshes instantly when you add new transact
 Categories are global across months—add or edit a category once and it will appear in every monthly budget.
 
 ### Description Prediction
-As you type a transaction description, the app looks up your past entries that are stored in your browser's local storage. Only unique descriptions are kept. A tooltip beneath the field now lists up to four matches. Use the up and down keys to highlight an option and press <kbd>Tab</kbd> or click to choose one; the description will auto‑fill.
+As you type a transaction description, the app looks up your past entries that are stored in your browser's local storage. Only unique descriptions are kept. A tooltip beneath the field now spans the full width and lists up to four matches. Use the up and down keys to highlight an option and press <kbd>Enter</kbd> or click to choose one; the description will auto‑fill.
 
 ### Add Transaction Shortcuts
 The add transaction form now requires a date, description and amount before a transaction can be added. Pressing <kbd>Enter</kbd> in any field triggers the add action, and focus returns to the description field to speed up entry of multiple transactions.
