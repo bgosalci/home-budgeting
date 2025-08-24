@@ -282,6 +282,9 @@
 
     let currentMonthKey = Utils.monthKey();
     let editingIncomeId = null;
+    let editingTxId = null;
+    const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/></svg>`;
+    const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
     els.descPredictHint.textContent = 'Desc: –';
     els.descTooltip.classList.add('hidden');
     let descSuggestion = '';
@@ -302,6 +305,7 @@
       const month = Store.getMonth(mk);
       if(!month) return;
       editingIncomeId = null; els.addIncome.textContent='Add Income';
+      editingTxId = null; els.addTx.textContent='Add';
       currentMonthKey = mk; els.headerMonth.textContent = new Date(mk+'-01').toLocaleString(undefined,{month:'long',year:'numeric'});
       // populate incomes
       els.incomeList.innerHTML = '';
@@ -326,9 +330,9 @@
     function addIncomeRow(x){
       const row = document.createElement('div'); row.className='list-item';
       row.innerHTML = `<div><strong>${x.name}</strong><div><small>${Utils.fmt(x.amount)}</small></div></div>`+
-                      `<div><button class="secondary" data-act="edit">Edit</button> <button class="secondary" data-act="del">Delete</button></div>`;
+                      `<div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div>`;
       row.onclick = (e)=>{
-        const act = e.target?.dataset?.act; if(!act) return;
+        const act = e.target.closest('button')?.dataset?.act; if(!act) return;
         const m=Store.getMonth(currentMonthKey);
         if(act==='del'){ Model.delIncome(m,x.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
         if(act==='edit'){ els.incomeName.value=x.name; els.incomeAmount.value=x.amount; editingIncomeId=x.id; els.addIncome.textContent='Update Income'; }
@@ -363,9 +367,9 @@
                           <td class="right">${Utils.fmt(meta.budget||0)}</td>
                           <td class="right">${Utils.fmt(act)}</td>
                           <td class="right ${cls}">${Utils.fmt(diff)}</td>
-                          <td class="right"><button class="secondary" data-act="edit">Edit</button> <button class="secondary" data-act="del">Del</button></td>`;
+                          <td class="right"><div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div></td>`;
           tr.onclick = (e)=>{
-            const actn = e.target?.dataset?.act; if(!actn) return;
+            const actn = e.target.closest('button')?.dataset?.act; if(!actn) return;
             if(actn==='del'){ delete month.categories[name]; Store.setMonth(currentMonthKey,month); renderCategories(month); refreshKPIs(); refreshCategoryDropdowns(month); }
             if(actn==='edit'){ els.catName.value=name; els.catGroup.value=meta.group||''; els.catBudget.value=meta.budget||0; }
           };
@@ -397,8 +401,9 @@
         for(const t of byDate[date]){
           const row = document.createElement('div'); row.className='list-item';
           row.innerHTML = `<div><strong>${t.desc}</strong><div><small>${t.category||'Uncategorised'}</small></div></div>`+
-                           `<div class="right"><div>${Utils.fmt(t.amount)}</div><small><button class="secondary" data-id="${t.id}">Delete</button></small></div>`;
-          row.querySelector('button').onclick = ()=>{ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); };
+                           `<div class="right"><div>${Utils.fmt(t.amount)}</div><div class="actions"><button class="icon-btn" data-act="edit" data-id="${t.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${t.id}" aria-label="Delete">${ICON_DELETE}</button></div></div>`;
+          row.querySelector('[data-act="del"]').onclick = ()=>{ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); };
+          row.querySelector('[data-act="edit"]').onclick = ()=>{ els.txDate.value=t.date; els.txDesc.value=t.desc; els.txAmt.value=t.amount; els.txCat.value=t.category; editingTxId=t.id; els.addTx.textContent='Update'; };
           els.txList.appendChild(row);
         }
       }
@@ -483,10 +488,19 @@
       const amt = parseFloat(els.txAmt.value);
       const cat = els.txCat.value;
       if(!date || !desc || isNaN(amt)) return;
-      const m = Store.getMonth(currentMonthKey); Model.addTx(m,{date,desc,amount:amt,category:cat}); Store.setMonth(currentMonthKey,m);
+      const m = Store.getMonth(currentMonthKey);
+      if(editingTxId){
+        const tx = m.transactions.find(x=>x.id===editingTxId);
+        if(tx){ tx.date=date; tx.desc=desc; tx.amount=amt; tx.category=cat; }
+        editingTxId = null; els.addTx.textContent='Add';
+      } else {
+        Model.addTx(m,{date,desc,amount:amt,category:cat});
+      }
+      Store.setMonth(currentMonthKey,m);
       Predictor.learn(desc,cat);
       DescPredictor.learn(desc);
-      els.txDesc.value=''; els.txAmt.value=''; renderTransactions(m); renderCategories(m);
+      els.txDesc.value=''; els.txAmt.value='';
+      renderTransactions(m); renderCategories(m);
       els.descPredictHint.textContent = 'Desc: –';
       els.descTooltip.classList.add('hidden');
       descSuggestion = '';
