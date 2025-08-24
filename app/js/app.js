@@ -489,12 +489,25 @@
       const byDate = Utils.groupBy(items, t=>t.date);
       const dates = Object.keys(byDate).sort();
       let idx = 1;
-        for(const date of dates){
-          const hdr = document.createElement('div');
-          hdr.className = 'tx-date';
-          hdr.textContent = new Date(date).toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
-          els.txList.appendChild(hdr);
-          for(const t of byDate[date]){
+      let runningTotal = 0;
+      for(const date of dates){
+        const dayTotal = Utils.sum(byDate[date], t=>t.amount);
+        runningTotal += dayTotal;
+
+        const hdr = document.createElement('div');
+        hdr.className = 'tx-date';
+        const dateLabel = new Date(date).toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
+        hdr.innerHTML = `<span>${dateLabel}</span>`+
+                        `<span class="totals"><span class="day"></span><span class="run"></span></span>`;
+        const dayEl = hdr.querySelector('.day');
+        dayEl.textContent = `Day: ${Utils.fmt(dayTotal)}`;
+        if(dayTotal < 0) dayEl.classList.add('danger');
+        const runEl = hdr.querySelector('.run');
+        runEl.textContent = `Total: ${Utils.fmt(runningTotal)}`;
+        if(runningTotal < 0) runEl.classList.add('danger');
+        els.txList.appendChild(hdr);
+
+        for(const t of byDate[date]){
             const row = document.createElement('div'); row.className='list-item';
             const aCls = t.amount<0?'danger':'';
             row.innerHTML = `<div class="tx-index">${idx++}</div>`+
@@ -508,10 +521,10 @@
           els.txList.appendChild(row);
         }
       }
-        const totals = Model.totals(month);
-        Utils.setText(els.txTotal, totals.actualTotal);
-        refreshKPIs();
-      }
+      const totals = Model.totals(month);
+      Utils.setText(els.txTotal, totals.actualTotal);
+      refreshKPIs();
+    }
 
         function refreshKPIs(){
           const month = Store.getMonth(currentMonthKey);
