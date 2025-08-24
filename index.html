@@ -26,10 +26,7 @@
       <button id="export-month">Export Month</button>
       <button id="export-year">Export Year</button>
       <button id="export-all">Export All</button>
-      <label class="inline-field" style="cursor:pointer">
-        <span>Import</span>
-        <input id="import-file" type="file" accept="application/json" style="display:none"/>
-      </label>
+      <button id="import-trans">Import</button>
     </div>
   </header>
 
@@ -144,6 +141,28 @@
       </div>
     </section>
   </main>
+  <dialog id="import-dialog" class="dialog">
+    <div class="dialog-content">
+      <div class="row">
+        <label>Month <input type="month" id="import-month"/></label>
+      </div>
+      <div class="row">
+        <label>File Type
+          <select id="import-type">
+            <option value="json">JSON</option>
+            <option value="csv">CSV</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <input id="import-file" type="file" accept="application/json,.json,.csv"/>
+      </div>
+      <div class="dialog-actions">
+        <button id="import-confirm" class="primary">Import</button>
+        <button id="import-cancel" class="secondary">Cancel</button>
+      </div>
+    </div>
+  </dialog>
   <dialog id="dialog" class="dialog">
     <div class="dialog-content">
       <p id="dialog-message"></p>

@@ -42,6 +42,9 @@ Each monthly transaction entry includes an edit icon so existing records can be 
 
 Transactions are grouped by calendar day, with each date shown as a header followed by that day's entries.
 
+### Import Monthly Transactions
+Use the **Import** button to load transactions for a specific month. A dialog lets you choose the budget month and whether the file is JSON or CSV. Files should contain rows with date, description, amount and category; imported entries are added to the chosen month.
+
 ### Real-time Category Totals
 The Money Out – Categories table refreshes instantly when you add new transactions so actual and difference values are always up to date.
 

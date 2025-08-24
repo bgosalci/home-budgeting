@@ -11,7 +11,15 @@
     const groupBy = (arr, fn)=>arr.reduce((a,x)=>{const k=fn(x);(a[k]=a[k]||[]).push(x);return a;},{});
     const sum = (arr, fn=(x)=>x)=>arr.reduce((a,x)=>a+fn(x),0);
     const clone = (o)=>JSON.parse(JSON.stringify(o));
-    return {fmt,id,monthKey,groupBy,sum,clone};
+    const parseCSV = (text)=>{
+      const lines = text.trim().split(/\r?\n/).filter(l=>l);
+      if(lines[0] && lines[0].toLowerCase().includes('date')) lines.shift();
+      return lines.map(line=>{
+        const [date,desc,amount,category] = line.split(',').map(s=>s.trim());
+        return {date,desc,amount:Number(amount)||0,category};
+      });
+    };
+    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV};
   })();
 
   // ===== Dialog (modal pop-ups)
@@ -276,7 +284,13 @@
       exportMonth: document.getElementById('export-month'),
       exportYear: document.getElementById('export-year'),
       exportAll: document.getElementById('export-all'),
+      importBtn: document.getElementById('import-trans'),
+      importDialog: document.getElementById('import-dialog'),
+      importMonth: document.getElementById('import-month'),
+      importType: document.getElementById('import-type'),
       importFile: document.getElementById('import-file'),
+      importConfirm: document.getElementById('import-confirm'),
+      importCancel: document.getElementById('import-cancel'),
 
       // Tabs
       tabBudget: document.getElementById('tab-budget'),
@@ -609,9 +623,45 @@
       const data = Store.exportMonths(k=>k.startsWith(year+'-')); download(`budget-${year}.json`, data);
     };
     els.exportAll.onclick = ()=>{ const data = Store.exportMonths(); download(`budget-all.json`, data); };
-    els.importFile.onchange = (e)=>{
-      const file = e.target.files[0]; if(!file) return; const r=new FileReader();
-      r.onload = ()=>{ try{ Store.importData(JSON.parse(r.result)); loadMonth(currentMonthKey); Dialog.info('Import completed.'); }catch{ Dialog.alert('Invalid JSON'); } };
+
+    els.importBtn.onclick = ()=>{
+      els.importMonth.value = currentMonthKey;
+      els.importType.value = 'json';
+      els.importFile.value = '';
+      els.importType.dispatchEvent(new Event('change'));
+      els.importDialog.showModal();
+    };
+    els.importCancel.onclick = ()=>{ els.importDialog.close(); };
+    els.importType.onchange = ()=>{
+      const t = els.importType.value;
+      els.importFile.accept = t==='csv'?'.csv':'application/json,.json';
+    };
+    els.importConfirm.onclick = ()=>{
+      const mk = Utils.monthKey(els.importMonth.value);
+      const file = els.importFile.files[0];
+      const type = els.importType.value;
+      if(!mk || !file){ Dialog.alert('Select month and file'); return; }
+      const r = new FileReader();
+      r.onload = ()=>{
+        try{
+          let txs;
+          if(type==='json'){
+            const parsed = JSON.parse(r.result);
+            txs = Array.isArray(parsed) ? parsed : parsed.transactions;
+          }else{
+            txs = Utils.parseCSV(r.result);
+          }
+          if(!Array.isArray(txs)) throw new Error('bad');
+          let m = Store.getMonth(mk) || Model.emptyMonth();
+          for(const t of txs) Model.addTx(m,t);
+          Store.setMonth(mk,m);
+          loadMonth(mk);
+          Dialog.info('Import completed.');
+          els.importDialog.close();
+        }catch{
+          Dialog.alert('Invalid file');
+        }
+      };
       r.readAsText(file);
     };
 
