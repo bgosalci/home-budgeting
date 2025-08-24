@@ -14,6 +14,29 @@
     return {fmt,id,monthKey,groupBy,sum,clone};
   })();
 
+  // ===== Dialog (modal pop-ups)
+  const Dialog = (()=>{
+    const dlg = document.getElementById('dialog');
+    const msg = document.getElementById('dialog-message');
+    const ok = document.getElementById('dialog-ok');
+    const cancel = document.getElementById('dialog-cancel');
+    const open = (type, message, showCancel)=>{
+      dlg.className = `dialog ${type}`;
+      msg.textContent = message;
+      return new Promise(resolve=>{
+        cancel.classList.toggle('hidden', !showCancel);
+        ok.onclick = ()=>{ dlg.close(); resolve(true); };
+        cancel.onclick = ()=>{ dlg.close(); resolve(false); };
+        dlg.oncancel = (e)=>{ e.preventDefault(); dlg.close(); resolve(false); };
+        dlg.showModal();
+      });
+    };
+    const alert = (m)=>open('alert',m,false).then(()=>{});
+    const info = (m)=>open('info',m,false).then(()=>{});
+    const confirm = (m)=>open('confirm',m,true);
+    return {alert,info,confirm};
+  })();
+
   // ===== Storage (localStorage) – closure encapsulation
   const Store = (()=>{
     const KEY = 'budget.local.v1';
@@ -331,10 +354,12 @@
       const row = document.createElement('div'); row.className='list-item';
       row.innerHTML = `<div><strong>${x.name}</strong><div><small>${Utils.fmt(x.amount)}</small></div></div>`+
                       `<div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div>`;
-      row.onclick = (e)=>{
+      row.onclick = async (e)=>{
         const act = e.target.closest('button')?.dataset?.act; if(!act) return;
         const m=Store.getMonth(currentMonthKey);
-        if(act==='del'){ Model.delIncome(m,x.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
+        if(act==='del'){
+          if(await Dialog.confirm('Delete this income?')){ Model.delIncome(m,x.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
+        }
         if(act==='edit'){ els.incomeName.value=x.name; els.incomeAmount.value=x.amount; editingIncomeId=x.id; els.addIncome.textContent='Update Income'; }
       };
       els.incomeList.appendChild(row);
@@ -368,9 +393,11 @@
                           <td class="right">${Utils.fmt(act)}</td>
                           <td class="right ${cls}">${Utils.fmt(diff)}</td>
                           <td class="right"><div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div></td>`;
-          tr.onclick = (e)=>{
+          tr.onclick = async (e)=>{
             const actn = e.target.closest('button')?.dataset?.act; if(!actn) return;
-            if(actn==='del'){ delete month.categories[name]; Store.setMonth(currentMonthKey,month); renderCategories(month); refreshKPIs(); refreshCategoryDropdowns(month); }
+            if(actn==='del'){
+              if(await Dialog.confirm('Delete this category?')){ delete month.categories[name]; Store.setMonth(currentMonthKey,month); renderCategories(month); refreshKPIs(); refreshCategoryDropdowns(month); }
+            }
             if(actn==='edit'){ els.catName.value=name; els.catGroup.value=meta.group||''; els.catBudget.value=meta.budget||0; }
           };
           els.catTable.appendChild(tr);
@@ -402,7 +429,9 @@
           const row = document.createElement('div'); row.className='list-item';
           row.innerHTML = `<div><strong>${t.desc}</strong><div><small>${t.category||'Uncategorised'}</small></div></div>`+
                            `<div class="right"><div>${Utils.fmt(t.amount)}</div><div class="actions"><button class="icon-btn" data-act="edit" data-id="${t.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${t.id}" aria-label="Delete">${ICON_DELETE}</button></div></div>`;
-          row.querySelector('[data-act="del"]').onclick = ()=>{ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); };
+          row.querySelector('[data-act="del"]').onclick = async ()=>{
+            if(await Dialog.confirm('Delete this transaction?')){ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
+          };
           row.querySelector('[data-act="edit"]').onclick = ()=>{ els.txDate.value=t.date; els.txDesc.value=t.desc; els.txAmt.value=t.amount; els.txCat.value=t.category; editingTxId=t.id; els.addTx.textContent='Update'; };
           els.txList.appendChild(row);
         }
@@ -531,7 +560,7 @@
     // Month controls
     els.newMonth.onclick = ()=>{
       const mk = els.monthPicker.value || Utils.monthKey();
-      if(Store.getMonth(mk)) { alert('Month already exists. Use Duplicate if needed.'); return; }
+      if(Store.getMonth(mk)) { Dialog.alert('Month already exists. Use Duplicate if needed.'); return; }
       const month = Model.template(); Store.setMonth(mk, month); loadMonth(mk);
     };
     els.duplicateMonth.onclick = ()=>{
@@ -554,7 +583,7 @@
     els.exportAll.onclick = ()=>{ const data = Store.exportMonths(); download(`budget-all.json`, data); };
     els.importFile.onchange = (e)=>{
       const file = e.target.files[0]; if(!file) return; const r=new FileReader();
-      r.onload = ()=>{ try{ Store.importData(JSON.parse(r.result)); loadMonth(currentMonthKey); alert('Import completed.'); }catch{ alert('Invalid JSON'); } };
+      r.onload = ()=>{ try{ Store.importData(JSON.parse(r.result)); loadMonth(currentMonthKey); Dialog.info('Import completed.'); }catch{ Dialog.alert('Invalid JSON'); } };
       r.readAsText(file);
     };
 
