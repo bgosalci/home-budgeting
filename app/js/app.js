@@ -13,15 +13,22 @@
     const clone = (o)=>JSON.parse(JSON.stringify(o));
     const parseCSV = (text)=>{
       const lines = text.trim().split(/\r?\n/).filter(l=>l);
-      if(lines[0] && lines[0].toLowerCase().includes('date')) lines.shift();
+      if(lines[0] && /^date/i.test(lines[0])) lines.shift();
       return lines.map(line=>{
-        const [date,desc,category,amount] = line.split(',').map(s=>s.trim());
-        return {date,desc,category,amount:Number(amount)||0};
+        const [dRaw,desc,category,aRaw] = line.split(',').map(s=>s.trim());
+        const [dd,mm,yyyy] = dRaw.split(/[\/]/);
+        const date = `${yyyy}-${mm}-${dd}`;
+        const amount = Number(aRaw.replace(/[^0-9.-]/g,'')) || 0;
+        return {date,desc,category,amount};
       });
     };
     const toCSV = (txs)=>[
-      'date,description,category,amount',
-      ...txs.map(t=>[t.date,t.desc,t.category,t.amount].join(','))
+      'Date,Description,Category,Amount',
+      ...txs.map(t=>{
+        const [y,m,d] = (t.date||'').split('-');
+        const date = d?`${d}/${m}/${y}`:'';
+        return [date,t.desc,t.category,`£${Number(t.amount||0).toFixed(2)}`].join(',');
+      })
     ].join('\n');
     return {fmt,id,monthKey,groupBy,sum,clone,parseCSV,toCSV};
   })();
