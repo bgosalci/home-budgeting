@@ -13,8 +13,11 @@ JavaScript files are located in `app/js` and stylesheets in `app/css`.
 ### Month Controls
 You can now add a new budget month or switch between months using the inline controls in the header.
 
-### Button Styles
-Delete and edit buttons now mirror the shape of primary actions while using a distinct secondary color for clarity.
+### Action Icons
+Edit and delete actions across the app now use circular icon buttons for a cleaner look.
+
+### Themed Dialogs
+Alerts, confirmations and information messages now appear in a styled pop‑up dialog that matches the app's theme. Any attempt to delete a record prompts for confirmation.
 
 ### Money In Editing
 Income entries can now be edited. Use the new edit button next to each income to modify its name or amount.
@@ -28,8 +31,14 @@ The transactions screen now shows the monthly transaction list next to the add t
 The transaction list now fills nearly the entire screen without overflowing and scrolls within its card, while the add transaction form retains its original size.
 
 The monthly transactions card now leaves a 20px gap from the bottom of the screen for clearer separation from the edge.
+A small gap now separates the category selector from the Add button for clearer entry.
 
 Prices in the monthly transaction list are now larger, bold, and include extra right padding alongside the delete button for improved readability.
+
+### Transaction Editing
+Each monthly transaction entry includes an edit icon so existing records can be updated.
+
+Transactions are grouped by calendar day, with each date shown as a header followed by that day's entries.
 
 ### Real-time Category Totals
 The Money Out – Categories table refreshes instantly when you add new transactions so actual and difference values are always up to date.

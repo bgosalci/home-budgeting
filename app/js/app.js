@@ -14,6 +14,29 @@
     return {fmt,id,monthKey,groupBy,sum,clone};
   })();
 
+  // ===== Dialog (modal pop-ups)
+  const Dialog = (()=>{
+    const dlg = document.getElementById('dialog');
+    const msg = document.getElementById('dialog-message');
+    const ok = document.getElementById('dialog-ok');
+    const cancel = document.getElementById('dialog-cancel');
+    const open = (type, message, showCancel)=>{
+      dlg.className = `dialog ${type}`;
+      msg.textContent = message;
+      return new Promise(resolve=>{
+        cancel.classList.toggle('hidden', !showCancel);
+        ok.onclick = ()=>{ dlg.close(); resolve(true); };
+        cancel.onclick = ()=>{ dlg.close(); resolve(false); };
+        dlg.oncancel = (e)=>{ e.preventDefault(); dlg.close(); resolve(false); };
+        dlg.showModal();
+      });
+    };
+    const alert = (m)=>open('alert',m,false).then(()=>{});
+    const info = (m)=>open('info',m,false).then(()=>{});
+    const confirm = (m)=>open('confirm',m,true);
+    return {alert,info,confirm};
+  })();
+
   // ===== Storage (localStorage) – closure encapsulation
   const Store = (()=>{
     const KEY = 'budget.local.v1';
@@ -282,6 +305,9 @@
 
     let currentMonthKey = Utils.monthKey();
     let editingIncomeId = null;
+    let editingTxId = null;
+    const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/></svg>`;
+    const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
     els.descPredictHint.textContent = 'Desc: –';
     els.descTooltip.classList.add('hidden');
     let descSuggestion = '';
@@ -302,6 +328,7 @@
       const month = Store.getMonth(mk);
       if(!month) return;
       editingIncomeId = null; els.addIncome.textContent='Add Income';
+      editingTxId = null; els.addTx.textContent='Add';
       currentMonthKey = mk; els.headerMonth.textContent = new Date(mk+'-01').toLocaleString(undefined,{month:'long',year:'numeric'});
       // populate incomes
       els.incomeList.innerHTML = '';
@@ -326,11 +353,13 @@
     function addIncomeRow(x){
       const row = document.createElement('div'); row.className='list-item';
       row.innerHTML = `<div><strong>${x.name}</strong><div><small>${Utils.fmt(x.amount)}</small></div></div>`+
-                      `<div><button class="secondary" data-act="edit">Edit</button> <button class="secondary" data-act="del">Delete</button></div>`;
-      row.onclick = (e)=>{
-        const act = e.target?.dataset?.act; if(!act) return;
+                      `<div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div>`;
+      row.onclick = async (e)=>{
+        const act = e.target.closest('button')?.dataset?.act; if(!act) return;
         const m=Store.getMonth(currentMonthKey);
-        if(act==='del'){ Model.delIncome(m,x.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
+        if(act==='del'){
+          if(await Dialog.confirm('Delete this income?')){ Model.delIncome(m,x.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
+        }
         if(act==='edit'){ els.incomeName.value=x.name; els.incomeAmount.value=x.amount; editingIncomeId=x.id; els.addIncome.textContent='Update Income'; }
       };
       els.incomeList.appendChild(row);
@@ -363,10 +392,12 @@
                           <td class="right">${Utils.fmt(meta.budget||0)}</td>
                           <td class="right">${Utils.fmt(act)}</td>
                           <td class="right ${cls}">${Utils.fmt(diff)}</td>
-                          <td class="right"><button class="secondary" data-act="edit">Edit</button> <button class="secondary" data-act="del">Del</button></td>`;
-          tr.onclick = (e)=>{
-            const actn = e.target?.dataset?.act; if(!actn) return;
-            if(actn==='del'){ delete month.categories[name]; Store.setMonth(currentMonthKey,month); renderCategories(month); refreshKPIs(); refreshCategoryDropdowns(month); }
+                          <td class="right"><div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div></td>`;
+          tr.onclick = async (e)=>{
+            const actn = e.target.closest('button')?.dataset?.act; if(!actn) return;
+            if(actn==='del'){
+              if(await Dialog.confirm('Delete this category?')){ delete month.categories[name]; Store.setMonth(currentMonthKey,month); renderCategories(month); refreshKPIs(); refreshCategoryDropdowns(month); }
+            }
             if(actn==='edit'){ els.catName.value=name; els.catGroup.value=meta.group||''; els.catBudget.value=meta.budget||0; }
           };
           els.catTable.appendChild(tr);
@@ -387,12 +418,23 @@
     function renderTransactions(month){
       els.txList.innerHTML='';
       const items = month.transactions.slice().sort((a,b)=> a.date.localeCompare(b.date));
-      for(const t of items){
-        const row = document.createElement('div'); row.className='list-item';
-        row.innerHTML = `<div><strong>${t.desc}</strong><div><small>${t.date} • ${t.category||'Uncategorised'}</small></div></div>
-                         <div class="right"><div>${Utils.fmt(t.amount)}</div><small><button class="secondary" data-id="${t.id}">Delete</button></small></div>`;
-        row.querySelector('button').onclick = ()=>{ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); };
-        els.txList.appendChild(row);
+      const byDate = Utils.groupBy(items, t=>t.date);
+      const dates = Object.keys(byDate).sort();
+      for(const date of dates){
+        const hdr = document.createElement('div');
+        hdr.className = 'tx-date';
+        hdr.textContent = new Date(date).toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
+        els.txList.appendChild(hdr);
+        for(const t of byDate[date]){
+          const row = document.createElement('div'); row.className='list-item';
+          row.innerHTML = `<div><strong>${t.desc}</strong><div><small>${t.category||'Uncategorised'}</small></div></div>`+
+                           `<div class="right"><div>${Utils.fmt(t.amount)}</div><div class="actions"><button class="icon-btn" data-act="edit" data-id="${t.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${t.id}" aria-label="Delete">${ICON_DELETE}</button></div></div>`;
+          row.querySelector('[data-act="del"]').onclick = async ()=>{
+            if(await Dialog.confirm('Delete this transaction?')){ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
+          };
+          row.querySelector('[data-act="edit"]').onclick = ()=>{ els.txDate.value=t.date; els.txDesc.value=t.desc; els.txAmt.value=t.amount; els.txCat.value=t.category; editingTxId=t.id; els.addTx.textContent='Update'; };
+          els.txList.appendChild(row);
+        }
       }
       refreshKPIs();
     }
@@ -475,10 +517,19 @@
       const amt = parseFloat(els.txAmt.value);
       const cat = els.txCat.value;
       if(!date || !desc || isNaN(amt)) return;
-      const m = Store.getMonth(currentMonthKey); Model.addTx(m,{date,desc,amount:amt,category:cat}); Store.setMonth(currentMonthKey,m);
+      const m = Store.getMonth(currentMonthKey);
+      if(editingTxId){
+        const tx = m.transactions.find(x=>x.id===editingTxId);
+        if(tx){ tx.date=date; tx.desc=desc; tx.amount=amt; tx.category=cat; }
+        editingTxId = null; els.addTx.textContent='Add';
+      } else {
+        Model.addTx(m,{date,desc,amount:amt,category:cat});
+      }
+      Store.setMonth(currentMonthKey,m);
       Predictor.learn(desc,cat);
       DescPredictor.learn(desc);
-      els.txDesc.value=''; els.txAmt.value=''; renderTransactions(m); renderCategories(m);
+      els.txDesc.value=''; els.txAmt.value='';
+      renderTransactions(m); renderCategories(m);
       els.descPredictHint.textContent = 'Desc: –';
       els.descTooltip.classList.add('hidden');
       descSuggestion = '';
@@ -509,7 +560,7 @@
     // Month controls
     els.newMonth.onclick = ()=>{
       const mk = els.monthPicker.value || Utils.monthKey();
-      if(Store.getMonth(mk)) { alert('Month already exists. Use Duplicate if needed.'); return; }
+      if(Store.getMonth(mk)) { Dialog.alert('Month already exists. Use Duplicate if needed.'); return; }
       const month = Model.template(); Store.setMonth(mk, month); loadMonth(mk);
     };
     els.duplicateMonth.onclick = ()=>{
@@ -532,7 +583,7 @@
     els.exportAll.onclick = ()=>{ const data = Store.exportMonths(); download(`budget-all.json`, data); };
     els.importFile.onchange = (e)=>{
       const file = e.target.files[0]; if(!file) return; const r=new FileReader();
-      r.onload = ()=>{ try{ Store.importData(JSON.parse(r.result)); loadMonth(currentMonthKey); alert('Import completed.'); }catch{ alert('Invalid JSON'); } };
+      r.onload = ()=>{ try{ Store.importData(JSON.parse(r.result)); loadMonth(currentMonthKey); Dialog.info('Import completed.'); }catch{ Dialog.alert('Invalid JSON'); } };
       r.readAsText(file);
     };
 
