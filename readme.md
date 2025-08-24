@@ -41,6 +41,9 @@ A small gap now separates the category selector from the Add button for clearer 
 
 Each transaction row now begins with a row number. Prices are bold, match the standard font size, and sit to the left of the edit/delete icons with extra spacing for clearer separation.
 
+### Analysis Tab
+The **Analysis** tab compares monthly budgets with actual spending and highlights any overspending trends. A bar chart powered by Chart.js visualises the totals for each month so you can quickly spot patterns.
+
 ### Transaction Editing
 Each monthly transaction entry includes an edit icon so existing records can be updated.
 

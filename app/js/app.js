@@ -325,10 +325,14 @@
       // Tabs
       tabBudget: document.getElementById('tab-budget'),
       tabTx: document.getElementById('tab-transactions'),
+      tabAnalysis: document.getElementById('tab-analysis'),
       tabLearning: document.getElementById('tab-learning'),
       panelBudget: document.getElementById('panel-budget'),
       panelTx: document.getElementById('panel-transactions'),
+      panelAnalysis: document.getElementById('panel-analysis'),
       panelLearning: document.getElementById('panel-learning'),
+      analysisChart: document.getElementById('analysis-chart'),
+      analysisSummary: document.getElementById('analysis-summary'),
 
       // Income
       incomeList: document.getElementById('income-list'),
@@ -377,6 +381,7 @@
     els.descPredictHint.textContent = 'Desc: –';
     els.descTooltip.classList.add('hidden');
     let descSuggestion = '';
+    let analysisChart = null;
 
     // ---- init data if empty
     (function bootstrap(){
@@ -408,6 +413,7 @@
       refreshMonthPicker();
       // charts + KPIs
       refreshKPIs();
+      if(els.tabAnalysis.getAttribute('aria-selected') === 'true') renderAnalysis();
     }
 
     function refreshMonthPicker(){
@@ -769,13 +775,39 @@
       r.readAsText(file);
     };
 
+    function renderAnalysis(){
+      const months = Store.allMonths();
+      if(analysisChart){ analysisChart.destroy(); analysisChart = null; }
+      if(months.length===0){
+        els.analysisSummary.textContent = 'No data to analyse yet.';
+        return;
+      }
+      const totalBud = Utils.sum(Object.values(Store.categories()), c=>Number(c.budget)||0);
+      const budgets = months.map(()=>totalBud);
+      const actuals = months.map(mk=>{
+        const m = Store.getMonth(mk);
+        return Utils.sum(m?.transactions||[], t=>t.amount>0?t.amount:0);
+      });
+      const ctx = els.analysisChart.getContext('2d');
+      analysisChart = new Chart(ctx, {
+        type:'bar',
+        data:{ labels:months, datasets:[{label:'Budget',data:budgets,backgroundColor:'#3b82f6'},{label:'Actual',data:actuals,backgroundColor:'#f59e0b'}] },
+        options:{responsive:true, maintainAspectRatio:false}
+      });
+      const diffs = months.map((mk,i)=>actuals[i]-budgets[i]);
+      const maxDiff = Math.max(...diffs);
+      const maxIdx = diffs.indexOf(maxDiff);
+      els.analysisSummary.textContent = maxDiff>0?`Highest overspend in ${months[maxIdx]} by £${maxDiff.toFixed(2)}`:'Spending is within budget for all months.';
+    }
+
     // Tabs
     function selectTab(key){
-      const map = {budget:[els.tabBudget,els.panelBudget], tx:[els.tabTx,els.panelTx], learn:[els.tabLearning,els.panelLearning]};
+      const map = {budget:[els.tabBudget,els.panelBudget], tx:[els.tabTx,els.panelTx], analysis:[els.tabAnalysis,els.panelAnalysis], learn:[els.tabLearning,els.panelLearning]};
       for(const [k,[btn,pan]] of Object.entries(map)){ const on = (k===key); btn.setAttribute('aria-selected',on); pan.classList.toggle('hidden',!on); }
     }
     els.tabBudget.onclick = ()=>selectTab('budget');
     els.tabTx.onclick = ()=>selectTab('tx');
+    els.tabAnalysis.onclick = ()=>{ selectTab('analysis'); renderAnalysis(); };
     els.tabLearning.onclick = ()=>{ selectTab('learn'); renderLearnList(); };
 
     // Initial load
