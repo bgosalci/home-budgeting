@@ -33,7 +33,7 @@ The transaction list now fills nearly the entire screen without overflowing and 
 The monthly transactions card now leaves a 20px gap from the bottom of the screen for clearer separation from the edge.
 A small gap now separates the category selector from the Add button for clearer entry.
 
-Prices in the monthly transaction list are now larger, bold, and include extra right padding alongside the delete button for improved readability.
+Each transaction row now begins with a row number. Prices remain large and bold, and now sit to the left of the edit/delete icons with extra spacing for clearer separation.
 
 ### Transaction Editing
 Each monthly transaction entry includes an edit icon so existing records can be updated.
