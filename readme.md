@@ -16,6 +16,9 @@ You can now add a new budget month or switch between months using the inline con
 ### Action Icons
 Edit and delete actions across the app now use circular icon buttons for a cleaner look.
 
+### Themed Dialogs
+Alerts, confirmations and information messages now appear in a styled pop‑up dialog that matches the app's theme. Any attempt to delete a record prompts for confirmation.
+
 ### Money In Editing
 Income entries can now be edited. Use the new edit button next to each income to modify its name or amount.
 
