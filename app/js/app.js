@@ -498,7 +498,7 @@
         const hdr = document.createElement('div');
         hdr.className = 'tx-date';
         const dateLabel = new Date(date).toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
-        hdr.innerHTML = `<span>${dateLabel}<span class="badge tx-count">${dayCount}</span></span>`+
+        hdr.innerHTML = `<span>${dateLabel}<span class="tx-count"><span class="badge">${dayCount}</span> transactions</span></span>`+
                         `<span class="totals"><span class="day"></span><span class="run"></span></span>`;
         const dayEl = hdr.querySelector('.day');
         dayEl.textContent = `Day: ${Utils.fmt(dayTotal)}`;
