@@ -226,10 +226,10 @@
   // ===== Description Predictor (learn full descriptions)
   const DescPredictor = (()=>{
     const predict = (partial)=>{
-      if(!partial) return '';
+      if(!partial) return [];
       const list = Store.descList();
       const lower = partial.trim().toLowerCase();
-      return list.find(d=>d.toLowerCase().startsWith(lower)) || '';
+      return list.filter(d=>d.toLowerCase().startsWith(lower)).slice(0,4);
     };
     const learn = (desc)=>{
       if(!desc) return;
@@ -376,7 +376,42 @@
     const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
     els.descPredictHint.textContent = 'Desc: –';
     els.descTooltip.classList.add('hidden');
-    let descSuggestion = '';
+    let descSuggestions = [];
+    let descSelIdx = 0;
+
+    const hideDescSuggestions = ()=>{
+      descSuggestions = [];
+      els.descTooltip.classList.add('hidden');
+      els.descTooltip.innerHTML = '';
+    };
+
+    const renderDescSuggestions = ()=>{
+      els.descTooltip.innerHTML = '';
+      descSuggestions.forEach((s,i)=>{
+        const div = document.createElement('div');
+        div.textContent = s;
+        div.className = 'option'+(i===descSelIdx?' selected':'');
+        div.addEventListener('mousedown', (e)=>{
+          e.preventDefault();
+          chooseDescSuggestion(i);
+        });
+        els.descTooltip.appendChild(div);
+      });
+      els.descTooltip.classList.remove('hidden');
+    };
+
+    const highlightDescSuggestion = ()=>{
+      [...els.descTooltip.children].forEach((el,i)=>{
+        el.classList.toggle('selected', i===descSelIdx);
+      });
+    };
+
+    const chooseDescSuggestion = (i)=>{
+      if(!descSuggestions[i]) return;
+      els.txDesc.value = descSuggestions[i] + ' ';
+      hideDescSuggestions();
+      els.txDesc.dispatchEvent(new Event('input'));
+    };
 
     // ---- init data if empty
     (function bootstrap(){
@@ -579,26 +614,35 @@
       els.predictHint.textContent = 'Prediction: '+(guess||'–');
       if(guess){ els.txCat.value = guess; }
       const val = els.txDesc.value;
-      const dGuess = DescPredictor.predict(val);
-      els.descPredictHint.textContent = 'Desc: '+(dGuess||'–');
-      if(dGuess && dGuess.toLowerCase() !== val.trim().toLowerCase()){
-        descSuggestion = dGuess;
-        els.descTooltip.textContent = `${dGuess} (press space to accept)`;
-        els.descTooltip.classList.remove('hidden');
+      const matches = DescPredictor.predict(val);
+      els.descPredictHint.textContent = 'Desc: '+(matches[0]||'–');
+      descSuggestions = matches.filter(d=>d.toLowerCase() !== val.trim().toLowerCase());
+      if(descSuggestions.length){
+        descSelIdx = 0;
+        renderDescSuggestions();
       }else{
-        descSuggestion = '';
-        els.descTooltip.classList.add('hidden');
+        hideDescSuggestions();
       }
     });
 
     els.txDesc.addEventListener('keydown', (e)=>{
-      if(e.key === ' ' && descSuggestion){
+      if(!descSuggestions.length) return;
+      if(e.key === 'ArrowDown'){
         e.preventDefault();
-        els.txDesc.value = descSuggestion + ' ';
-        descSuggestion = '';
-        els.descTooltip.classList.add('hidden');
-        els.txDesc.dispatchEvent(new Event('input'));
+        descSelIdx = (descSelIdx + 1) % descSuggestions.length;
+        highlightDescSuggestion();
+      }else if(e.key === 'ArrowUp'){
+        e.preventDefault();
+        descSelIdx = (descSelIdx - 1 + descSuggestions.length) % descSuggestions.length;
+        highlightDescSuggestion();
+      }else if(e.key === 'Tab'){
+        e.preventDefault();
+        chooseDescSuggestion(descSelIdx);
       }
+    });
+
+    els.txDesc.addEventListener('blur', ()=>{
+      setTimeout(hideDescSuggestions, 100);
     });
     const handleAddTx = ()=>{
       const date = els.txDate.value.trim();
@@ -620,8 +664,7 @@
       els.txDesc.value=''; els.txAmt.value='';
       renderTransactions(m); renderCategories(m);
       els.descPredictHint.textContent = 'Desc: –';
-      els.descTooltip.classList.add('hidden');
-      descSuggestion = '';
+      hideDescSuggestions();
       els.txDesc.focus();
     };
 
