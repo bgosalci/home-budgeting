@@ -23,9 +23,7 @@
         <select id="open-month"></select>
       </div>
       <button id="duplicate-month">Duplicate Prev</button>
-      <button id="export-month">Export Month</button>
-      <button id="export-year">Export Year</button>
-      <button id="export-all">Export All</button>
+      <button id="export-data">Export</button>
       <button id="import-trans">Import</button>
     </div>
   </header>
@@ -144,9 +142,19 @@
   <dialog id="import-dialog" class="dialog">
     <div class="dialog-content">
       <div class="row">
+        <label>Data
+          <select id="import-kind">
+            <option value="transactions">Monthly Transactions</option>
+            <option value="categories">Money Out – Categories</option>
+            <option value="prediction">Prediction Map</option>
+            <option value="all">All Data</option>
+          </select>
+        </label>
+      </div>
+      <div class="row" id="import-month-row">
         <label>Month <input type="month" id="import-month"/></label>
       </div>
-      <div class="row">
+      <div class="row" id="import-type-row">
         <label>File Type
           <select id="import-type">
             <option value="json">JSON</option>
@@ -160,6 +168,35 @@
       <div class="dialog-actions">
         <button id="import-confirm" class="primary">Import</button>
         <button id="import-cancel" class="secondary">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="export-dialog" class="dialog">
+    <div class="dialog-content">
+      <div class="row">
+        <label>Data
+          <select id="export-kind">
+            <option value="transactions">Monthly Transactions</option>
+            <option value="categories">Money Out – Categories</option>
+            <option value="prediction">Prediction Map</option>
+            <option value="all">All Data</option>
+          </select>
+        </label>
+      </div>
+      <div class="row" id="export-month-row">
+        <label>Month <input type="month" id="export-month"/></label>
+      </div>
+      <div class="row" id="export-type-row">
+        <label>File Type
+          <select id="export-type">
+            <option value="json">JSON</option>
+            <option value="csv">CSV</option>
+          </select>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button id="export-confirm" class="primary">Export</button>
+        <button id="export-cancel" class="secondary">Cancel</button>
       </div>
     </div>
   </dialog>

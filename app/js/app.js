@@ -15,11 +15,15 @@
       const lines = text.trim().split(/\r?\n/).filter(l=>l);
       if(lines[0] && lines[0].toLowerCase().includes('date')) lines.shift();
       return lines.map(line=>{
-        const [date,desc,amount,category] = line.split(',').map(s=>s.trim());
-        return {date,desc,amount:Number(amount)||0,category};
+        const [date,desc,category,amount] = line.split(',').map(s=>s.trim());
+        return {date,desc,category,amount:Number(amount)||0};
       });
     };
-    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV};
+    const toCSV = (txs)=>[
+      'date,description,category,amount',
+      ...txs.map(t=>[t.date,t.desc,t.category,t.amount].join(','))
+    ].join('\n');
+    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV,toCSV};
   })();
 
   // ===== Dialog (modal pop-ups)
@@ -79,10 +83,19 @@
     const setDescMap = (m)=>{ state.descMap = m; save(state); };
     const descList = ()=> state.descList || (state.descList=[]);
     const setDescList = (list)=>{ state.descList = list; save(state); };
-    const exportMonths = (filterFn)=>{
-      const months = {};
-      for(const k of Object.keys(state.months)) if(!filterFn || filterFn(k)) months[k]=state.months[k];
-      return {version:state.version, months, categories: state.categories, mapping: state.mapping, descMap: state.descMap, descList: state.descList||[]};
+    const exportData = (kind, mk)=>{
+      if(kind==='transactions'){
+        const m = state.months[mk];
+        return m ? (m.transactions||[]) : [];
+      }
+      if(kind==='categories'){
+        return {categories: state.categories};
+      }
+      if(kind==='prediction'){
+        return {mapping: state.mapping, descMap: state.descMap, descList: state.descList||[]};
+      }
+      // all data
+      return {version:state.version, months: state.months, categories: state.categories, mapping: state.mapping, descMap: state.descMap, descList: state.descList||[]};
     };
     const importData = (json)=>{
       const incoming = typeof json === 'string' ? JSON.parse(json) : json;
@@ -123,7 +136,7 @@
     const setCollapsed = (mk,g,val)=>{ collapsedFor(mk)[g]=!!val; save(state); };
     const toggleCollapsed = (mk,g)=>{ setCollapsed(mk,g,!isCollapsed(mk,g)); };
     const setAllCollapsed = (mk, groups, val)=>{ const obj = collapsedFor(mk); (groups||[]).forEach(g=>obj[g]=!!val); save(state); };
-    return {state,getMonth,setMonth,allMonths,categories,setCategories,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportMonths,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed};
+    return {state,getMonth,setMonth,allMonths,categories,setCategories,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportData,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed};
   })();
 
   // ===== Charts (vanilla Canvas)
@@ -281,13 +294,22 @@
       newMonth: document.getElementById('new-month'),
       duplicateMonth: document.getElementById('duplicate-month'),
       openMonth: document.getElementById('open-month'),
+      exportBtn: document.getElementById('export-data'),
+      exportDialog: document.getElementById('export-dialog'),
+      exportKind: document.getElementById('export-kind'),
       exportMonth: document.getElementById('export-month'),
-      exportYear: document.getElementById('export-year'),
-      exportAll: document.getElementById('export-all'),
+      exportMonthRow: document.getElementById('export-month-row'),
+      exportType: document.getElementById('export-type'),
+      exportTypeRow: document.getElementById('export-type-row'),
+      exportConfirm: document.getElementById('export-confirm'),
+      exportCancel: document.getElementById('export-cancel'),
       importBtn: document.getElementById('import-trans'),
       importDialog: document.getElementById('import-dialog'),
+      importKind: document.getElementById('import-kind'),
       importMonth: document.getElementById('import-month'),
+      importMonthRow: document.getElementById('import-month-row'),
       importType: document.getElementById('import-type'),
+      importTypeRow: document.getElementById('import-type-row'),
       importFile: document.getElementById('import-file'),
       importConfirm: document.getElementById('import-confirm'),
       importCancel: document.getElementById('import-cancel'),
@@ -614,48 +636,106 @@
     els.openMonth.onchange = (e)=>{ if(e.target.value) loadMonth(e.target.value); };
 
     // Export/Import
-    function download(name, data){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})); a.download=name; a.click(); }
-    els.exportMonth.onclick = ()=>{
-      const mk=currentMonthKey; const data = Store.exportMonths(k=>k===mk); download(`budget-${mk}.json`, data);
-    };
-    els.exportYear.onclick = ()=>{
-      const year = (currentMonthKey||Utils.monthKey()).slice(0,4);
-      const data = Store.exportMonths(k=>k.startsWith(year+'-')); download(`budget-${year}.json`, data);
-    };
-    els.exportAll.onclick = ()=>{ const data = Store.exportMonths(); download(`budget-all.json`, data); };
+    function download(name, data, type='json'){
+      const blob = type==='csv'
+        ? new Blob([data], {type:'text/csv'})
+        : new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+    }
 
+    function updateExportVis(){
+      const tx = els.exportKind.value==='transactions';
+      els.exportMonthRow.classList.toggle('hidden', !tx);
+      els.exportTypeRow.classList.toggle('hidden', !tx);
+    }
+    els.exportBtn.onclick = ()=>{
+      els.exportKind.value='transactions';
+      els.exportMonth.value=currentMonthKey;
+      els.exportType.value='json';
+      updateExportVis();
+      els.exportDialog.showModal();
+    };
+    els.exportCancel.onclick = ()=>{ els.exportDialog.close(); };
+    els.exportKind.onchange = updateExportVis;
+    els.exportConfirm.onclick = ()=>{
+      const kind = els.exportKind.value;
+      if(kind==='transactions'){
+        const mk = Utils.monthKey(els.exportMonth.value);
+        if(!mk){ Dialog.alert('Select month'); return; }
+        const txs = Store.exportData('transactions', mk);
+        if(els.exportType.value==='csv'){
+          const csv = Utils.toCSV(txs);
+          download(`transactions-${mk}.csv`, csv, 'csv');
+        }else{
+          download(`transactions-${mk}.json`, txs);
+        }
+      }else if(kind==='categories'){
+        const data = Store.exportData('categories');
+        download('categories.json', data);
+      }else if(kind==='prediction'){
+        const data = Store.exportData('prediction');
+        download('prediction-map.json', data);
+      }else{
+        const data = Store.exportData('all');
+        download('budget-all.json', data);
+      }
+      els.exportDialog.close();
+    };
+
+    function updateImportVis(){
+      const tx = els.importKind.value==='transactions';
+      els.importMonthRow.classList.toggle('hidden', !tx);
+      els.importTypeRow.classList.toggle('hidden', !tx);
+      const t = els.importType.value;
+      els.importFile.accept = tx && t==='csv'?'.csv':'application/json,.json';
+    }
     els.importBtn.onclick = ()=>{
+      els.importKind.value='transactions';
       els.importMonth.value = currentMonthKey;
-      els.importType.value = 'json';
-      els.importFile.value = '';
-      els.importType.dispatchEvent(new Event('change'));
+      els.importType.value='json';
+      els.importFile.value='';
+      updateImportVis();
       els.importDialog.showModal();
     };
     els.importCancel.onclick = ()=>{ els.importDialog.close(); };
-    els.importType.onchange = ()=>{
-      const t = els.importType.value;
-      els.importFile.accept = t==='csv'?'.csv':'application/json,.json';
-    };
+    els.importKind.onchange = updateImportVis;
+    els.importType.onchange = updateImportVis;
     els.importConfirm.onclick = ()=>{
-      const mk = Utils.monthKey(els.importMonth.value);
+      const kind = els.importKind.value;
       const file = els.importFile.files[0];
-      const type = els.importType.value;
-      if(!mk || !file){ Dialog.alert('Select month and file'); return; }
+      if(!file){ Dialog.alert('Select file'); return; }
       const r = new FileReader();
       r.onload = ()=>{
         try{
-          let txs;
-          if(type==='json'){
-            const parsed = JSON.parse(r.result);
-            txs = Array.isArray(parsed) ? parsed : parsed.transactions;
+          const text = r.result;
+          let targetMonth = currentMonthKey;
+          if(kind==='transactions'){
+            const mk = Utils.monthKey(els.importMonth.value);
+            if(!mk){ Dialog.alert('Select month'); return; }
+            targetMonth = mk;
+            let txs;
+            if(els.importType.value==='json'){
+              const parsed = JSON.parse(text);
+              txs = Array.isArray(parsed) ? parsed : parsed.transactions;
+            }else{
+              txs = Utils.parseCSV(text);
+            }
+            if(!Array.isArray(txs)) throw new Error('bad');
+            let m = Store.getMonth(mk) || Model.emptyMonth();
+            for(const t of txs) Model.addTx(m,t);
+            Store.setMonth(mk,m);
+          }else if(kind==='categories'){
+            const parsed = JSON.parse(text);
+            const cats = parsed.categories || parsed;
+            Store.setCategories({...Store.categories(), ...cats});
+          }else if(kind==='prediction'){
+            const parsed = JSON.parse(text);
+            Store.importData({months:{}, ...parsed});
           }else{
-            txs = Utils.parseCSV(r.result);
+            const parsed = JSON.parse(text);
+            Store.importData(parsed);
           }
-          if(!Array.isArray(txs)) throw new Error('bad');
-          let m = Store.getMonth(mk) || Model.emptyMonth();
-          for(const t of txs) Model.addTx(m,t);
-          Store.setMonth(mk,m);
-          loadMonth(mk);
+          loadMonth(targetMonth);
           Dialog.info('Import completed.');
           els.importDialog.close();
         }catch{

@@ -42,8 +42,15 @@ Each monthly transaction entry includes an edit icon so existing records can be 
 
 Transactions are grouped by calendar day, with each date shown as a header followed by that day's entries.
 
-### Import Monthly Transactions
-Use the **Import** button to load transactions for a specific month. A dialog lets you choose the budget month and whether the file is JSON or CSV. Files should contain rows with date, description, amount and category; imported entries are added to the chosen month.
+### Import & Export Data
+Use the **Import** and **Export** buttons to move data in or out of the app. A pop‑up dialog lets you choose the dataset:
+
+- **Monthly Transactions** – select the budget month and JSON or CSV file. CSV files should have columns in the order: date, description, category and amount.
+- **Money Out – Categories** – exports or imports the category list as JSON.
+- **Prediction Map** – exports or imports the description learning map as JSON.
+- **All Data** – full backup of every month, category and prediction map as JSON.
+
+Imported items are merged into existing data where applicable.
 
 ### Real-time Category Totals
 The Money Out – Categories table refreshes instantly when you add new transactions so actual and difference values are always up to date.
