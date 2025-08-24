@@ -792,7 +792,7 @@
       analysisChart = new Chart(ctx, {
         type:'bar',
         data:{ labels:months, datasets:[{label:'Budget',data:budgets,backgroundColor:'#3b82f6'},{label:'Actual',data:actuals,backgroundColor:'#f59e0b'}] },
-        options:{responsive:true, maintainAspectRatio:false}
+        options:{responsive:true, maintainAspectRatio:false, animation:false}
       });
       const diffs = months.map((mk,i)=>actuals[i]-budgets[i]);
       const maxDiff = Math.max(...diffs);
