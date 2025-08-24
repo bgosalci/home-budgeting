@@ -45,6 +45,7 @@ Each transaction row now begins with a row number. Prices remain large and bold,
 Each monthly transaction entry includes an edit icon so existing records can be updated.
 
 Transactions are grouped by calendar day, with each date shown as a header followed by that day's entries.
+Each header also displays the day's total spend and the running total for the month so far.
 
 ### Import & Export Data
 Use the **Import** and **Export** buttons to move data in or out of the app. A pop‑up dialog lets you choose the dataset:

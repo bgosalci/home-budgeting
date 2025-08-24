@@ -69,7 +69,8 @@
     .list-item .grow{flex:1}
     .list-item .tx-index{width:24px;color:var(--sub)}
     .list-item .tx-amount{text-align:right;font-weight:bold;font-size:1.2em;margin-right:16px}
-    .tx-date{padding:8px 10px;background:var(--muted);font-weight:700;border-bottom:1px solid var(--border)}
+    .tx-date{padding:8px 10px;background:var(--muted);font-weight:700;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+    .tx-date .totals{display:flex;gap:12px;font-weight:400}
 
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--muted)}
     .tooltip{display:inline-block;padding:4px 8px;border-radius:4px;background:var(--muted);font-size:12px;margin-top:4px}
