@@ -30,6 +30,7 @@ The transactions screen now shows the monthly transaction list next to the add t
 
 The transaction list now fills nearly the entire screen without overflowing and scrolls within its card, while the add transaction form retains its original size.
 
+The monthly transactions card now leaves a 20px gap from the bottom of the screen for clearer separation from the edge.
 A small gap now separates the category selector from the Add button for clearer entry.
 
 Prices in the monthly transaction list are now larger, bold, and include extra right padding alongside the delete button for improved readability.
