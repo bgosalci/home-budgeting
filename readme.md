@@ -31,6 +31,8 @@ A small gap now separates the category selector from the Add button for clearer 
 
 Prices in the monthly transaction list are now larger, bold, and include extra right padding alongside the delete button for improved readability.
 
+Transactions are grouped by calendar day, with each date shown as a header followed by that day's entries.
+
 ### Real-time Category Totals
 The Money Out – Categories table refreshes instantly when you add new transactions so actual and difference values are always up to date.
 
