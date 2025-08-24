@@ -63,10 +63,11 @@
     .charts{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 
     .list{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px}
-    .list-item{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border)}
+    .list-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border)}
     .list-item small{color:var(--sub)}
-    .list-item .right>div:first-child{padding-right:10px;font-weight:bold;font-size:1.2em}
-    .list-item .right button:not(.icon-btn){padding-right:10px}
+    .list-item .grow{flex:1}
+    .list-item .tx-index{width:24px;color:var(--sub)}
+    .list-item .tx-amount{text-align:right;font-weight:bold;font-size:1.2em;margin-right:16px}
     .tx-date{padding:8px 10px;background:var(--muted);font-weight:700;border-bottom:1px solid var(--border)}
 
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--muted)}

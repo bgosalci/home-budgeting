@@ -352,7 +352,7 @@
 
     function addIncomeRow(x){
       const row = document.createElement('div'); row.className='list-item';
-      row.innerHTML = `<div><strong>${x.name}</strong><div><small>${Utils.fmt(x.amount)}</small></div></div>`+
+      row.innerHTML = `<div class="grow"><strong>${x.name}</strong><div><small>${Utils.fmt(x.amount)}</small></div></div>`+
                       `<div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div>`;
       row.onclick = async (e)=>{
         const act = e.target.closest('button')?.dataset?.act; if(!act) return;
@@ -420,6 +420,7 @@
       const items = month.transactions.slice().sort((a,b)=> a.date.localeCompare(b.date));
       const byDate = Utils.groupBy(items, t=>t.date);
       const dates = Object.keys(byDate).sort();
+      let idx = 1;
       for(const date of dates){
         const hdr = document.createElement('div');
         hdr.className = 'tx-date';
@@ -427,8 +428,10 @@
         els.txList.appendChild(hdr);
         for(const t of byDate[date]){
           const row = document.createElement('div'); row.className='list-item';
-          row.innerHTML = `<div><strong>${t.desc}</strong><div><small>${t.category||'Uncategorised'}</small></div></div>`+
-                           `<div class="right"><div>${Utils.fmt(t.amount)}</div><div class="actions"><button class="icon-btn" data-act="edit" data-id="${t.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${t.id}" aria-label="Delete">${ICON_DELETE}</button></div></div>`;
+          row.innerHTML = `<div class="tx-index">${idx++}</div>`+
+                           `<div class="grow"><strong>${t.desc}</strong><div><small>${t.category||'Uncategorised'}</small></div></div>`+
+                           `<div class="tx-amount">${Utils.fmt(t.amount)}</div>`+
+                           `<div class="actions"><button class="icon-btn" data-act="edit" data-id="${t.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${t.id}" aria-label="Delete">${ICON_DELETE}</button></div>`;
           row.querySelector('[data-act="del"]').onclick = async ()=>{
             if(await Dialog.confirm('Delete this transaction?')){ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
           };
