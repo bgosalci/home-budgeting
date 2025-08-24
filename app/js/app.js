@@ -418,9 +418,9 @@
 
     function addIncomeRow(x){
       const row = document.createElement('div'); row.className='list-item';
-      const amtCls = x.amount<0?'danger':'';
-      row.innerHTML = `<div class="grow"><strong>${x.name}</strong><div><small class="${amtCls}">${Utils.fmt(x.amount)}</small></div></div>`+
+      row.innerHTML = `<div class="grow"><strong>${x.name}</strong><div><small></small></div></div>`+
                       `<div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div>`;
+      Utils.setText(row.querySelector('small'), x.amount);
       row.onclick = async (e)=>{
         const act = e.target.closest('button')?.dataset?.act; if(!act) return;
         const m=Store.getMonth(currentMonthKey);
