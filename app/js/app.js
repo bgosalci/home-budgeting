@@ -492,12 +492,13 @@
       let runningTotal = 0;
       for(const date of dates){
         const dayTotal = Utils.sum(byDate[date], t=>t.amount);
+        const dayCount = byDate[date].length;
         runningTotal += dayTotal;
 
         const hdr = document.createElement('div');
         hdr.className = 'tx-date';
         const dateLabel = new Date(date).toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
-        hdr.innerHTML = `<span>${dateLabel}</span>`+
+        hdr.innerHTML = `<span>${dateLabel}<span class="tx-count"><span class="badge">${dayCount}</span> transactions</span></span>`+
                         `<span class="totals"><span class="day"></span><span class="run"></span></span>`;
         const dayEl = hdr.querySelector('.day');
         dayEl.textContent = `Day: ${Utils.fmt(dayTotal)}`;
