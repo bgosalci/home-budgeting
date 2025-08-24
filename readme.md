@@ -45,6 +45,8 @@ Transactions are grouped by calendar day, with each date shown as a header follo
 ### Real-time Category Totals
 The Money Out – Categories table refreshes instantly when you add new transactions so actual and difference values are always up to date.
 
+Categories are global across months—add or edit a category once and it will appear in every monthly budget.
+
 ### Description Prediction
 As you type a transaction description, the app looks up your past entries that are stored in your browser's local storage. Only unique descriptions are kept. A tooltip beneath the field shows the best match; press the space bar to accept the suggestion and the description will auto‑fill.
 
