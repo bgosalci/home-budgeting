@@ -65,6 +65,7 @@
     .list{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px}
     .list-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border)}
     .list-item small{color:var(--sub)}
+    .list-item .danger{color:var(--err)}
     .list-item .grow{flex:1}
     .list-item .tx-index{width:24px;color:var(--sub)}
     .list-item .tx-amount{text-align:right;font-weight:bold;font-size:1.2em;margin-right:16px}
