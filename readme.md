@@ -22,6 +22,10 @@ Alerts, confirmations and information messages now appear in a styled pop‑up d
 ### Money In Editing
 Income entries can now be edited. Use the new edit button next to each income to modify its name or amount.
 
+### Negative Number Highlighting
+All negative monetary values are shown in red so overspending and refunds stand out immediately. This includes entries in Money In, category tables, transactions and KPIs.
+Money In entries now correctly highlight negative amounts.
+
 ### Budget Layout
 The Overview charts have been removed. The Money Out – Categories table now appears alongside Money In on the budget screen for easier access.
 

@@ -1,6 +1,7 @@
   // ===== Utils
   const Utils = (()=>{
     const fmt = (n)=>`£${(n||0).toFixed(2)}`;
+    const setText = (el,n)=>{ el.textContent = fmt(n); el.classList.toggle('danger', n<0); };
     const id = () => Math.random().toString(36).slice(2,9);
     const monthKey = (d)=>{
       if(typeof d === 'string') return d; // already key
@@ -30,7 +31,7 @@
         return [date,t.desc,t.category,`£${Number(t.amount||0).toFixed(2)}`].join(',');
       })
     ].join('\n');
-    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV,toCSV};
+    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV,toCSV,setText};
   })();
 
   // ===== Dialog (modal pop-ups)
@@ -417,8 +418,9 @@
 
     function addIncomeRow(x){
       const row = document.createElement('div'); row.className='list-item';
-      row.innerHTML = `<div class="grow"><strong>${x.name}</strong><div><small>${Utils.fmt(x.amount)}</small></div></div>`+
+      row.innerHTML = `<div class="grow"><strong>${x.name}</strong><div><small></small></div></div>`+
                       `<div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div>`;
+      Utils.setText(row.querySelector('small'), x.amount);
       row.onclick = async (e)=>{
         const act = e.target.closest('button')?.dataset?.act; if(!act) return;
         const m=Store.getMonth(currentMonthKey);
@@ -439,24 +441,24 @@
       for(const [name,meta] of entries){ const g=meta.group||'Other'; (byGroup[g]=byGroup[g]||[]).push([name,meta]); }
       const groups = Object.keys(byGroup).sort();
       for(const g of groups){
-        const gBud = totals.groups[g]?.budget||0; const gAct = totals.groups[g]?.actual||0; const gDiff = gBud - gAct; const gCls = gDiff>=0?'success':'danger';
+        const gBud = totals.groups[g]?.budget||0; const gAct = totals.groups[g]?.actual||0; const gDiff = gBud - gAct; const gCls = gDiff>=0?'success':'danger'; const gBudCls = gBud<0?'danger':''; const gActCls = gAct<0?'danger':'';
         const collapsed = Store.isCollapsed(currentMonthKey,g); const icon = collapsed ? '▶' : '▼';
         const trh = document.createElement('tr'); trh.className='group-row';
         trh.innerHTML = `<td colspan="2"><button class="toggle" data-group="${g}" aria-label="toggle">${icon}</button><strong>${g}</strong></td>
-                         <td class="right">${Utils.fmt(gBud)}</td>
-                         <td class="right">${Utils.fmt(gAct)}</td>
+                         <td class="right ${gBudCls}">${Utils.fmt(gBud)}</td>
+                         <td class="right ${gActCls}">${Utils.fmt(gAct)}</td>
                          <td class="right ${gCls}">${Utils.fmt(gDiff)}</td>
                          <td></td>`;
         trh.querySelector('button.toggle').onclick = (e)=>{ e.stopPropagation(); Store.toggleCollapsed(currentMonthKey,g); renderCategories(month); };
         els.catTable.appendChild(trh);
         const items = byGroup[g].sort((a,b)=> a[0].localeCompare(b[0]));
         for(const [name,meta] of items){
-          const act = totals.actualPerCat[name]||0; const diff = (meta.budget||0) - act; const cls = diff>=0?'success':'danger';
+          const act = totals.actualPerCat[name]||0; const diff = (meta.budget||0) - act; const cls = diff>=0?'success':'danger'; const budCls = (meta.budget||0)<0?'danger':''; const actCls = act<0?'danger':'';
           const tr = document.createElement('tr'); if(collapsed) tr.classList.add('hidden'); tr.dataset.cat=name; tr.dataset.group=g;
           tr.innerHTML = `<td></td>
                           <td>${name}</td>
-                          <td class="right">${Utils.fmt(meta.budget||0)}</td>
-                          <td class="right">${Utils.fmt(act)}</td>
+                          <td class="right ${budCls}">${Utils.fmt(meta.budget||0)}</td>
+                          <td class="right ${actCls}">${Utils.fmt(act)}</td>
                           <td class="right ${cls}">${Utils.fmt(diff)}</td>
                           <td class="right"><div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div></td>`;
           tr.onclick = async (e)=>{
@@ -469,11 +471,11 @@
           els.catTable.appendChild(tr);
         }
       }
-      const t = Model.totals(month);
-      els.totBud.textContent = Utils.fmt(t.budgetTotal);
-      els.totAct.textContent = Utils.fmt(t.actualTotal);
-      els.totDiff.textContent = Utils.fmt(t.budgetTotal - t.actualTotal);
-    }
+        const t = Model.totals(month);
+        Utils.setText(els.totBud, t.budgetTotal);
+        Utils.setText(els.totAct, t.actualTotal);
+        Utils.setText(els.totDiff, t.budgetTotal - t.actualTotal);
+      }
 
     function refreshCategoryDropdowns(){
       const opts = Object.keys(Store.categories()).sort().map(c=>`<option>${c}</option>`).join('');
@@ -487,17 +489,18 @@
       const byDate = Utils.groupBy(items, t=>t.date);
       const dates = Object.keys(byDate).sort();
       let idx = 1;
-      for(const date of dates){
-        const hdr = document.createElement('div');
-        hdr.className = 'tx-date';
-        hdr.textContent = new Date(date).toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
-        els.txList.appendChild(hdr);
-        for(const t of byDate[date]){
-          const row = document.createElement('div'); row.className='list-item';
-          row.innerHTML = `<div class="tx-index">${idx++}</div>`+
-                           `<div class="grow"><strong>${t.desc}</strong><div><small>${t.category||'Uncategorised'}</small></div></div>`+
-                           `<div class="tx-amount">${Utils.fmt(t.amount)}</div>`+
-                           `<div class="actions"><button class="icon-btn" data-act="edit" data-id="${t.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${t.id}" aria-label="Delete">${ICON_DELETE}</button></div>`;
+        for(const date of dates){
+          const hdr = document.createElement('div');
+          hdr.className = 'tx-date';
+          hdr.textContent = new Date(date).toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
+          els.txList.appendChild(hdr);
+          for(const t of byDate[date]){
+            const row = document.createElement('div'); row.className='list-item';
+            const aCls = t.amount<0?'danger':'';
+            row.innerHTML = `<div class="tx-index">${idx++}</div>`+
+                             `<div class="grow"><strong>${t.desc}</strong><div><small>${t.category||'Uncategorised'}</small></div></div>`+
+                             `<div class="tx-amount ${aCls}">${Utils.fmt(t.amount)}</div>`+
+                             `<div class="actions"><button class="icon-btn" data-act="edit" data-id="${t.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${t.id}" aria-label="Delete">${ICON_DELETE}</button></div>`;
           row.querySelector('[data-act="del"]').onclick = async ()=>{
             if(await Dialog.confirm('Delete this transaction?')){ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); }
           };
@@ -505,19 +508,20 @@
           els.txList.appendChild(row);
         }
       }
-      const totals = Model.totals(month);
-      els.txTotal.textContent = Utils.fmt(totals.actualTotal);
-      refreshKPIs();
-    }
-
-      function refreshKPIs(){
-        const month = Store.getMonth(currentMonthKey);
-        const t = Model.totals(month);
-        els.totalIncome.textContent = Utils.fmt(t.income);
-        els.leftoverActual.textContent = Utils.fmt(t.leftoverActual);
-        els.leftoverPill.textContent = `Left Over ${Utils.fmt(t.leftoverActual)}`;
-
+        const totals = Model.totals(month);
+        Utils.setText(els.txTotal, totals.actualTotal);
+        refreshKPIs();
       }
+
+        function refreshKPIs(){
+          const month = Store.getMonth(currentMonthKey);
+          const t = Model.totals(month);
+          Utils.setText(els.totalIncome, t.income);
+          Utils.setText(els.leftoverActual, t.leftoverActual);
+          els.leftoverPill.textContent = `Left Over ${Utils.fmt(t.leftoverActual)}`;
+          els.leftoverPill.classList.toggle('danger', t.leftoverActual < 0);
+
+        }
 
     // ---- Event wiring
     els.addIncome.onclick = ()=>{
