@@ -387,12 +387,20 @@
     function renderTransactions(month){
       els.txList.innerHTML='';
       const items = month.transactions.slice().sort((a,b)=> a.date.localeCompare(b.date));
-      for(const t of items){
-        const row = document.createElement('div'); row.className='list-item';
-        row.innerHTML = `<div><strong>${t.desc}</strong><div><small>${t.date} • ${t.category||'Uncategorised'}</small></div></div>
-                         <div class="right"><div>${Utils.fmt(t.amount)}</div><small><button class="secondary" data-id="${t.id}">Delete</button></small></div>`;
-        row.querySelector('button').onclick = ()=>{ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); };
-        els.txList.appendChild(row);
+      const byDate = Utils.groupBy(items, t=>t.date);
+      const dates = Object.keys(byDate).sort();
+      for(const date of dates){
+        const hdr = document.createElement('div');
+        hdr.className = 'tx-date';
+        hdr.textContent = new Date(date).toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
+        els.txList.appendChild(hdr);
+        for(const t of byDate[date]){
+          const row = document.createElement('div'); row.className='list-item';
+          row.innerHTML = `<div><strong>${t.desc}</strong><div><small>${t.category||'Uncategorised'}</small></div></div>`+
+                           `<div class="right"><div>${Utils.fmt(t.amount)}</div><small><button class="secondary" data-id="${t.id}">Delete</button></small></div>`;
+          row.querySelector('button').onclick = ()=>{ const m=Store.getMonth(currentMonthKey); Model.delTx(m,t.id); Store.setMonth(currentMonthKey,m); loadMonth(currentMonthKey); };
+          els.txList.appendChild(row);
+        }
       }
       refreshKPIs();
     }
