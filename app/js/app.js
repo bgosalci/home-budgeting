@@ -292,6 +292,7 @@
       txCat: document.getElementById('tx-cat'),
       addTx: document.getElementById('add-tx'),
       txList: document.getElementById('tx-list'),
+      txTotal: document.getElementById('tx-total'),
       predictHint: document.getElementById('predict-hint'),
       descPredictHint: document.getElementById('desc-predict-hint'),
       descTooltip: document.getElementById('desc-tooltip'),
@@ -439,6 +440,8 @@
           els.txList.appendChild(row);
         }
       }
+      const totals = Model.totals(month);
+      els.txTotal.textContent = Utils.fmt(totals.actualTotal);
       refreshKPIs();
     }
 

@@ -30,6 +30,8 @@ The transactions screen now shows the monthly transaction list next to the add t
 
 The transaction list now fills nearly the entire screen without overflowing and scrolls within its card, while the add transaction form retains its original size.
 
+The Monthly Transactions header now displays the total value of all transactions for the month on the right.
+
 The monthly transactions card now leaves a 20px gap from the bottom of the screen for clearer separation from the edge.
 A small gap now separates the category selector from the Add button for clearer entry.
 
