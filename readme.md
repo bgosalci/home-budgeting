@@ -39,7 +39,7 @@ The Monthly Transactions header now displays the total value of all transactions
 The monthly transactions card now leaves a 20px gap from the bottom of the screen for clearer separation from the edge.
 A small gap now separates the category selector from the Add button for clearer entry.
 
-Each transaction row now begins with a row number. Prices remain large and bold, and now sit to the left of the edit/delete icons with extra spacing for clearer separation.
+Each transaction row now begins with a row number. Prices are bold, match the standard font size, and sit to the left of the edit/delete icons with extra spacing for clearer separation.
 
 ### Transaction Editing
 Each monthly transaction entry includes an edit icon so existing records can be updated.
