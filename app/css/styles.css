@@ -53,6 +53,7 @@
     .kpi strong{display:block;font-size:18px}
 
     .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row + .row{margin-top:10px}
     .row > *{flex:1 1 160px}
     input,select{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:#fff}
     button.primary{background:var(--ink);color:#fff;border:0;padding:8px 12px;border-radius:10px;cursor:pointer}
