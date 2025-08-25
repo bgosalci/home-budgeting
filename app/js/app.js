@@ -366,6 +366,8 @@
       txDesc: document.getElementById('tx-desc'),
       txAmt: document.getElementById('tx-amt'),
       txCat: document.getElementById('tx-cat'),
+      txSearch: document.getElementById('tx-search'),
+      txFilterCat: document.getElementById('tx-filter-cat'),
       addTx: document.getElementById('add-tx'),
       txList: document.getElementById('tx-list'),
       txTotal: document.getElementById('tx-total'),
@@ -451,6 +453,8 @@
       renderCategories(month);
       // populate tx dropdown and list
       refreshCategoryDropdowns();
+      els.txSearch.value='';
+      els.txFilterCat.value='';
       renderTransactions(month);
       // refresh open-month select
       refreshMonthPicker();
@@ -527,13 +531,22 @@
 
     function refreshCategoryDropdowns(){
       const opts = Object.keys(Store.categories()).sort().map(c=>`<option>${c}</option>`).join('');
+      const curFilter = els.txFilterCat.value;
       els.txCat.innerHTML = `<option value="">— select —</option>`+opts;
       els.learnCat.innerHTML = opts;
+      els.txFilterCat.innerHTML = `<option value="">All categories</option>`+opts;
+      els.txFilterCat.value = curFilter;
     }
 
     function renderTransactions(month){
       els.txList.innerHTML='';
-      const items = month.transactions.slice().sort((a,b)=> a.date.localeCompare(b.date));
+      const search = els.txSearch.value.trim().toLowerCase();
+      const filterCat = els.txFilterCat.value;
+      const items = month.transactions
+        .filter(t => (search === '' || t.desc.toLowerCase().includes(search)) &&
+                     (!filterCat || t.category === filterCat))
+        .slice()
+        .sort((a,b)=> a.date.localeCompare(b.date));
       const byDate = Utils.groupBy(items, t=>t.date);
       const dates = Object.keys(byDate).sort();
       let idx = 1;
@@ -570,8 +583,8 @@
           els.txList.appendChild(row);
         }
       }
-      const totals = Model.totals(month);
-      Utils.setText(els.txTotal, totals.actualTotal);
+      const total = Utils.sum(items, t=>t.amount);
+      Utils.setText(els.txTotal, total);
       refreshKPIs();
     }
 
@@ -694,6 +707,9 @@
         }
       });
     });
+
+    els.txSearch.oninput = ()=>renderTransactions(Store.getMonth(currentMonthKey));
+    els.txFilterCat.onchange = ()=>renderTransactions(Store.getMonth(currentMonthKey));
 
     // Learning panel
     els.learnAdd.onclick = ()=>{ Predictor.learn(els.learnDesc.value, els.learnCat.value); DescPredictor.learn(els.learnDesc.value); els.learnDesc.value=''; renderLearnList(); };
