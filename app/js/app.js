@@ -880,7 +880,6 @@
           options: { scales: { y: { beginAtZero: true } } }
         });
       }else if(opt === 'budget-spread'){
-        els.analysisCharts.classList.add('charts');
         const mk = els.analysisMonth.value || currentMonthKey;
         const m = Store.getMonth(mk) || Model.emptyMonth();
         const totals = Model.totals(m);
@@ -893,9 +892,6 @@
         const actualPct = actual.map(v=> actualTot ? (v/actualTot*100) : 0);
         const palette = ['#0ea5e9','#f43f5e','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#22c55e','#d946ef'];
         const colors = labels.map((_,i)=>palette[i%palette.length]);
-        els.analysisPlannedTitle.classList.remove('hidden');
-        els.analysisActualTitle.classList.remove('hidden');
-        els.analysisChartActual.classList.remove('hidden');
         const percentPlugin = {
           id:'pct',
           afterDatasetsDraw(chart){
@@ -923,28 +919,36 @@
           plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}}},
           scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}
         };
-        analysisChart = new Chart(els.analysisChart.getContext('2d'), {
-          type: style,
-          data: {
-            labels,
-            datasets: [
-              {label:'Planned %', data: plannedPct, backgroundColor: colors}
-            ]
-          },
-          options: style==='bar'?barOpts:pieOpts,
-          plugins: style==='pie'?[percentPlugin]:[]
-        });
-        analysisChartActual = new Chart(els.analysisChartActual.getContext('2d'), {
-          type: style,
-          data: {
-            labels,
-            datasets: [
-              {label:'Actual %', data: actualPct, backgroundColor: colors}
-            ]
-          },
-          options: style==='bar'?barOpts:pieOpts,
-          plugins: style==='pie'?[percentPlugin]:[]
-        });
+        if(style === 'pie'){
+          els.analysisCharts.classList.add('charts');
+          els.analysisPlannedTitle.classList.remove('hidden');
+          els.analysisActualTitle.classList.remove('hidden');
+          els.analysisChartActual.classList.remove('hidden');
+          analysisChart = new Chart(els.analysisChart.getContext('2d'), {
+            type:'pie',
+            data:{labels,datasets:[{label:'Planned %', data: plannedPct, backgroundColor: colors}]},
+            options: pieOpts,
+            plugins:[percentPlugin]
+          });
+          analysisChartActual = new Chart(els.analysisChartActual.getContext('2d'), {
+            type:'pie',
+            data:{labels,datasets:[{label:'Actual %', data: actualPct, backgroundColor: colors}]},
+            options: pieOpts,
+            plugins:[percentPlugin]
+          });
+        }else{
+          analysisChart = new Chart(els.analysisChart.getContext('2d'), {
+            type:'bar',
+            data:{
+              labels,
+              datasets:[
+                {label:'Planned %', data: plannedPct, backgroundColor:'#0ea5e9'},
+                {label:'Actual %', data: actualPct, backgroundColor:'#f43f5e'}
+              ]
+            },
+            options: barOpts
+          });
+        }
       }
     };
 
