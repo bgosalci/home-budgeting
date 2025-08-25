@@ -107,3 +107,7 @@
     .calendar-table{width:100%;border-collapse:collapse}
     .calendar-table th,.calendar-table td{border:1px solid var(--border);width:14.28%;height:80px;padding:4px;text-align:right}
     .calendar-table th{background:var(--muted)}
+    #calendar-dialog .dialog-content{width:700px;max-width:90vw}
+    .calendar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .calendar-header button{background:var(--muted);border:1px solid var(--border);border-radius:4px;padding:4px 8px;cursor:pointer}
+    .calendar-table td.today{background:var(--brand);color:#fff;border-radius:50%}
