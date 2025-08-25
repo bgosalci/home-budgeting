@@ -1016,6 +1016,7 @@
         learn:[els.tabLearning,els.panelLearning]
       };
       for(const [k,[btn,pan]] of Object.entries(map)){ const on = (k===key); btn.setAttribute('aria-selected',on); pan.classList.toggle('hidden',!on); }
+      if(key==='tx') updateTxJump();
     }
     els.tabBudget.onclick = ()=>selectTab('budget');
     els.tabTx.onclick = ()=>selectTab('tx');
