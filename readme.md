@@ -82,7 +82,7 @@ As you type a transaction description, the app looks up your past entries that a
 The add transaction form now requires a date, description and amount before a transaction can be added. Pressing <kbd>Enter</kbd> in any field triggers the add action, and focus returns to the description field to speed up entry of multiple transactions.
 
 ### Calendar
-A **Calendar** tab opens a wide view-only calendar in a pop‑up dialog for quick date reference. The calendar shows the current month name, highlights today's date, starts weeks on Monday, and includes arrows to navigate between months.
+A **Calendar** tab opens a wide view-only calendar in a pop‑up dialog for quick date reference. The calendar shows the current month name, centers all weekday labels and dates, highlights today's date in bold, starts weeks on Monday, and includes arrows to navigate between months.
 
 ## Tests
 Run `npm test` to verify the project is set up correctly.
