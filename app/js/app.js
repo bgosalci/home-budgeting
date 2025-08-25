@@ -321,12 +321,19 @@
       importFile: document.getElementById('import-file'),
       importConfirm: document.getElementById('import-confirm'),
       importCancel: document.getElementById('import-cancel'),
+      calendarDialog: document.getElementById('calendar-dialog'),
+      calendarContainer: document.getElementById('calendar-container'),
+      calendarClose: document.getElementById('calendar-close'),
+      calendarPrev: document.getElementById('calendar-prev'),
+      calendarNext: document.getElementById('calendar-next'),
+      calendarMonth: document.getElementById('calendar-month'),
 
       // Tabs
       tabBudget: document.getElementById('tab-budget'),
       tabTx: document.getElementById('tab-transactions'),
       tabAnalysis: document.getElementById('tab-analysis'),
       tabLearning: document.getElementById('tab-learning'),
+      tabCalendar: document.getElementById('tab-calendar'),
       panelBudget: document.getElementById('panel-budget'),
       panelTx: document.getElementById('panel-transactions'),
       panelAnalysis: document.getElementById('panel-analysis'),
@@ -390,6 +397,7 @@
     let editingTxId = null;
     let analysisChart = null;
     let analysisChartActual = null;
+    let calendarDate = new Date();
     const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/></svg>`;
     const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
     const ICON_CHEVRONS_DOWN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"></polyline><polyline points="7 6 12 11 17 6"></polyline></svg>`;
@@ -1022,10 +1030,54 @@
     els.tabTx.onclick = ()=>selectTab('tx');
     els.tabAnalysis.onclick = ()=>{ selectTab('analysis'); runAnalysis(); };
     els.tabLearning.onclick = ()=>{ selectTab('learn'); renderLearnList(); };
+    els.tabCalendar.onclick = ()=>{ calendarDate = new Date(); renderCalendar(); els.calendarDialog.showModal(); };
+    els.calendarClose.onclick = ()=>els.calendarDialog.close();
+    els.calendarPrev.onclick = ()=>{ calendarDate.setMonth(calendarDate.getMonth()-1); renderCalendar(); };
+    els.calendarNext.onclick = ()=>{ calendarDate.setMonth(calendarDate.getMonth()+1); renderCalendar(); };
     els.analysisSelect.onchange = runAnalysis;
     els.analysisChartType.onchange = runAnalysis;
     els.analysisMonth.onchange = runAnalysis;
     els.analysisGroup.onchange = runAnalysis;
+
+    function renderCalendar(){
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+      const mk = Utils.monthKey(calendarDate);
+      const m = Store.getMonth(mk) || {transactions:[]};
+      const totals = {};
+      for(const tx of m.transactions){
+        const d = Number(tx.date.slice(8,10));
+        totals[d] = (totals[d]||0) + Math.abs(tx.amount);
+      }
+      const first = new Date(year, month, 1);
+      const start = (first.getDay() + 6) % 7;
+      const days = new Date(year, month + 1, 0).getDate();
+      const names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      els.calendarMonth.textContent = `${monthNames[month]} ${year}`;
+      const today = new Date();
+      let html = '<table class="calendar-table"><thead><tr>';
+      for(const n of names) html += `<th>${n}</th>`;
+      html += '</tr></thead><tbody><tr>';
+      let day = 1;
+      for(let i=0;i<start;i++) html += '<td></td>';
+      for(let i=start;i<7;i++) html += cell(day++);
+      html += '</tr>';
+      while(day <= days){
+        html += '<tr>';
+        for(let i=0;i<7;i++) html += day<=days?cell(day++):'<td></td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      els.calendarContainer.innerHTML = html;
+
+      function cell(d){
+        const isToday = d===today.getDate() && month===today.getMonth() && year===today.getFullYear();
+        const total = totals[d];
+        const amt = total?`<span class="day-total">${Utils.fmt(total)}</span>`:'';
+        return `<td${isToday?' class="today"':''}>${d}${amt}</td>`;
+      }
+    }
 
     // Initial load
     loadMonth(currentMonthKey);
