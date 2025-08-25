@@ -47,6 +47,7 @@ The monthly transactions card now leaves a 20px gap from the bottom of the scree
 A small gap now separates the category selector from the Add button for clearer entry.
 
 Each transaction row now begins with a row number. Prices are bold, match the standard font size, and sit to the left of the edit/delete icons with extra spacing for clearer separation.
+Transaction rows highlight on mouse hover for improved readability.
 
 ### Analysis Tab
 An **Analysis** tab is now available after the Transactions tab. It provides **Budget Spread** and **Monthly Spend** options (listed alphabetically) to explore your data. The tab now defaults to the **Budget Spread** displayed as a bar chart. Use the **Chart Style** selector to switch between available chart types for the chosen analysis.
