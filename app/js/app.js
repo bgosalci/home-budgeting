@@ -325,9 +325,11 @@
       // Tabs
       tabBudget: document.getElementById('tab-budget'),
       tabTx: document.getElementById('tab-transactions'),
+      tabAnalysis: document.getElementById('tab-analysis'),
       tabLearning: document.getElementById('tab-learning'),
       panelBudget: document.getElementById('panel-budget'),
       panelTx: document.getElementById('panel-transactions'),
+      panelAnalysis: document.getElementById('panel-analysis'),
       panelLearning: document.getElementById('panel-learning'),
 
       // Income
@@ -821,11 +823,17 @@
 
     // Tabs
     function selectTab(key){
-      const map = {budget:[els.tabBudget,els.panelBudget], tx:[els.tabTx,els.panelTx], learn:[els.tabLearning,els.panelLearning]};
+      const map = {
+        budget:[els.tabBudget,els.panelBudget],
+        tx:[els.tabTx,els.panelTx],
+        analysis:[els.tabAnalysis,els.panelAnalysis],
+        learn:[els.tabLearning,els.panelLearning]
+      };
       for(const [k,[btn,pan]] of Object.entries(map)){ const on = (k===key); btn.setAttribute('aria-selected',on); pan.classList.toggle('hidden',!on); }
     }
     els.tabBudget.onclick = ()=>selectTab('budget');
     els.tabTx.onclick = ()=>selectTab('tx');
+    els.tabAnalysis.onclick = ()=>selectTab('analysis');
     els.tabLearning.onclick = ()=>{ selectTab('learn'); renderLearnList(); };
 
     // Initial load
