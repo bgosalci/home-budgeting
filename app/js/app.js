@@ -1042,6 +1042,15 @@
     function renderCalendar(){
       const year = calendarDate.getFullYear();
       const month = calendarDate.getMonth();
+      const mk = Utils.monthKey(calendarDate);
+      const m = Store.getMonth(mk) || {transactions:[]};
+      const totals = {};
+      for(const tx of m.transactions){
+        if(tx.amount < 0){
+          const d = Number(tx.date.slice(8,10));
+          totals[d] = (totals[d]||0) + -tx.amount;
+        }
+      }
       const first = new Date(year, month, 1);
       const start = (first.getDay() + 6) % 7;
       const days = new Date(year, month + 1, 0).getDate();
@@ -1066,7 +1075,9 @@
 
       function cell(d){
         const isToday = d===today.getDate() && month===today.getMonth() && year===today.getFullYear();
-        return `<td${isToday?' class="today"':''}>${d}</td>`;
+        const total = totals[d];
+        const amt = total?`<span class="day-total">${Utils.fmt(total)}</span>`:'';
+        return `<td${isToday?' class="today"':''}>${d}${amt}</td>`;
       }
     }
 

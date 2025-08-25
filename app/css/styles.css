@@ -107,6 +107,8 @@
     .calendar-table{width:100%;border-collapse:collapse}
     .calendar-table th,.calendar-table td{border:1px solid var(--border);width:14.28%;height:80px;padding:4px;text-align:center;vertical-align:middle}
     .calendar-table th{background:var(--muted)}
+    .calendar-table td{position:relative}
+    .calendar-table .day-total{position:absolute;bottom:2px;right:4px;font-size:.75em}
     #calendar-dialog .dialog-content{width:700px;max-width:90vw}
     .calendar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
     .calendar-header #calendar-month{flex:1;text-align:center}
