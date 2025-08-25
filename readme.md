@@ -41,6 +41,9 @@ A small gap now separates the category selector from the Add button for clearer 
 
 Each transaction row now begins with a row number. Prices are bold, match the standard font size, and sit to the left of the edit/delete icons with extra spacing for clearer separation.
 
+### Analysis Tab
+An **Analysis** tab is now available after the Transactions tab. It includes a menu card and a chart area powered by Chart.js for upcoming insights.
+
 ### Transaction Editing
 Each monthly transaction entry includes an edit icon so existing records can be updated.
 

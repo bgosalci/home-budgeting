@@ -60,6 +60,7 @@
     button.secondary{background:var(--sub);color:#fff;border:0;padding:8px 12px;border-radius:10px;cursor:pointer}
 
     .two-col{display:grid;grid-template-columns:4fr 1fr;gap:18px;align-items:start}
+    .two-col-analysis{display:grid;grid-template-columns:1fr 4fr;gap:18px;align-items:start}
     .charts{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 
     .list{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px}
