@@ -41,7 +41,7 @@ The Monthly Transactions header now displays the total value of all transactions
 
 You can search the monthly transaction list by description and filter it by category.
 
-A **Bottom** button is available beneath the transaction list to jump to the end. When you reach the bottom it switches to a **Top** button to return to the beginning.
+A button with a double chevron icon is available beneath the transaction list to jump to the end. When you reach the bottom it switches to an upward chevron icon to return to the beginning.
 
 The monthly transactions card now leaves a 20px gap from the bottom of the screen for clearer separation from the edge.
 A small gap now separates the category selector from the Add button for clearer entry.

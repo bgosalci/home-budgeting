@@ -392,6 +392,8 @@
     let analysisChartActual = null;
     const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/></svg>`;
     const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
+    const ICON_CHEVRONS_DOWN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"></polyline><polyline points="7 6 12 11 17 6"></polyline></svg>`;
+    const ICON_CHEVRONS_UP = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 18 12 13 7 18"></polyline></svg>`;
     els.descPredictHint.textContent = 'Desc: –';
     els.descTooltip.classList.add('hidden');
     let descSuggestions = [];
@@ -720,7 +722,9 @@
     const updateTxJump = ()=>{
       if(!txListScrollable()){ els.txJump.classList.add('hidden'); return; }
       els.txJump.classList.remove('hidden');
-      els.txJump.textContent = txListAtBottom() ? 'Top' : 'Bottom';
+      const atBottom = txListAtBottom();
+      els.txJump.innerHTML = atBottom ? ICON_CHEVRONS_UP : ICON_CHEVRONS_DOWN;
+      els.txJump.setAttribute('aria-label', atBottom ? 'Top' : 'Bottom');
     };
     els.txJump.onclick = ()=>{
       if(txListAtBottom()) els.txList.scrollTo({top:0,behavior:'smooth'});
