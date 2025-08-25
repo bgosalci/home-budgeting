@@ -15,7 +15,7 @@
     <div class="toolbar">
       <div class="inline-field">
         <label for="month-picker">Add Month</label>
-        <input type="month" id="month-picker" />
+        <input type="month" id="month-picker"/>
         <button id="new-month" title="Create a new month from template or copy last month">Add</button>
       </div>
       <div class="inline-field">
@@ -105,7 +105,7 @@
           <div class="content">
             <div class="row">
               <input id="tx-search" placeholder="Search description" />
-              <select id="tx-filter-cat"></select>
+              <select id="tx-filter-cat" title="Filter by Category"></select>
             </div>
             </br>
             <div class="list" id="tx-list"></div>
@@ -117,10 +117,10 @@
           <h2>Add Transaction</h2>
           <div class="content">
             <div class="row">
-              <input id="tx-date" type="date" />
+              <input id="tx-date" type="date" placeholder="Date" title="Transaction Date" />
               <input id="tx-desc" placeholder="Description (e.g. Waitrose)" />
               <input id="tx-amt" type="number" step="0.01" placeholder="Amount (positive = spend)" />
-              <select id="tx-cat"></select>
+              <select id="tx-cat" title="Category"></select>
             </div>
             <div id="desc-tooltip" class="tooltip hidden"></div>
             </br>
@@ -190,7 +190,7 @@
           <p class="footer-note">The app learns from your transactions. It tokenises descriptions and builds a frequency map to predict categories. You can pin exact matches below.</p>
           <div class="row">
             <input id="learn-desc" placeholder="Exact description e.g. Waitrose"/>
-            <select id="learn-cat"></select>
+            <select id="learn-cat" title="Category"></select>
             <button class="primary" id="learn-add">Pin Mapping</button>
           </div>
           <div class="list" id="learn-list"></div>
