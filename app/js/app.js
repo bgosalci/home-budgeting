@@ -842,12 +842,14 @@
         const prev = els.analysisMonth.value;
         els.analysisMonth.innerHTML = opts;
         els.analysisMonth.value = months.includes(prev) ? prev : currentMonthKey;
+        const prevType = els.analysisChartType.value;
         els.analysisChartType.innerHTML = `<option value="pie">Pie Chart</option><option value="bar">Bar Chart</option>`;
-        if(!['pie','bar'].includes(els.analysisChartType.value)) els.analysisChartType.value = 'pie';
+        els.analysisChartType.value = ['pie','bar'].includes(prevType) ? prevType : 'pie';
       }else{
         els.analysisMonthRow.classList.add('hidden');
+        const prevType = els.analysisChartType.value;
         els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
-        if(!['line','bar'].includes(els.analysisChartType.value)) els.analysisChartType.value = 'line';
+        els.analysisChartType.value = ['line','bar'].includes(prevType) ? prevType : 'line';
       }
       const style = els.analysisChartType.value;
       if(analysisChart){ analysisChart.destroy(); analysisChart = null; }
