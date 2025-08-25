@@ -337,6 +337,7 @@
       analysisActualTitle: document.getElementById('analysis-actual-title'),
       analysisChart: document.getElementById('analysis-chart'),
       analysisChartActual: document.getElementById('analysis-chart-actual'),
+      analysisCharts: document.getElementById('analysis-charts'),
       analysisMonthRow: document.getElementById('analysis-month-row'),
       analysisMonth: document.getElementById('analysis-month'),
 
@@ -833,6 +834,7 @@
 
     const runAnalysis = ()=>{
       const opt = els.analysisSelect.value;
+      els.analysisCharts.classList.remove('charts');
       if(opt === 'budget-spread'){
         els.analysisMonthRow.classList.remove('hidden');
         const months = Store.allMonths();
@@ -876,36 +878,70 @@
           options: { scales: { y: { beginAtZero: true } } }
         });
       }else if(opt === 'budget-spread'){
+        els.analysisCharts.classList.add('charts');
         const mk = els.analysisMonth.value || currentMonthKey;
         const m = Store.getMonth(mk) || Model.emptyMonth();
         const totals = Model.totals(m);
         const labels = Object.keys(totals.groups).sort();
         const planned = labels.map(l=>totals.groups[l]?.budget || 0);
         const actual = labels.map(l=>totals.groups[l]?.actual || 0);
+        const plannedTot = Utils.sum(planned);
+        const actualTot = Utils.sum(actual);
+        const plannedPct = planned.map(v=> plannedTot ? (v/plannedTot*100) : 0);
+        const actualPct = actual.map(v=> actualTot ? (v/actualTot*100) : 0);
         const palette = ['#0ea5e9','#f43f5e','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#22c55e','#d946ef'];
         const colors = labels.map((_,i)=>palette[i%palette.length]);
         els.analysisPlannedTitle.classList.remove('hidden');
         els.analysisActualTitle.classList.remove('hidden');
         els.analysisChartActual.classList.remove('hidden');
+        const percentPlugin = {
+          id:'pct',
+          afterDatasetsDraw(chart){
+            const {ctx} = chart;
+            const dataset = chart.data.datasets[0];
+            chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+              const val = dataset.data[i]||0;
+              const pos = arc.tooltipPosition();
+              ctx.save();
+              ctx.fillStyle='#fff';
+              ctx.font='14px system-ui';
+              ctx.textAlign='center';
+              ctx.textBaseline='middle';
+              ctx.fillText(`${val.toFixed(1)}%`, pos.x, pos.y);
+              ctx.restore();
+            });
+          }
+        };
+        const pieOpts = {
+          plugins:{
+            tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}}
+          }
+        };
+        const barOpts = {
+          plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}}},
+          scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}
+        };
         analysisChart = new Chart(els.analysisChart.getContext('2d'), {
           type: style,
           data: {
             labels,
             datasets: [
-              {label:'Planned Budget', data: planned, backgroundColor: colors}
+              {label:'Planned %', data: plannedPct, backgroundColor: colors}
             ]
           },
-          options: style==='bar'?{ scales: { y: { beginAtZero: true } } }:{}
+          options: style==='bar'?barOpts:pieOpts,
+          plugins: style==='pie'?[percentPlugin]:[]
         });
         analysisChartActual = new Chart(els.analysisChartActual.getContext('2d'), {
           type: style,
           data: {
             labels,
             datasets: [
-              {label:'Actual Spend', data: actual, backgroundColor: colors}
+              {label:'Actual %', data: actualPct, backgroundColor: colors}
             ]
           },
-          options: style==='bar'?{ scales: { y: { beginAtZero: true } } }:{}
+          options: style==='bar'?barOpts:pieOpts,
+          plugins: style==='pie'?[percentPlugin]:[]
         });
       }
     };
