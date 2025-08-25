@@ -844,7 +844,7 @@
         els.analysisMonth.value = months.includes(prev) ? prev : currentMonthKey;
         const prevType = els.analysisChartType.value;
         els.analysisChartType.innerHTML = `<option value="pie">Pie Chart</option><option value="bar">Bar Chart</option>`;
-        els.analysisChartType.value = ['pie','bar'].includes(prevType) ? prevType : 'pie';
+        els.analysisChartType.value = ['pie','bar'].includes(prevType) ? prevType : 'bar';
       }else{
         els.analysisMonthRow.classList.add('hidden');
         const prevType = els.analysisChartType.value;
