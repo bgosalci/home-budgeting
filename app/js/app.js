@@ -881,8 +881,9 @@
         });
       }else if(opt === 'budget-spread'){
         const mk = els.analysisMonth.value || currentMonthKey;
-        const m = Store.getMonth(mk) || Model.emptyMonth();
-        const totals = Model.totals(m);
+        // Fetch the selected month's data rather than the currently open month
+        const monthForChart = Utils.clone(Store.getMonth(mk) || Model.emptyMonth());
+        const totals = Model.totals(monthForChart);
         const labels = Object.keys(totals.groups).sort();
         const planned = labels.map(l=>totals.groups[l]?.budget || 0);
         const actual = labels.map(l=>totals.groups[l]?.actual || 0);
