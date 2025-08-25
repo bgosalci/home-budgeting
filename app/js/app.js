@@ -916,8 +916,8 @@
           }
         };
         const barOpts = {
-          plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}}},
-          scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}
+          plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${Utils.fmt(c.parsed.y)}`}}},
+          scales:{y:{beginAtZero:true,ticks:{callback:v=>Utils.fmt(v)}}}
         };
         if(style === 'pie'){
           els.analysisCharts.classList.add('charts');
@@ -942,8 +942,8 @@
             data:{
               labels,
               datasets:[
-                {label:'Planned %', data: plannedPct, backgroundColor:'#0ea5e9'},
-                {label:'Actual %', data: actualPct, backgroundColor:'#f43f5e'}
+                {label:'Planned', data: planned, backgroundColor:'#0ea5e9'},
+                {label:'Actual', data: actual, backgroundColor:'#f43f5e'}
               ]
             },
             options: barOpts
