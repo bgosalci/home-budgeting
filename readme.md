@@ -39,6 +39,8 @@ The transaction list now fills nearly the entire screen without overflowing and 
 
 The Monthly Transactions header now displays the total value of all transactions for the month on the right.
 
+You can search the monthly transaction list by description and filter it by category.
+
 The monthly transactions card now leaves a 20px gap from the bottom of the screen for clearer separation from the edge.
 A small gap now separates the category selector from the Add button for clearer entry.
 
