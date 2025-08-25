@@ -79,7 +79,7 @@ Categories are global across months—add or edit a category once and it will ap
 As you type a transaction description, the app looks up your past entries that are stored in your browser's local storage. Only unique descriptions are kept. A tooltip beneath the field now spans the full width and lists up to four matches. Use the up and down keys to highlight an option and press <kbd>Enter</kbd> or click to choose one; the description will auto‑fill.
 
 ### Add Transaction Shortcuts
-The add transaction form now requires a date, description and amount before a transaction can be added. Pressing <kbd>Enter</kbd> in any field triggers the add action, and focus returns to the description field to speed up entry of multiple transactions.
+The add transaction form now requires a date, description and amount before a transaction can be added. Pressing <kbd>Enter</kbd> in any field triggers the add action, and focus returns to the description field to speed up entry of multiple transactions. The form now reliably adds a transaction when clicking the **Add** button or pressing <kbd>Enter</kbd> after typing the amount.
 
 ## Tests
 Run `npm test` to verify the project is set up correctly.

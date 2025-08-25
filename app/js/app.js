@@ -368,6 +368,7 @@
       txDesc: document.getElementById('tx-desc'),
       txAmt: document.getElementById('tx-amt'),
       txCat: document.getElementById('tx-cat'),
+      txForm: document.getElementById('tx-form'),
       txSearch: document.getElementById('tx-search'),
       txFilterCat: document.getElementById('tx-filter-cat'),
       addTx: document.getElementById('add-tx'),
@@ -700,18 +701,9 @@
       els.txDesc.focus();
     };
 
-    els.addTx.onclick = handleAddTx;
-
-    [els.txDate, els.txDesc, els.txAmt, els.txCat].forEach(el=>{
-      el.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter'){
-          if(el === els.txDesc && descSuggestions.length){
-            e.preventDefault();
-            return;
-          }
-          handleAddTx();
-        }
-      });
+    els.txForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      handleAddTx();
     });
 
     els.txSearch.oninput = ()=>renderTransactions(Store.getMonth(currentMonthKey));
