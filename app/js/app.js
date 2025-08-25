@@ -340,6 +340,8 @@
       analysisCharts: document.getElementById('analysis-charts'),
       analysisMonthRow: document.getElementById('analysis-month-row'),
       analysisMonth: document.getElementById('analysis-month'),
+      analysisGroupRow: document.getElementById('analysis-group-row'),
+      analysisGroup: document.getElementById('analysis-group'),
 
       // Income
       incomeList: document.getElementById('income-list'),
@@ -853,6 +855,7 @@
       els.analysisCharts.classList.remove('charts');
       if(opt === 'budget-spread'){
         els.analysisMonthRow.classList.remove('hidden');
+        els.analysisGroupRow.classList.add('hidden');
         const months = Store.allMonths();
         const opts = months.map(m=>`<option value="${m}">${new Date(m+'-01').toLocaleString(undefined,{month:'short',year:'numeric'})}</option>`).join('');
         const prev = els.analysisMonth.value;
@@ -861,8 +864,15 @@
         const prevType = els.analysisChartType.value;
         els.analysisChartType.innerHTML = `<option value="pie">Pie Chart</option><option value="bar">Bar Chart</option>`;
         els.analysisChartType.value = ['pie','bar'].includes(prevType) ? prevType : 'bar';
-      }else{
+      }else if(opt === 'monthly-spend'){
         els.analysisMonthRow.classList.add('hidden');
+        els.analysisGroupRow.classList.remove('hidden');
+        const cats = Store.categories();
+        const groups = [...new Set(Object.values(cats).map(x=>x.group||'Other'))].sort();
+        const prevGroup = els.analysisGroup.value;
+        const opts = ['<option value="">All</option>', ...groups.map(g=>`<option value="${g}">${g}</option>`)];
+        els.analysisGroup.innerHTML = opts.join('');
+        els.analysisGroup.value = groups.includes(prevGroup) ? prevGroup : '';
         const prevType = els.analysisChartType.value;
         els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
         els.analysisChartType.value = ['line','bar'].includes(prevType) ? prevType : 'line';
@@ -876,16 +886,25 @@
       if(opt === 'monthly-spend'){
         const months = Store.allMonths();
         const labels = months;
+        const group = els.analysisGroup.value;
+        const cats = Store.categories();
         const data = months.map(mk=>{
           const m = Store.getMonth(mk) || {transactions:[]};
-          return Utils.sum(m.transactions||[], t=>t.amount);
+          const txs = m.transactions||[];
+          return Utils.sum(txs.filter(t=>{
+            if(!group) return true;
+            const meta = cats[t.category] || {};
+            const g = meta.group || 'Other';
+            return g === group;
+          }), t=>t.amount);
         });
+        const label = group ? `${group} Spend` : 'Total Spend';
         analysisChart = new Chart(els.analysisChart.getContext('2d'), {
           type: style === 'bar' ? 'bar' : 'line',
           data: {
             labels,
             datasets: [{
-              label: 'Total Spend',
+              label,
               data,
               borderColor: '#0ea5e9',
               backgroundColor: '#0ea5e9',
@@ -986,6 +1005,7 @@
     els.analysisSelect.onchange = runAnalysis;
     els.analysisChartType.onchange = runAnalysis;
     els.analysisMonth.onchange = runAnalysis;
+    els.analysisGroup.onchange = runAnalysis;
 
     // Initial load
     loadMonth(currentMonthKey);
