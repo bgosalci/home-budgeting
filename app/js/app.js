@@ -373,6 +373,7 @@
       addTx: document.getElementById('add-tx'),
       txList: document.getElementById('tx-list'),
       txTotal: document.getElementById('tx-total'),
+      txJump: document.getElementById('tx-jump'),
       predictHint: document.getElementById('predict-hint'),
       descPredictHint: document.getElementById('desc-predict-hint'),
       descTooltip: document.getElementById('desc-tooltip'),
@@ -588,6 +589,7 @@
       const total = Utils.sum(items, t=>t.amount);
       Utils.setText(els.txTotal, total);
       refreshKPIs();
+      updateTxJump();
     }
 
         function refreshKPIs(){
@@ -712,6 +714,19 @@
 
     els.txSearch.oninput = ()=>renderTransactions(Store.getMonth(currentMonthKey));
     els.txFilterCat.onchange = ()=>renderTransactions(Store.getMonth(currentMonthKey));
+
+    const txListScrollable = ()=> els.txList.scrollHeight > els.txList.clientHeight + 1;
+    const txListAtBottom = ()=> els.txList.scrollTop + els.txList.clientHeight >= els.txList.scrollHeight - 1;
+    const updateTxJump = ()=>{
+      if(!txListScrollable()){ els.txJump.classList.add('hidden'); return; }
+      els.txJump.classList.remove('hidden');
+      els.txJump.textContent = txListAtBottom() ? 'Top' : 'Bottom';
+    };
+    els.txJump.onclick = ()=>{
+      if(txListAtBottom()) els.txList.scrollTo({top:0,behavior:'smooth'});
+      else els.txList.scrollTo({top:els.txList.scrollHeight,behavior:'smooth'});
+    };
+    els.txList.addEventListener('scroll', updateTxJump);
 
     // Learning panel
     els.learnAdd.onclick = ()=>{ Predictor.learn(els.learnDesc.value, els.learnCat.value); DescPredictor.learn(els.learnDesc.value); els.learnDesc.value=''; renderLearnList(); };
