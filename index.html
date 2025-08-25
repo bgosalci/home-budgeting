@@ -134,7 +134,13 @@
               <label>Analysis
                 <select id="analysis-select">
                   <option value="monthly-spend">Monthly Spend</option>
+                  <option value="budget-spread">Budget Spread</option>
                 </select>
+              </label>
+            </div>
+            <div class="row hidden" id="analysis-month-row">
+              <label>Month
+                <select id="analysis-month"></select>
               </label>
             </div>
             <div class="row">
@@ -149,8 +155,15 @@
         </div>
         <div class="card">
           <h2>Analysis Chart</h2>
-          <div class="content">
-            <canvas id="analysis-chart"></canvas>
+          <div class="content" id="analysis-charts">
+            <div>
+              <h3 id="analysis-planned-title" class="hidden">Planned</h3>
+              <canvas id="analysis-chart"></canvas>
+            </div>
+            <div>
+              <h3 id="analysis-actual-title" class="hidden">Actual</h3>
+              <canvas id="analysis-chart-actual" class="hidden"></canvas>
+            </div>
           </div>
         </div>
       </div>

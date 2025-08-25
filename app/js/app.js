@@ -333,7 +333,13 @@
       panelLearning: document.getElementById('panel-learning'),
       analysisSelect: document.getElementById('analysis-select'),
       analysisChartType: document.getElementById('analysis-chart-type'),
+      analysisPlannedTitle: document.getElementById('analysis-planned-title'),
+      analysisActualTitle: document.getElementById('analysis-actual-title'),
       analysisChart: document.getElementById('analysis-chart'),
+      analysisChartActual: document.getElementById('analysis-chart-actual'),
+      analysisCharts: document.getElementById('analysis-charts'),
+      analysisMonthRow: document.getElementById('analysis-month-row'),
+      analysisMonth: document.getElementById('analysis-month'),
 
       // Income
       incomeList: document.getElementById('income-list'),
@@ -378,6 +384,7 @@
     let editingIncomeId = null;
     let editingTxId = null;
     let analysisChart = null;
+    let analysisChartActual = null;
     const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/></svg>`;
     const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
     els.descPredictHint.textContent = 'Desc: –';
@@ -827,8 +834,29 @@
 
     const runAnalysis = ()=>{
       const opt = els.analysisSelect.value;
+      els.analysisCharts.classList.remove('charts');
+      if(opt === 'budget-spread'){
+        els.analysisMonthRow.classList.remove('hidden');
+        const months = Store.allMonths();
+        const opts = months.map(m=>`<option value="${m}">${new Date(m+'-01').toLocaleString(undefined,{month:'short',year:'numeric'})}</option>`).join('');
+        const prev = els.analysisMonth.value;
+        els.analysisMonth.innerHTML = opts;
+        els.analysisMonth.value = months.includes(prev) ? prev : currentMonthKey;
+        const prevType = els.analysisChartType.value;
+        els.analysisChartType.innerHTML = `<option value="pie">Pie Chart</option><option value="bar">Bar Chart</option>`;
+        els.analysisChartType.value = ['pie','bar'].includes(prevType) ? prevType : 'pie';
+      }else{
+        els.analysisMonthRow.classList.add('hidden');
+        const prevType = els.analysisChartType.value;
+        els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
+        els.analysisChartType.value = ['line','bar'].includes(prevType) ? prevType : 'line';
+      }
       const style = els.analysisChartType.value;
       if(analysisChart){ analysisChart.destroy(); analysisChart = null; }
+      if(analysisChartActual){ analysisChartActual.destroy(); analysisChartActual = null; }
+      els.analysisPlannedTitle.classList.add('hidden');
+      els.analysisActualTitle.classList.add('hidden');
+      els.analysisChartActual.classList.add('hidden');
       if(opt === 'monthly-spend'){
         const months = Store.allMonths();
         const labels = months;
@@ -851,6 +879,72 @@
           },
           options: { scales: { y: { beginAtZero: true } } }
         });
+      }else if(opt === 'budget-spread'){
+        els.analysisCharts.classList.add('charts');
+        const mk = els.analysisMonth.value || currentMonthKey;
+        const m = Store.getMonth(mk) || Model.emptyMonth();
+        const totals = Model.totals(m);
+        const labels = Object.keys(totals.groups).sort();
+        const planned = labels.map(l=>totals.groups[l]?.budget || 0);
+        const actual = labels.map(l=>totals.groups[l]?.actual || 0);
+        const plannedTot = Utils.sum(planned);
+        const actualTot = Utils.sum(actual);
+        const plannedPct = planned.map(v=> plannedTot ? (v/plannedTot*100) : 0);
+        const actualPct = actual.map(v=> actualTot ? (v/actualTot*100) : 0);
+        const palette = ['#0ea5e9','#f43f5e','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#22c55e','#d946ef'];
+        const colors = labels.map((_,i)=>palette[i%palette.length]);
+        els.analysisPlannedTitle.classList.remove('hidden');
+        els.analysisActualTitle.classList.remove('hidden');
+        els.analysisChartActual.classList.remove('hidden');
+        const percentPlugin = {
+          id:'pct',
+          afterDatasetsDraw(chart){
+            const {ctx} = chart;
+            const dataset = chart.data.datasets[0];
+            chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+              const val = dataset.data[i]||0;
+              const pos = arc.tooltipPosition();
+              ctx.save();
+              ctx.fillStyle='#fff';
+              ctx.font='14px system-ui';
+              ctx.textAlign='center';
+              ctx.textBaseline='middle';
+              ctx.fillText(`${val.toFixed(1)}%`, pos.x, pos.y);
+              ctx.restore();
+            });
+          }
+        };
+        const pieOpts = {
+          plugins:{
+            tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}}
+          }
+        };
+        const barOpts = {
+          plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}}},
+          scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}
+        };
+        analysisChart = new Chart(els.analysisChart.getContext('2d'), {
+          type: style,
+          data: {
+            labels,
+            datasets: [
+              {label:'Planned %', data: plannedPct, backgroundColor: colors}
+            ]
+          },
+          options: style==='bar'?barOpts:pieOpts,
+          plugins: style==='pie'?[percentPlugin]:[]
+        });
+        analysisChartActual = new Chart(els.analysisChartActual.getContext('2d'), {
+          type: style,
+          data: {
+            labels,
+            datasets: [
+              {label:'Actual %', data: actualPct, backgroundColor: colors}
+            ]
+          },
+          options: style==='bar'?barOpts:pieOpts,
+          plugins: style==='pie'?[percentPlugin]:[]
+        });
       }
     };
 
@@ -870,6 +964,7 @@
     els.tabLearning.onclick = ()=>{ selectTab('learn'); renderLearnList(); };
     els.analysisSelect.onchange = runAnalysis;
     els.analysisChartType.onchange = runAnalysis;
+    els.analysisMonth.onchange = runAnalysis;
 
     // Initial load
     loadMonth(currentMonthKey);
