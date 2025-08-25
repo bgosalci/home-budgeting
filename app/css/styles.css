@@ -102,3 +102,8 @@
     .dialog-content{padding:20px;border-top:4px solid var(--brand)}
     dialog.dialog.alert .dialog-content,dialog.dialog.confirm .dialog-content{border-top-color:var(--warn)}
     .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+
+    /* Calendar */
+    .calendar-table{width:100%;border-collapse:collapse}
+    .calendar-table th,.calendar-table td{border:1px solid var(--border);width:14.28%;height:80px;padding:4px;text-align:right}
+    .calendar-table th{background:var(--muted)}

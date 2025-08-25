@@ -321,12 +321,16 @@
       importFile: document.getElementById('import-file'),
       importConfirm: document.getElementById('import-confirm'),
       importCancel: document.getElementById('import-cancel'),
+      calendarDialog: document.getElementById('calendar-dialog'),
+      calendarContainer: document.getElementById('calendar-container'),
+      calendarClose: document.getElementById('calendar-close'),
 
       // Tabs
       tabBudget: document.getElementById('tab-budget'),
       tabTx: document.getElementById('tab-transactions'),
       tabAnalysis: document.getElementById('tab-analysis'),
       tabLearning: document.getElementById('tab-learning'),
+      tabCalendar: document.getElementById('tab-calendar'),
       panelBudget: document.getElementById('panel-budget'),
       panelTx: document.getElementById('panel-transactions'),
       panelAnalysis: document.getElementById('panel-analysis'),
@@ -1022,10 +1026,35 @@
     els.tabTx.onclick = ()=>selectTab('tx');
     els.tabAnalysis.onclick = ()=>{ selectTab('analysis'); runAnalysis(); };
     els.tabLearning.onclick = ()=>{ selectTab('learn'); renderLearnList(); };
+    els.tabCalendar.onclick = ()=>{ renderCalendar(); els.calendarDialog.showModal(); };
+    els.calendarClose.onclick = ()=>els.calendarDialog.close();
     els.analysisSelect.onchange = runAnalysis;
     els.analysisChartType.onchange = runAnalysis;
     els.analysisMonth.onchange = runAnalysis;
     els.analysisGroup.onchange = runAnalysis;
+
+    function renderCalendar(date = new Date()){
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const first = new Date(year, month, 1);
+      const start = first.getDay();
+      const days = new Date(year, month + 1, 0).getDate();
+      const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      let html = '<table class="calendar-table"><thead><tr>';
+      for(const n of names) html += `<th>${n}</th>`;
+      html += '</tr></thead><tbody><tr>';
+      let day = 1;
+      for(let i=0;i<start;i++) html += '<td></td>';
+      for(let i=start;i<7;i++) html += `<td>${day++}</td>`;
+      html += '</tr>';
+      while(day <= days){
+        html += '<tr>';
+        for(let i=0;i<7;i++) html += day<=days?`<td>${day++}</td>`:'<td></td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      els.calendarContainer.innerHTML = html;
+    }
 
     // Initial load
     loadMonth(currentMonthKey);
