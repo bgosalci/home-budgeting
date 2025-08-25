@@ -331,6 +331,9 @@
       panelTx: document.getElementById('panel-transactions'),
       panelAnalysis: document.getElementById('panel-analysis'),
       panelLearning: document.getElementById('panel-learning'),
+      analysisSelect: document.getElementById('analysis-select'),
+      analysisChartType: document.getElementById('analysis-chart-type'),
+      analysisChart: document.getElementById('analysis-chart'),
 
       // Income
       incomeList: document.getElementById('income-list'),
@@ -374,6 +377,7 @@
     let currentMonthKey = Utils.monthKey();
     let editingIncomeId = null;
     let editingTxId = null;
+    let analysisChart = null;
     const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/></svg>`;
     const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
     els.descPredictHint.textContent = 'Desc: –';
@@ -821,6 +825,35 @@
       r.readAsText(file);
     };
 
+    const runAnalysis = ()=>{
+      const opt = els.analysisSelect.value;
+      const style = els.analysisChartType.value;
+      if(analysisChart){ analysisChart.destroy(); analysisChart = null; }
+      if(opt === 'monthly-spend'){
+        const months = Store.allMonths();
+        const labels = months;
+        const data = months.map(mk=>{
+          const m = Store.getMonth(mk) || {transactions:[]};
+          return Utils.sum(m.transactions||[], t=>t.amount);
+        });
+        analysisChart = new Chart(els.analysisChart.getContext('2d'), {
+          type: style === 'bar' ? 'bar' : 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Total Spend',
+              data,
+              borderColor: '#0ea5e9',
+              backgroundColor: '#0ea5e9',
+              tension: 0.2,
+              fill: false
+            }]
+          },
+          options: { scales: { y: { beginAtZero: true } } }
+        });
+      }
+    };
+
     // Tabs
     function selectTab(key){
       const map = {
@@ -833,8 +866,10 @@
     }
     els.tabBudget.onclick = ()=>selectTab('budget');
     els.tabTx.onclick = ()=>selectTab('tx');
-    els.tabAnalysis.onclick = ()=>selectTab('analysis');
+    els.tabAnalysis.onclick = ()=>{ selectTab('analysis'); runAnalysis(); };
     els.tabLearning.onclick = ()=>{ selectTab('learn'); renderLearnList(); };
+    els.analysisSelect.onchange = runAnalysis;
+    els.analysisChartType.onchange = runAnalysis;
 
     // Initial load
     loadMonth(currentMonthKey);
