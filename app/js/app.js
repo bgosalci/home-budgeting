@@ -334,6 +334,8 @@
       analysisSelect: document.getElementById('analysis-select'),
       analysisChartType: document.getElementById('analysis-chart-type'),
       analysisChart: document.getElementById('analysis-chart'),
+      analysisMonthRow: document.getElementById('analysis-month-row'),
+      analysisMonth: document.getElementById('analysis-month'),
 
       // Income
       incomeList: document.getElementById('income-list'),
@@ -827,6 +829,20 @@
 
     const runAnalysis = ()=>{
       const opt = els.analysisSelect.value;
+      if(opt === 'budget-spread'){
+        els.analysisMonthRow.classList.remove('hidden');
+        const months = Store.allMonths();
+        const opts = months.map(m=>`<option value="${m}">${new Date(m+'-01').toLocaleString(undefined,{month:'short',year:'numeric'})}</option>`).join('');
+        const prev = els.analysisMonth.value;
+        els.analysisMonth.innerHTML = opts;
+        els.analysisMonth.value = months.includes(prev) ? prev : currentMonthKey;
+        els.analysisChartType.innerHTML = `<option value="pie">Pie Chart</option><option value="bar">Bar Chart</option>`;
+        if(!['pie','bar'].includes(els.analysisChartType.value)) els.analysisChartType.value = 'pie';
+      }else{
+        els.analysisMonthRow.classList.add('hidden');
+        els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
+        if(!['line','bar'].includes(els.analysisChartType.value)) els.analysisChartType.value = 'line';
+      }
       const style = els.analysisChartType.value;
       if(analysisChart){ analysisChart.destroy(); analysisChart = null; }
       if(opt === 'monthly-spend'){
@@ -851,6 +867,39 @@
           },
           options: { scales: { y: { beginAtZero: true } } }
         });
+      }else if(opt === 'budget-spread'){
+        const mk = els.analysisMonth.value || currentMonthKey;
+        const m = Store.getMonth(mk) || Model.emptyMonth();
+        const totals = Model.totals(m);
+        const labels = Array.from(new Set([...Object.keys(totals.budgetPerCat), ...Object.keys(totals.actualPerCat)])).sort();
+        const planned = labels.map(l=>totals.budgetPerCat[l]||0);
+        const actual = labels.map(l=>totals.actualPerCat[l]||0);
+        const palette = ['#0ea5e9','#f43f5e','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#22c55e','#d946ef'];
+        const colors = labels.map((_,i)=>palette[i%palette.length]);
+        if(style === 'bar'){
+          analysisChart = new Chart(els.analysisChart.getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [
+                {label:'Planned Budget', data: planned, backgroundColor:'#93c5fd'},
+                {label:'Actual Spend', data: actual, backgroundColor:'#fb7185'}
+              ]
+            },
+            options: { scales: { y: { beginAtZero: true } } }
+          });
+        }else{
+          analysisChart = new Chart(els.analysisChart.getContext('2d'), {
+            type: 'pie',
+            data: {
+              labels,
+              datasets: [
+                {label:'Planned Budget', data: planned, backgroundColor: colors},
+                {label:'Actual Spend', data: actual, backgroundColor: colors}
+              ]
+            }
+          });
+        }
       }
     };
 
@@ -870,6 +919,7 @@
     els.tabLearning.onclick = ()=>{ selectTab('learn'); renderLearnList(); };
     els.analysisSelect.onchange = runAnalysis;
     els.analysisChartType.onchange = runAnalysis;
+    els.analysisMonth.onchange = runAnalysis;
 
     // Initial load
     loadMonth(currentMonthKey);
