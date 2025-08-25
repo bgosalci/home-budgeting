@@ -15,6 +15,7 @@ You can now add a new budget month or switch between months using the inline con
 
 ### Action Icons
 Edit and delete actions across the app now use circular icon buttons for a cleaner look.
+The icons now adopt the secondary theme colour instead of blue for consistency.
 
 ### Themed Dialogs
 Alerts, confirmations and information messages now appear in a styled pop‑up dialog that matches the app's theme. Any attempt to delete a record prompts for confirmation.
