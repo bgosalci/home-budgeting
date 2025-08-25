@@ -1046,10 +1046,8 @@
       const m = Store.getMonth(mk) || {transactions:[]};
       const totals = {};
       for(const tx of m.transactions){
-        if(tx.amount < 0){
-          const d = Number(tx.date.slice(8,10));
-          totals[d] = (totals[d]||0) + -tx.amount;
-        }
+        const d = Number(tx.date.slice(8,10));
+        totals[d] = (totals[d]||0) + Math.abs(tx.amount);
       }
       const first = new Date(year, month, 1);
       const start = (first.getDay() + 6) % 7;
