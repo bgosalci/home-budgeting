@@ -333,7 +333,10 @@
       panelLearning: document.getElementById('panel-learning'),
       analysisSelect: document.getElementById('analysis-select'),
       analysisChartType: document.getElementById('analysis-chart-type'),
+      analysisPlannedTitle: document.getElementById('analysis-planned-title'),
+      analysisActualTitle: document.getElementById('analysis-actual-title'),
       analysisChart: document.getElementById('analysis-chart'),
+      analysisChartActual: document.getElementById('analysis-chart-actual'),
       analysisMonthRow: document.getElementById('analysis-month-row'),
       analysisMonth: document.getElementById('analysis-month'),
 
@@ -380,6 +383,7 @@
     let editingIncomeId = null;
     let editingTxId = null;
     let analysisChart = null;
+    let analysisChartActual = null;
     const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/></svg>`;
     const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
     els.descPredictHint.textContent = 'Desc: –';
@@ -845,6 +849,10 @@
       }
       const style = els.analysisChartType.value;
       if(analysisChart){ analysisChart.destroy(); analysisChart = null; }
+      if(analysisChartActual){ analysisChartActual.destroy(); analysisChartActual = null; }
+      els.analysisPlannedTitle.classList.add('hidden');
+      els.analysisActualTitle.classList.add('hidden');
+      els.analysisChartActual.classList.add('hidden');
       if(opt === 'monthly-spend'){
         const months = Store.allMonths();
         const labels = months;
@@ -871,35 +879,34 @@
         const mk = els.analysisMonth.value || currentMonthKey;
         const m = Store.getMonth(mk) || Model.emptyMonth();
         const totals = Model.totals(m);
-        const labels = Array.from(new Set([...Object.keys(totals.budgetPerCat), ...Object.keys(totals.actualPerCat)])).sort();
-        const planned = labels.map(l=>totals.budgetPerCat[l]||0);
-        const actual = labels.map(l=>totals.actualPerCat[l]||0);
+        const labels = Object.keys(totals.groups).sort();
+        const planned = labels.map(l=>totals.groups[l]?.budget || 0);
+        const actual = labels.map(l=>totals.groups[l]?.actual || 0);
         const palette = ['#0ea5e9','#f43f5e','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#22c55e','#d946ef'];
         const colors = labels.map((_,i)=>palette[i%palette.length]);
-        if(style === 'bar'){
-          analysisChart = new Chart(els.analysisChart.getContext('2d'), {
-            type: 'bar',
-            data: {
-              labels,
-              datasets: [
-                {label:'Planned Budget', data: planned, backgroundColor:'#93c5fd'},
-                {label:'Actual Spend', data: actual, backgroundColor:'#fb7185'}
-              ]
-            },
-            options: { scales: { y: { beginAtZero: true } } }
-          });
-        }else{
-          analysisChart = new Chart(els.analysisChart.getContext('2d'), {
-            type: 'pie',
-            data: {
-              labels,
-              datasets: [
-                {label:'Planned Budget', data: planned, backgroundColor: colors},
-                {label:'Actual Spend', data: actual, backgroundColor: colors}
-              ]
-            }
-          });
-        }
+        els.analysisPlannedTitle.classList.remove('hidden');
+        els.analysisActualTitle.classList.remove('hidden');
+        els.analysisChartActual.classList.remove('hidden');
+        analysisChart = new Chart(els.analysisChart.getContext('2d'), {
+          type: style,
+          data: {
+            labels,
+            datasets: [
+              {label:'Planned Budget', data: planned, backgroundColor: colors}
+            ]
+          },
+          options: style==='bar'?{ scales: { y: { beginAtZero: true } } }:{}
+        });
+        analysisChartActual = new Chart(els.analysisChartActual.getContext('2d'), {
+          type: style,
+          data: {
+            labels,
+            datasets: [
+              {label:'Actual Spend', data: actual, backgroundColor: colors}
+            ]
+          },
+          options: style==='bar'?{ scales: { y: { beginAtZero: true } } }:{}
+        });
       }
     };
 

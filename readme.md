@@ -45,7 +45,7 @@ Each transaction row now begins with a row number. Prices are bold, match the st
 ### Analysis Tab
 An **Analysis** tab is now available after the Transactions tab. It includes a **Monthly Spend** option that charts each month's total spend. Use the **Chart Style** selector to switch between a line chart and a vertical bar chart.
 
-The tab also offers a **Budget Spread** option. Choose a month and compare the planned budget to the actual spend for each category. View the distribution as a pie chart or switch to a bar chart.
+The tab also offers a **Budget Spread** option. Choose a month and see category group distributions. Two charts show planned budget and actual spend per group. View them as pie charts or switch to bar charts.
 
 ### Transaction Editing
 Each monthly transaction entry includes an edit icon so existing records can be updated.
