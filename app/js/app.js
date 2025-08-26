@@ -62,29 +62,28 @@
     const KEY = 'budget.local.v1';
     const load = ()=>{
       try{
-        return JSON.parse(localStorage.getItem(KEY)) || {version:1, months:{}, categories:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[]};
+        return JSON.parse(localStorage.getItem(KEY)) || {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[]};
       }
       catch{
-        return {version:1, months:{}, categories:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[]};
+        return {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[]};
       }
     };
     const save = (state)=>localStorage.setItem(KEY, JSON.stringify(state));
     const state = load();
-    if(!state.categories){
-      state.categories = {};
-    }
     for(const m of Object.values(state.months||{})){
-      if(m.categories){
-        state.categories = {...state.categories, ...m.categories};
-        delete m.categories;
-      }
+      m.categories = m.categories || {};
     }
-    save(state);
+    if(state.categories){
+      for(const m of Object.values(state.months)){
+        m.categories = {...Utils.clone(state.categories), ...m.categories};
+      }
+      delete state.categories;
+      save(state);
+    }
     const getMonth = (mk)=> state.months[mk];
     const setMonth = (mk, data)=>{ state.months[mk]=data; save(state); };
     const allMonths = ()=> Object.keys(state.months).sort();
-    const categories = ()=> state.categories || (state.categories={});
-    const setCategories = (cats)=>{ state.categories = cats; save(state); };
+    const categories = (mk)=> state.months[mk]?.categories || {};
     const mapping = ()=> state.mapping;
     const setMapping = (m)=>{ state.mapping = m; save(state); };
     const descMap = ()=> state.descMap || (state.descMap={exact:{},tokens:{}});
@@ -97,13 +96,14 @@
         return m ? (m.transactions||[]) : [];
       }
       if(kind==='categories'){
-        return {categories: state.categories};
+        const m = state.months[mk];
+        return {categories: m ? (m.categories||{}) : {}};
       }
       if(kind==='prediction'){
         return {mapping: state.mapping, descMap: state.descMap, descList: state.descList||[]};
       }
       // all data
-      return {version:state.version, months: state.months, categories: state.categories, mapping: state.mapping, descMap: state.descMap, descList: state.descList||[]};
+      return {version:state.version, months: state.months, mapping: state.mapping, descMap: state.descMap, descList: state.descList||[]};
     };
     const importData = (json)=>{
       const incoming = typeof json === 'string' ? JSON.parse(json) : json;
@@ -128,12 +128,13 @@
         if(!curList.some(x=>x.toLowerCase()===d.toLowerCase())) curList.push(d);
       }
       state.descList = curList;
-      state.categories = {...state.categories, ...(incoming.categories||{})};
-      for(const [mk,month] of Object.entries(incoming.months)){
-        if(month.categories){
-          state.categories = {...state.categories, ...month.categories};
-          delete month.categories;
+      if(incoming.categories){
+        for(const m of Object.values(incoming.months)){
+          m.categories = {...incoming.categories, ...(m.categories||{})};
         }
+      }
+      for(const [mk,month] of Object.entries(incoming.months)){
+        month.categories = month.categories || {};
         state.months[mk]=month;
       } // last-write-wins
       save(state);
@@ -144,7 +145,7 @@
     const setCollapsed = (mk,g,val)=>{ collapsedFor(mk)[g]=!!val; save(state); };
     const toggleCollapsed = (mk,g)=>{ setCollapsed(mk,g,!isCollapsed(mk,g)); };
     const setAllCollapsed = (mk, groups, val)=>{ const obj = collapsedFor(mk); (groups||[]).forEach(g=>obj[g]=!!val); save(state); };
-    return {state,getMonth,setMonth,allMonths,categories,setCategories,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportData,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed};
+    return {state,getMonth,setMonth,allMonths,categories,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportData,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed};
   })();
 
   // ===== Charts (vanilla Canvas)
@@ -248,20 +249,19 @@
   const Model = (()=>{
     const emptyMonth = ()=>({
       incomes:[],
-      transactions:[] // {id,date,desc,amount,category}
+      transactions:[], // {id,date,desc,amount,category}
+      categories:{}
     });
 
     // Default empty template – start with no categories or incomes
     const template = () => emptyMonth();
 
-    const addCat = (name, group, budget)=>{
-      const cats = Store.categories();
-      cats[name] = {group, budget: Number(budget)||0};
-      Store.setCategories(cats);
+    const addCat = (month, name, group, budget)=>{
+      month.categories[name] = {group, budget: Number(budget)||0};
     };
 
-    const setCat = (name, group, budget)=>{ addCat(name,group,budget); };
-    const delCat = (name)=>{ const cats = Store.categories(); delete cats[name]; Store.setCategories(cats); };
+    const setCat = (month, name, group, budget)=>{ addCat(month,name,group,budget); };
+    const delCat = (month, name)=>{ delete month.categories[name]; };
 
     const addIncome = (month, name, amount)=>{ month.incomes.push({id:Utils.id(), name, amount:Number(amount)||0}); };
     const setIncome = (month, id, name, amount)=>{
@@ -276,7 +276,7 @@
     const totals = (month)=>{
       const income = Utils.sum(month.incomes, x=>x.amount);
       const budgetPerCat = {}; const actualPerCat = {};
-      const cats = Store.categories();
+      const cats = month.categories || {};
       for(const [name,meta] of Object.entries(cats)) budgetPerCat[name]=(meta.budget||0);
       for(const tx of month.transactions) actualPerCat[tx.category]=(actualPerCat[tx.category]||0)+tx.amount;
       const groups = {};
@@ -500,7 +500,7 @@
     function renderCategories(month){
       els.catTable.innerHTML='';
       const totals = Model.totals(month);
-      const cats = Store.categories();
+      const cats = month.categories || {};
       const entries = Object.entries(cats);
       const byGroup = {};
       for(const [name,meta] of entries){ const g=meta.group||'Other'; (byGroup[g]=byGroup[g]||[]).push([name,meta]); }
@@ -529,7 +529,7 @@
           tr.onclick = async (e)=>{
             const actn = e.target.closest('button')?.dataset?.act; if(!actn) return;
             if(actn==='del'){
-              if(await Dialog.confirm('Delete this category?')){ Model.delCat(name); renderCategories(month); refreshKPIs(); refreshCategoryDropdowns(); }
+              if(await Dialog.confirm('Delete this category?')){ Model.delCat(month,name); Store.setMonth(currentMonthKey, month); renderCategories(month); refreshKPIs(); refreshCategoryDropdowns(); }
             }
             if(actn==='edit'){ els.catName.value=name; els.catGroup.value=meta.group||''; els.catBudget.value=meta.budget||0; }
           };
@@ -543,7 +543,8 @@
       }
 
     function refreshCategoryDropdowns(){
-      const opts = Object.keys(Store.categories()).sort().map(c=>`<option>${c}</option>`).join('');
+      const cats = Store.categories(currentMonthKey);
+      const opts = Object.keys(cats).sort().map(c=>`<option>${c}</option>`).join('');
       const curFilter = els.txFilterCat.value;
       els.txCat.innerHTML = `<option value="">— select —</option>`+opts;
       els.learnCat.innerHTML = opts;
@@ -631,25 +632,27 @@
     els.addCategory.onclick = ()=>{
       const name = els.catName.value.trim(); const group = els.catGroup.value.trim()||'Other'; const bud = parseFloat(els.catBudget.value||'0');
       if(!name) return;
-      Model.setCat(name,group,bud);
+      const m = Store.getMonth(currentMonthKey);
+      Model.setCat(m,name,group,bud);
+      Store.setMonth(currentMonthKey,m);
       els.catName.value=''; els.catGroup.value=''; els.catBudget.value=''; loadMonth(currentMonthKey);
     };
 
     // Collapse/Expand all groups
     els.collapseAll.onclick = ()=>{
       const m = Store.getMonth(currentMonthKey);
-      const groups = [...new Set(Object.values(Store.categories()).map(x=>x.group||'Other'))];
+      const groups = [...new Set(Object.values(Store.categories(currentMonthKey)).map(x=>x.group||'Other'))];
       Store.setAllCollapsed(currentMonthKey, groups, true); renderCategories(m);
     };
     els.expandAll.onclick = ()=>{
       const m = Store.getMonth(currentMonthKey);
-      const groups = [...new Set(Object.values(Store.categories()).map(x=>x.group||'Other'))];
+      const groups = [...new Set(Object.values(Store.categories(currentMonthKey)).map(x=>x.group||'Other'))];
       Store.setAllCollapsed(currentMonthKey, groups, false); renderCategories(m);
     };
 
     // Transaction prediction
     els.txDesc.addEventListener('input', ()=>{
-      const cats = Object.keys(Store.categories());
+      const cats = Object.keys(Store.categories(currentMonthKey));
       const guess = Predictor.predict(els.txDesc.value, cats);
       els.predictHint.textContent = 'Prediction: '+(guess||'–');
       if(guess){ els.txCat.value = guess; }
@@ -757,7 +760,13 @@
     els.newMonth.onclick = ()=>{
       const mk = els.monthPicker.value || Utils.monthKey();
       if(Store.getMonth(mk)) { Dialog.alert('Month already exists. Use Duplicate if needed.'); return; }
-      const month = Model.template(); Store.setMonth(mk, month); loadMonth(mk);
+      const month = Model.template();
+      const months = Store.allMonths();
+      if(months.length){
+        const prev = months[months.length-1];
+        month.categories = Utils.clone(Store.categories(prev));
+      }
+      Store.setMonth(mk, month); loadMonth(mk);
     };
     els.duplicateMonth.onclick = ()=>{
       const months = Store.allMonths(); if(months.length<1) return;
@@ -802,7 +811,7 @@
           download(`transactions-${mk}.json`, txs);
         }
       }else if(kind==='categories'){
-        const data = Store.exportData('categories');
+        const data = Store.exportData('categories', currentMonthKey);
         download('categories.json', data);
       }else if(kind==='prediction'){
         const data = Store.exportData('prediction');
@@ -859,7 +868,9 @@
           }else if(kind==='categories'){
             const parsed = JSON.parse(text);
             const cats = parsed.categories || parsed;
-            Store.setCategories({...Store.categories(), ...cats});
+            const m = Store.getMonth(targetMonth) || Model.emptyMonth();
+            m.categories = {...m.categories, ...cats};
+            Store.setMonth(targetMonth, m);
           }else if(kind==='prediction'){
             const parsed = JSON.parse(text);
             Store.importData({months:{}, ...parsed});
@@ -894,8 +905,8 @@
       }else if(opt === 'monthly-spend'){
         els.analysisMonthRow.classList.add('hidden');
         els.analysisGroupRow.classList.remove('hidden');
-        const cats = Store.categories();
-        const groups = [...new Set(Object.values(cats).map(x=>x.group||'Other'))].sort();
+        const catsCur = Store.categories(currentMonthKey);
+        const groups = [...new Set(Object.values(catsCur).map(x=>x.group||'Other'))].sort();
         const prevGroup = els.analysisGroup.value;
         const opts = ['<option value="">All</option>', ...groups.map(g=>`<option value="${g}">${g}</option>`)];
         els.analysisGroup.innerHTML = opts.join('');
@@ -914,9 +925,9 @@
         const months = Store.allMonths();
         const labels = months;
         const group = els.analysisGroup.value;
-        const cats = Store.categories();
         const data = months.map(mk=>{
-          const m = Store.getMonth(mk) || {transactions:[]};
+          const m = Store.getMonth(mk) || {transactions:[], categories:{}};
+          const cats = m.categories || {};
           const txs = m.transactions||[];
           return Utils.sum(txs.filter(t=>{
             if(!group) return true;

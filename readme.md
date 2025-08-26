@@ -13,7 +13,7 @@ The app now starts with no pre-filled categories or incomes. Previously seeded "
 JavaScript files are located in `app/js` and stylesheets in `app/css`.
 
 ### Month Controls
-You can now add a new budget month or switch between months using the inline controls in the header.
+You can now add a new budget month or switch between months using the inline controls in the header. New months start with a copy of the previous month's categories so each month's budget can evolve independently.
 
 ### Action Icons
 Edit and delete actions across the app now use circular icon buttons for a cleaner look.
@@ -65,7 +65,7 @@ Each header also displays the number of transactions for that day (e.g., "5 tran
 Use the **Import** and **Export** buttons to move data in or out of the app. A pop‑up dialog lets you choose the dataset:
 
 - **Monthly Transactions** – select the budget month and JSON or CSV file. CSV files should include a header row and columns in the order: Date, Description, Category, Amount. Dates must be in `dd/mm/yyyy` format and amounts may include a leading `£` which will be removed on import.
-- **Money Out – Categories** – exports or imports the category list as JSON.
+- **Money Out – Categories** – exports or imports the current month's category list as JSON.
 - **Prediction Map** – exports or imports the description learning map as JSON.
 - **All Data** – full backup of every month, category and prediction map as JSON.
 
@@ -74,7 +74,7 @@ Imported items are merged into existing data where applicable.
 ### Real-time Category Totals
 The Money Out – Categories table refreshes instantly when you add new transactions so actual and difference values are always up to date.
 
-Categories are global across months—add or edit a category once and it will appear in every monthly budget.
+Each month keeps its own set of categories. Adding a new month copies the previous month's categories, letting you tweak budgets without affecting past months.
 
 ### Description Prediction
 As you type a transaction description, the app looks up your past entries that are stored in your browser's local storage. Only unique descriptions are kept. A tooltip beneath the field now spans the full width and lists up to four matches. Use the up and down keys to highlight an option and press <kbd>Enter</kbd> or click to choose one; the description will auto‑fill.
