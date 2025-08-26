@@ -90,6 +90,7 @@
 
     /* Icon buttons for actions */
     .actions{display:flex;gap:6px}
+    .right.actions{justify-content:flex-end}
     button.icon-btn{padding:0;width:32px;height:32px;border-radius:50%;background:var(--sub);border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#fff}
     button.icon-btn svg{width:16px;height:16px}
 
