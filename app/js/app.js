@@ -12,20 +12,14 @@
     const groupBy = (arr, fn)=>arr.reduce((a,x)=>{const k=fn(x);(a[k]=a[k]||[]).push(x);return a;},{});
     const sum = (arr, fn=(x)=>x)=>arr.reduce((a,x)=>a+fn(x),0);
     const clone = (o)=>JSON.parse(JSON.stringify(o));
-    const parseCSV = (text, map)=>{
+    const parseCSV = (text, map, hasHeader=true, invert=false)=>{
       const lines = text.trim().split(/\r?\n/).filter(l=>l);
-      const header = lines[0].split(',').map(s=>s.trim());
+      if(hasHeader) lines.shift();
       let idx = {date:0, desc:1, category:2, amount:3};
-      if(map || /^date/i.test(header[0])){
-        lines.shift();
-        if(map){
-          idx = {};
-          for(const [k,v] of Object.entries(map)){
-            if(!v){ idx[k] = -1; continue; }
-            const i = header.indexOf(v);
-            if(i===-1) throw new Error('missing');
-            idx[k]=i;
-          }
+      if(map){
+        idx = {};
+        for(const [k,v] of Object.entries(map)){
+          idx[k] = (v==='' || v===null) ? -1 : Number(v);
         }
       }
       return lines.map(line=>{
@@ -39,7 +33,8 @@
           const [dd,mm,yyyy] = dRaw.split(/[\/]/);
           if(yyyy && mm && dd) date = `${yyyy}-${mm}-${dd}`;
         }
-        const amount = Number(aRaw.replace(/[^0-9.-]/g,'')) || 0;
+        let amount = Number(aRaw.replace(/[^0-9.-]/g,'')) || 0;
+        if(invert) amount = -amount;
         return {date,desc,category,amount};
       });
     };
@@ -346,6 +341,8 @@
       csvMapDesc: document.getElementById('csv-map-desc'),
       csvMapCat: document.getElementById('csv-map-cat'),
       csvMapAmt: document.getElementById('csv-map-amt'),
+      csvMapHeader: document.getElementById('csv-map-header'),
+      csvMapInvert: document.getElementById('csv-map-invert'),
       csvMapConfirm: document.getElementById('csv-map-confirm'),
       csvMapCancel: document.getElementById('csv-map-cancel'),
       calendarDialog: document.getElementById('calendar-dialog'),
@@ -895,16 +892,19 @@
                 txs = Utils.parseCSV(text);
               }else{
                 pendingCSV = {text, headers, mk};
-                const opts = ['<option value=""></option>', ...headers.map(h=>`<option value="${h}">${h}</option>`)].join('');
+                const opts = ['<option value=""></option>', ...headers.map((h,i)=>`<option value="${i}">${h}</option>`)].join('');
                 els.csvMapDate.innerHTML = opts;
                 els.csvMapDesc.innerHTML = opts;
                 els.csvMapCat.innerHTML = opts;
                 els.csvMapAmt.innerHTML = opts;
-                const guess = (n)=>headers.find(h=>h.toLowerCase().includes(n));
-                els.csvMapDate.value = guess('date') || '';
-                els.csvMapDesc.value = guess('desc') || guess('description') || '';
-                els.csvMapCat.value = guess('cat') || guess('category') || '';
-                els.csvMapAmt.value = guess('amount') || '';
+                const guess = (n)=>headers.findIndex(h=>h.toLowerCase().includes(n));
+                els.csvMapDate.value = (guess('date')>=0?guess('date'):0).toString();
+                els.csvMapDesc.value = (guess('desc')>=0?guess('desc'):(guess('description')>=0?guess('description'):1)).toString();
+                els.csvMapCat.value = (guess('cat')>=0?guess('cat'):(guess('category')>=0?guess('category'):2)).toString();
+                els.csvMapAmt.value = (guess('amount')>=0?guess('amount'):3).toString();
+                const headerGuess = headers.some(h=>/[a-zA-Z]/.test(h));
+                els.csvMapHeader.checked = headerGuess;
+                els.csvMapInvert.checked = false;
                 els.importDialog.close();
                 els.csvMapDialog.showModal();
                 return;
@@ -955,8 +955,10 @@
         category: els.csvMapCat.value,
         amount: els.csvMapAmt.value
       };
+      const hasHeader = els.csvMapHeader.checked;
+      const invert = els.csvMapInvert.checked;
       try{
-        const txs = Utils.parseCSV(pendingCSV.text, map);
+        const txs = Utils.parseCSV(pendingCSV.text, map, hasHeader, invert);
         let m = Store.getMonth(pendingCSV.mk) || Model.emptyMonth();
         const catSet = new Set(Object.keys(m.categories));
         for(const t of txs){
