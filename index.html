@@ -12,20 +12,17 @@
     <h1>Budget for <span id="header-month"></span></h1>
     <span class="pill" id="leftover-pill">Left Over £0.00</span>
 
-    <div class="toolbar">
-      <div class="inline-field">
-        <label for="month-picker">Add Month</label>
-        <input type="month" id="month-picker"/>
-        <button id="new-month" title="Create a new month from template or copy last month">Add</button>
+      <div class="toolbar">
+        <div class="inline-field">
+          <label for="month-picker">Add Month</label>
+          <input type="month" id="month-picker"/>
+          <button id="new-month" title="Create a new month from template or copy last month">Add</button>
+          <label for="open-month">Open Month</label>
+          <select id="open-month"></select>
+        </div>
+        <button id="export-data">Export</button>
+        <button id="import-trans">Import</button>
       </div>
-      <div class="inline-field">
-        <label for="open-month">Open Month</label>
-        <select id="open-month"></select>
-      </div>
-      <button id="duplicate-month">Duplicate Prev</button>
-      <button id="export-data">Export</button>
-      <button id="import-trans">Import</button>
-    </div>
   </header>
 
   <main>

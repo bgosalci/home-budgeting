@@ -350,7 +350,6 @@
       leftoverPill: document.getElementById('leftover-pill'),
       monthPicker: document.getElementById('month-picker'),
       newMonth: document.getElementById('new-month'),
-      duplicateMonth: document.getElementById('duplicate-month'),
       openMonth: document.getElementById('open-month'),
       exportBtn: document.getElementById('export-data'),
       exportDialog: document.getElementById('export-dialog'),
@@ -832,7 +831,7 @@
     // Month controls
     els.newMonth.onclick = ()=>{
       const mk = els.monthPicker.value || Utils.monthKey();
-      if(Store.getMonth(mk)) { Dialog.alert('Month already exists. Use Duplicate if needed.'); return; }
+      if(Store.getMonth(mk)) { Dialog.alert('Month already exists. Choose a different month.'); return; }
       const month = Model.template();
       const months = Store.allMonths();
       if(months.length){
@@ -840,12 +839,6 @@
         month.categories = Utils.clone(Store.categories(prev));
       }
       Store.setMonth(mk, month); loadMonth(mk);
-    };
-    els.duplicateMonth.onclick = ()=>{
-      const months = Store.allMonths(); if(months.length<1) return;
-      const prev = months[months.length-1]; const mk = els.monthPicker.value || Utils.monthKey();
-      const dup = Utils.clone(Store.getMonth(prev)); dup.transactions=[]; // carry incomes, not tx
-      Store.setMonth(mk, dup); loadMonth(mk);
     };
     els.openMonth.onchange = (e)=>{ if(e.target.value) loadMonth(e.target.value); };
 
