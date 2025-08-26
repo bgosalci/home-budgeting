@@ -22,12 +22,34 @@
           idx[k] = (v==='' || v===null) ? -1 : Number(v);
         }
       }
+      const splitLine = (line)=>{
+        const cols = [];
+        let cur = '';
+        let inQuotes = false;
+        for(let i=0;i<line.length;i++){
+          const ch = line[i];
+          if(ch === '"'){
+            if(inQuotes && line[i+1] === '"'){ cur+='"'; i++; }
+            else inQuotes = !inQuotes;
+          }else if(ch===',' && !inQuotes){
+            cols.push(cur.trim());
+            cur='';
+          }else{
+            cur+=ch;
+          }
+        }
+        cols.push(cur.trim());
+        return cols.map(s=>s.replace(/^"|"$/g,'').replace(/""/g,'"'));
+      };
       return lines.map(line=>{
-        const cols = line.split(',').map(s=>s.trim());
+        const cols = splitLine(line);
         const dRaw = idx.date>=0 ? cols[idx.date]||'' : '';
         const desc = idx.desc>=0 ? cols[idx.desc]||'' : '';
         const category = idx.category>=0 ? cols[idx.category]||'' : '';
-        const aRaw = idx.amount>=0 ? cols[idx.amount]||'' : '';
+        let aRaw = idx.amount>=0 ? cols[idx.amount]||'' : '';
+        if(idx.amount>=0 && cols.length>Math.max(idx.amount+1,4)){
+          aRaw = cols.slice(idx.amount).join('');
+        }
         let date = '';
         if(dRaw){
           const [dd,mm,yyyy] = dRaw.split(/[\/]/);
