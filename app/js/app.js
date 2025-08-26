@@ -21,6 +21,7 @@
         if(map){
           idx = {};
           for(const [k,v] of Object.entries(map)){
+            if(!v){ idx[k] = -1; continue; }
             const i = header.indexOf(v);
             if(i===-1) throw new Error('missing');
             idx[k]=i;
@@ -29,12 +30,15 @@
       }
       return lines.map(line=>{
         const cols = line.split(',').map(s=>s.trim());
-        const dRaw = cols[idx.date]||'';
-        const desc = cols[idx.desc]||'';
-        const category = cols[idx.category]||'';
-        const aRaw = cols[idx.amount]||'';
-        const [dd,mm,yyyy] = dRaw.split(/[\/]/);
-        const date = `${yyyy}-${mm}-${dd}`;
+        const dRaw = idx.date>=0 ? cols[idx.date]||'' : '';
+        const desc = idx.desc>=0 ? cols[idx.desc]||'' : '';
+        const category = idx.category>=0 ? cols[idx.category]||'' : '';
+        const aRaw = idx.amount>=0 ? cols[idx.amount]||'' : '';
+        let date = '';
+        if(dRaw){
+          const [dd,mm,yyyy] = dRaw.split(/[\/]/);
+          if(yyyy && mm && dd) date = `${yyyy}-${mm}-${dd}`;
+        }
         const amount = Number(aRaw.replace(/[^0-9.-]/g,'')) || 0;
         return {date,desc,category,amount};
       });
@@ -891,16 +895,16 @@
                 txs = Utils.parseCSV(text);
               }else{
                 pendingCSV = {text, headers, mk};
-                const opts = headers.map(h=>`<option value="${h}">${h}</option>`).join('');
+                const opts = ['<option value=""></option>', ...headers.map(h=>`<option value="${h}">${h}</option>`)].join('');
                 els.csvMapDate.innerHTML = opts;
                 els.csvMapDesc.innerHTML = opts;
                 els.csvMapCat.innerHTML = opts;
                 els.csvMapAmt.innerHTML = opts;
                 const guess = (n)=>headers.find(h=>h.toLowerCase().includes(n));
-                els.csvMapDate.value = guess('date') || headers[0];
-                els.csvMapDesc.value = guess('desc') || guess('description') || headers[1];
-                els.csvMapCat.value = guess('cat') || guess('category') || headers[2];
-                els.csvMapAmt.value = guess('amount') || headers[3];
+                els.csvMapDate.value = guess('date') || '';
+                els.csvMapDesc.value = guess('desc') || guess('description') || '';
+                els.csvMapCat.value = guess('cat') || guess('category') || '';
+                els.csvMapAmt.value = guess('amount') || '';
                 els.importDialog.close();
                 els.csvMapDialog.showModal();
                 return;

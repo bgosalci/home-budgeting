@@ -64,7 +64,7 @@ Each header also displays the number of transactions for that day (e.g., "5 tran
 ### Import & Export Data
 Use the **Import** and **Export** buttons to move data in or out of the app. A pop‑up dialog lets you choose the dataset:
 
-- **Monthly Transactions** – select the budget month and JSON or CSV file. CSV files should include a header row. If the columns are in the order Date, Description, Category, Amount the import runs automatically; otherwise a pop‑up will let you map each expected field to a column. Dates must be in `dd/mm/yyyy` format and amounts may include a leading `£` which will be removed on import.
+ - **Monthly Transactions** – select the budget month and JSON or CSV file. CSV files should include a header row. If the columns are in the order Date, Description, Category, Amount the import runs automatically; otherwise a pop‑up will let you map each expected field to a column (each dropdown includes a blank option for fields not present). Dates must be in `dd/mm/yyyy` format and amounts may include a leading `£` which will be removed on import.
 - **Money Out – Categories** – exports or imports the current month's category list as JSON.
 - **Prediction Map** – exports or imports the description learning map as JSON.
 - **All Data** – full backup of every month, category and prediction map as JSON.
