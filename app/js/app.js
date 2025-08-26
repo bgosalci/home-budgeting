@@ -321,6 +321,7 @@
 
     const addTx = (month, {date,desc,amount,category})=>{ month.transactions.push({id:Utils.id(),date,desc,amount:Number(amount)||0,category}); };
     const delTx = (month, id)=>{ month.transactions = month.transactions.filter(x=>x.id!==id); };
+    const clearTx = (month)=>{ month.transactions = []; };
 
     const totals = (month)=>{
       const income = Utils.sum(month.incomes, x=>x.amount);
@@ -339,7 +340,7 @@
       return {income,budgetPerCat,actualPerCat,groups,budgetTotal,actualTotal,leftoverActual: income-actualTotal,leftoverBudget: income-budgetTotal};
     };
 
-    return {emptyMonth,template,addCat,setCat,delCat,addIncome,setIncome,delIncome,addTx,delTx,totals};
+    return {emptyMonth,template,addCat,setCat,delCat,addIncome,setIncome,delIncome,addTx,delTx,clearTx,totals};
   })();
 
   // ===== UI Controller
@@ -439,6 +440,7 @@
       txList: document.getElementById('tx-list'),
       txTotal: document.getElementById('tx-total'),
       txJump: document.getElementById('tx-jump'),
+      txDeleteAll: document.getElementById('tx-delete-all'),
       predictHint: document.getElementById('predict-hint'),
       descPredictHint: document.getElementById('desc-predict-hint'),
       descTooltip: document.getElementById('desc-tooltip'),
@@ -786,6 +788,15 @@
 
     els.txSearch.oninput = ()=>renderTransactions(Store.getMonth(currentMonthKey));
     els.txFilterCat.onchange = ()=>renderTransactions(Store.getMonth(currentMonthKey));
+    els.txDeleteAll.onclick = async ()=>{
+      if(await Dialog.confirm('Delete all transactions for this month?')){
+        const m = Store.getMonth(currentMonthKey);
+        Model.clearTx(m);
+        Store.setMonth(currentMonthKey, m);
+        renderTransactions(m);
+        renderCategories(m);
+      }
+    };
 
     const txListScrollable = ()=> els.txList.scrollHeight > els.txList.clientHeight + 1;
     const txListAtBottom = ()=> els.txList.scrollTop + els.txList.clientHeight >= els.txList.scrollHeight - 1;
