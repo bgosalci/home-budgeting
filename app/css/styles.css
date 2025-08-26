@@ -55,7 +55,8 @@
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .row + .row{margin-top:10px}
     .row > *{flex:1 1 160px}
-    input,select{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:#fff}
+    input:not([type="checkbox"]),select{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:#fff}
+    input[type="checkbox"]{width:auto;margin-right:6px}
     button.primary{background:var(--ink);color:#fff;border:0;padding:8px 12px;border-radius:10px;cursor:pointer}
     button.secondary{background:var(--sub);color:#fff;border:0;padding:8px 12px;border-radius:10px;cursor:pointer}
 
@@ -103,6 +104,7 @@
     .dialog-content{padding:20px;border-top:4px solid var(--brand)}
     dialog.dialog.alert .dialog-content,dialog.dialog.confirm .dialog-content{border-top-color:var(--warn)}
     .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+    #csv-map-dialog .dialog-content{width:480px;max-width:90vw}
 
     /* Calendar */
     .calendar-table{width:100%;border-collapse:collapse}
