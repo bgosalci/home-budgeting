@@ -236,9 +236,16 @@
   // ===== Predictor (learn tokens)
   const Predictor = (()=>{
     const tokensOf = (s)=> (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
-    const predict = (desc, cats)=>{
+    const predict = (desc, cats, amount)=>{
       const map = Store.mapping();
-      const exact = map.exact[desc?.trim().toLowerCase()];
+      const base = desc?.trim().toLowerCase();
+      if(!base) return '';
+      if(amount !== undefined && !isNaN(amount)){
+        const amtKey = base + '|' + Number(amount).toFixed(2);
+        const exactAmt = map.exact[amtKey];
+        if(exactAmt) return exactAmt;
+      }
+      const exact = map.exact[base];
       if(exact) return exact;
       const tok = tokensOf(desc);
       const scores = {};
@@ -249,10 +256,15 @@
       let best=null, bestScore=0; for(const [cat,score] of Object.entries(scores)) if(score>bestScore){best=cat;bestScore=score;}
       return best && cats.includes(best) ? best : '';
     };
-    const learn = (desc, cat)=>{
+    const learn = (desc, cat, amount)=>{
       if(!desc||!cat) return; const map = Store.mapping();
-      const key = desc.trim().toLowerCase();
-      map.exact[key]=cat;
+      const base = desc.trim().toLowerCase();
+      if(amount !== undefined && !isNaN(amount)){
+        const amtKey = base + '|' + Number(amount).toFixed(2);
+        map.exact[amtKey] = cat;
+      } else {
+        map.exact[base] = cat;
+      }
       for(const t of desc.toLowerCase().split(/\s+/).filter(Boolean)){
         const bag = map.tokens[t]||{}; bag[cat]=(bag[cat]||0)+1; map.tokens[t]=bag;
       }
@@ -700,7 +712,7 @@
     // Transaction prediction
     els.txDesc.addEventListener('input', ()=>{
       const cats = Object.keys(Store.categories(currentMonthKey));
-      const guess = Predictor.predict(els.txDesc.value, cats);
+      const guess = Predictor.predict(els.txDesc.value, cats, parseFloat(els.txAmt.value));
       els.predictHint.textContent = 'Prediction: '+(guess||'–');
       if(guess){ els.txCat.value = guess; }
       const val = els.txDesc.value;
@@ -749,7 +761,7 @@
         Model.addTx(m,{date,desc,amount:amt,category:cat});
       }
       Store.setMonth(currentMonthKey,m);
-      Predictor.learn(desc,cat);
+      Predictor.learn(desc,cat,amt);
       DescPredictor.learn(desc);
       els.txDesc.value=''; els.txAmt.value='';
       renderTransactions(m); renderCategories(m);
@@ -797,8 +809,10 @@
       const map = Store.mapping();
       els.learnList.innerHTML = '';
       for(const [k,v] of Object.entries(map.exact)){
+        const [d,a] = k.split('|');
+        const disp = a ? `${d} (£${a})` : d;
         const row = document.createElement('div'); row.className='list-item';
-        row.innerHTML = `<div><strong>${k}</strong><div><small>${v}</small></div></div>`;
+        row.innerHTML = `<div><strong>${disp}</strong><div><small>${v}</small></div></div>`;
         els.learnList.appendChild(row);
       }
     }
@@ -937,10 +951,10 @@
             const catSet = new Set(Object.keys(m.categories));
             for(const t of txs){
               if(!t.category){
-                t.category = Predictor.predict(t.desc, [...catSet]) || '';
+                t.category = Predictor.predict(t.desc, [...catSet], t.amount) || '';
               }
               Model.addTx(m,t);
-              if(t.category) Predictor.learn(t.desc,t.category);
+              if(t.category) Predictor.learn(t.desc,t.category,t.amount);
               DescPredictor.learn(t.desc);
               if(t.category) catSet.add(t.category);
             }
@@ -985,10 +999,10 @@
         const catSet = new Set(Object.keys(m.categories));
         for(const t of txs){
           if(!t.category){
-            t.category = Predictor.predict(t.desc, [...catSet]) || '';
+            t.category = Predictor.predict(t.desc, [...catSet], t.amount) || '';
           }
           Model.addTx(m,t);
-          if(t.category) Predictor.learn(t.desc,t.category);
+          if(t.category) Predictor.learn(t.desc,t.category,t.amount);
           DescPredictor.learn(t.desc);
           if(t.category) catSet.add(t.category);
         }
