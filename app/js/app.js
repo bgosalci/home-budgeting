@@ -12,13 +12,33 @@
     const groupBy = (arr, fn)=>arr.reduce((a,x)=>{const k=fn(x);(a[k]=a[k]||[]).push(x);return a;},{});
     const sum = (arr, fn=(x)=>x)=>arr.reduce((a,x)=>a+fn(x),0);
     const clone = (o)=>JSON.parse(JSON.stringify(o));
-    const parseCSV = (text)=>{
+    const parseCSV = (text, map)=>{
       const lines = text.trim().split(/\r?\n/).filter(l=>l);
-      if(lines[0] && /^date/i.test(lines[0])) lines.shift();
+      const header = lines[0].split(',').map(s=>s.trim());
+      let idx = {date:0, desc:1, category:2, amount:3};
+      if(map || /^date/i.test(header[0])){
+        lines.shift();
+        if(map){
+          idx = {};
+          for(const [k,v] of Object.entries(map)){
+            if(!v){ idx[k] = -1; continue; }
+            const i = header.indexOf(v);
+            if(i===-1) throw new Error('missing');
+            idx[k]=i;
+          }
+        }
+      }
       return lines.map(line=>{
-        const [dRaw,desc,category,aRaw] = line.split(',').map(s=>s.trim());
-        const [dd,mm,yyyy] = dRaw.split(/[\/]/);
-        const date = `${yyyy}-${mm}-${dd}`;
+        const cols = line.split(',').map(s=>s.trim());
+        const dRaw = idx.date>=0 ? cols[idx.date]||'' : '';
+        const desc = idx.desc>=0 ? cols[idx.desc]||'' : '';
+        const category = idx.category>=0 ? cols[idx.category]||'' : '';
+        const aRaw = idx.amount>=0 ? cols[idx.amount]||'' : '';
+        let date = '';
+        if(dRaw){
+          const [dd,mm,yyyy] = dRaw.split(/[\/]/);
+          if(yyyy && mm && dd) date = `${yyyy}-${mm}-${dd}`;
+        }
         const amount = Number(aRaw.replace(/[^0-9.-]/g,'')) || 0;
         return {date,desc,category,amount};
       });
@@ -321,6 +341,13 @@
       importFile: document.getElementById('import-file'),
       importConfirm: document.getElementById('import-confirm'),
       importCancel: document.getElementById('import-cancel'),
+      csvMapDialog: document.getElementById('csv-map-dialog'),
+      csvMapDate: document.getElementById('csv-map-date'),
+      csvMapDesc: document.getElementById('csv-map-desc'),
+      csvMapCat: document.getElementById('csv-map-cat'),
+      csvMapAmt: document.getElementById('csv-map-amt'),
+      csvMapConfirm: document.getElementById('csv-map-confirm'),
+      csvMapCancel: document.getElementById('csv-map-cancel'),
       calendarDialog: document.getElementById('calendar-dialog'),
       calendarContainer: document.getElementById('calendar-container'),
       calendarClose: document.getElementById('calendar-close'),
@@ -398,6 +425,7 @@
     let analysisChart = null;
     let analysisChartActual = null;
     let calendarDate = new Date();
+    let pendingCSV = null;
     const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/></svg>`;
     const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
     const ICON_CHEVRONS_DOWN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"></polyline><polyline points="7 6 12 11 17 6"></polyline></svg>`;
@@ -859,11 +887,41 @@
               const parsed = JSON.parse(text);
               txs = Array.isArray(parsed) ? parsed : parsed.transactions;
             }else{
-              txs = Utils.parseCSV(text);
+              const lines = text.trim().split(/\r?\n/).filter(l=>l);
+              const headers = lines[0].split(',').map(s=>s.trim());
+              const exp = ['Date','Description','Category','Amount'];
+              const match = exp.every((h,i)=>headers[i] && headers[i].toLowerCase()===h.toLowerCase());
+              if(match){
+                txs = Utils.parseCSV(text);
+              }else{
+                pendingCSV = {text, headers, mk};
+                const opts = ['<option value=""></option>', ...headers.map(h=>`<option value="${h}">${h}</option>`)].join('');
+                els.csvMapDate.innerHTML = opts;
+                els.csvMapDesc.innerHTML = opts;
+                els.csvMapCat.innerHTML = opts;
+                els.csvMapAmt.innerHTML = opts;
+                const guess = (n)=>headers.find(h=>h.toLowerCase().includes(n));
+                els.csvMapDate.value = guess('date') || '';
+                els.csvMapDesc.value = guess('desc') || guess('description') || '';
+                els.csvMapCat.value = guess('cat') || guess('category') || '';
+                els.csvMapAmt.value = guess('amount') || '';
+                els.importDialog.close();
+                els.csvMapDialog.showModal();
+                return;
+              }
             }
             if(!Array.isArray(txs)) throw new Error('bad');
             let m = Store.getMonth(mk) || Model.emptyMonth();
-            for(const t of txs) Model.addTx(m,t);
+            const catSet = new Set(Object.keys(m.categories));
+            for(const t of txs){
+              if(!t.category){
+                t.category = Predictor.predict(t.desc, [...catSet]) || '';
+              }
+              Model.addTx(m,t);
+              if(t.category) Predictor.learn(t.desc,t.category);
+              DescPredictor.learn(t.desc);
+              if(t.category) catSet.add(t.category);
+            }
             Store.setMonth(mk,m);
           }else if(kind==='categories'){
             const parsed = JSON.parse(text);
@@ -886,6 +944,38 @@
         }
       };
       r.readAsText(file);
+    };
+
+    els.csvMapCancel.onclick = ()=>{ els.csvMapDialog.close(); };
+    els.csvMapConfirm.onclick = ()=>{
+      if(!pendingCSV) return;
+      const map = {
+        date: els.csvMapDate.value,
+        desc: els.csvMapDesc.value,
+        category: els.csvMapCat.value,
+        amount: els.csvMapAmt.value
+      };
+      try{
+        const txs = Utils.parseCSV(pendingCSV.text, map);
+        let m = Store.getMonth(pendingCSV.mk) || Model.emptyMonth();
+        const catSet = new Set(Object.keys(m.categories));
+        for(const t of txs){
+          if(!t.category){
+            t.category = Predictor.predict(t.desc, [...catSet]) || '';
+          }
+          Model.addTx(m,t);
+          if(t.category) Predictor.learn(t.desc,t.category);
+          DescPredictor.learn(t.desc);
+          if(t.category) catSet.add(t.category);
+        }
+        Store.setMonth(pendingCSV.mk,m);
+        loadMonth(pendingCSV.mk);
+        Dialog.info('Import completed.');
+        pendingCSV = null;
+        els.csvMapDialog.close();
+      }catch{
+        Dialog.alert('Import failed. Adjust field mapping.');
+      }
     };
 
     const runAnalysis = ()=>{
