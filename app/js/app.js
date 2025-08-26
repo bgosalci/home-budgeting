@@ -912,7 +912,16 @@
             }
             if(!Array.isArray(txs)) throw new Error('bad');
             let m = Store.getMonth(mk) || Model.emptyMonth();
-            for(const t of txs) Model.addTx(m,t);
+            const catSet = new Set(Object.keys(m.categories));
+            for(const t of txs){
+              if(!t.category){
+                t.category = Predictor.predict(t.desc, [...catSet]) || '';
+              }
+              Model.addTx(m,t);
+              if(t.category) Predictor.learn(t.desc,t.category);
+              DescPredictor.learn(t.desc);
+              if(t.category) catSet.add(t.category);
+            }
             Store.setMonth(mk,m);
           }else if(kind==='categories'){
             const parsed = JSON.parse(text);
@@ -949,7 +958,16 @@
       try{
         const txs = Utils.parseCSV(pendingCSV.text, map);
         let m = Store.getMonth(pendingCSV.mk) || Model.emptyMonth();
-        for(const t of txs) Model.addTx(m,t);
+        const catSet = new Set(Object.keys(m.categories));
+        for(const t of txs){
+          if(!t.category){
+            t.category = Predictor.predict(t.desc, [...catSet]) || '';
+          }
+          Model.addTx(m,t);
+          if(t.category) Predictor.learn(t.desc,t.category);
+          DescPredictor.learn(t.desc);
+          if(t.category) catSet.add(t.category);
+        }
         Store.setMonth(pendingCSV.mk,m);
         loadMonth(pendingCSV.mk);
         Dialog.info('Import completed.');
