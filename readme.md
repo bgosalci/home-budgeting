@@ -79,6 +79,9 @@ Each month keeps its own set of categories. Adding a new month copies the previo
 ### Description Prediction
 As you type a transaction description, the app looks up your past entries that are stored in your browser's local storage. Only unique descriptions are kept. A tooltip beneath the field now spans the full width and lists up to four matches. Use the up and down keys to highlight an option and press <kbd>Enter</kbd> or click to choose one; the description will auto‑fill.
 
+### Description → Category Map
+The auto‑learning map that predicts a category from a description now takes the amount into account. When the same description appears with different amounts, the app can learn separate categories for each amount, letting a single description belong to multiple categories.
+
 ### Add Transaction Shortcuts
 The add transaction form now requires a date, description and amount before a transaction can be added. Pressing <kbd>Enter</kbd> in any field triggers the add action, and focus returns to the description field to speed up entry of multiple transactions.
 
