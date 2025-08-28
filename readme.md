@@ -4,6 +4,8 @@ This repository contains a simple monthly home budgeting app.
 
 The web page title is now "Home Budgeting".
 
+A favicon has been added using `hb-pie_bottom-left-512x512.png`.
+
 ## Usage
 Open `index.html` in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace.
 
