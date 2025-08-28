@@ -31,6 +31,7 @@
       <button class="tab" role="tab" id="tab-transactions" aria-selected="false">Transactions</button>
       <button class="tab" role="tab" id="tab-analysis" aria-selected="false">Analysis</button>
       <button class="tab" role="tab" id="tab-calendar" aria-selected="false">Calendar</button>
+      <button class="tab" role="tab" id="tab-notes" aria-selected="false">Notes</button>
       <button class="tab" role="tab" id="tab-learning" aria-selected="false">Prediction Map</button>
     </div>
 
@@ -290,6 +291,20 @@
       <div id="calendar-container"></div>
       <div class="dialog-actions">
         <button id="calendar-close" class="primary">Close</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="notes-dialog" class="dialog">
+    <div class="dialog-content">
+      <div class="row">
+        <input id="note-desc" placeholder="Description"/>
+        <input id="note-data" placeholder="Note"/>
+        <button id="add-note" class="primary">Add Note</button>
+      </div>
+      </br>
+      <div class="list" id="notes-list"></div>
+      <div class="dialog-actions">
+        <button id="notes-close" class="primary">Close</button>
       </div>
     </div>
   </dialog>

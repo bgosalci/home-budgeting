@@ -99,10 +99,10 @@
     const KEY = 'budget.local.v1';
     const load = ()=>{
       try{
-        return JSON.parse(localStorage.getItem(KEY)) || {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[]};
+        return JSON.parse(localStorage.getItem(KEY)) || {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[], notes:[]};
       }
       catch{
-        return {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[]};
+        return {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[], notes:[]};
       }
     };
     const save = (state)=>localStorage.setItem(KEY, JSON.stringify(state));
@@ -110,6 +110,7 @@
     for(const m of Object.values(state.months||{})){
       m.categories = m.categories || {};
     }
+    state.notes = state.notes || [];
     if(state.categories){
       for(const m of Object.values(state.months)){
         m.categories = {...Utils.clone(state.categories), ...m.categories};
@@ -182,7 +183,9 @@
     const setCollapsed = (mk,g,val)=>{ collapsedFor(mk)[g]=!!val; save(state); };
     const toggleCollapsed = (mk,g)=>{ setCollapsed(mk,g,!isCollapsed(mk,g)); };
     const setAllCollapsed = (mk, groups, val)=>{ const obj = collapsedFor(mk); (groups||[]).forEach(g=>obj[g]=!!val); save(state); };
-    return {state,getMonth,setMonth,allMonths,categories,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportData,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed};
+    const notes = ()=> state.notes || [];
+    const setNotes = (list)=>{ state.notes = list; save(state); };
+    return {state,getMonth,setMonth,allMonths,categories,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportData,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed,notes,setNotes};
   })();
 
   // ===== Charts (vanilla Canvas)
@@ -385,13 +388,20 @@
       calendarPrev: document.getElementById('calendar-prev'),
       calendarNext: document.getElementById('calendar-next'),
       calendarMonth: document.getElementById('calendar-month'),
+      notesDialog: document.getElementById('notes-dialog'),
+      noteDesc: document.getElementById('note-desc'),
+      noteData: document.getElementById('note-data'),
+      addNote: document.getElementById('add-note'),
+      notesList: document.getElementById('notes-list'),
+      notesClose: document.getElementById('notes-close'),
 
       // Tabs
       tabBudget: document.getElementById('tab-budget'),
       tabTx: document.getElementById('tab-transactions'),
       tabAnalysis: document.getElementById('tab-analysis'),
-      tabLearning: document.getElementById('tab-learning'),
       tabCalendar: document.getElementById('tab-calendar'),
+      tabNotes: document.getElementById('tab-notes'),
+      tabLearning: document.getElementById('tab-learning'),
       panelBudget: document.getElementById('panel-budget'),
       panelTx: document.getElementById('panel-transactions'),
       panelAnalysis: document.getElementById('panel-analysis'),
@@ -456,6 +466,7 @@
     let currentMonthKey = Utils.monthKey();
     let editingIncomeId = null;
     let editingTxId = null;
+    let editingNoteId = null;
     let analysisChart = null;
     let analysisChartActual = null;
     let calendarDate = new Date();
@@ -670,11 +681,39 @@
           const month = Store.getMonth(currentMonthKey);
           const t = Model.totals(month);
           Utils.setText(els.totalIncome, t.income);
-          Utils.setText(els.leftoverActual, t.leftoverActual);
-          els.leftoverPill.textContent = `Left Over ${Utils.fmt(t.leftoverActual)}`;
-          els.leftoverPill.classList.toggle('danger', t.leftoverActual < 0);
+      Utils.setText(els.leftoverActual, t.leftoverActual);
+      els.leftoverPill.textContent = `Left Over ${Utils.fmt(t.leftoverActual)}`;
+      els.leftoverPill.classList.toggle('danger', t.leftoverActual < 0);
 
+    }
+
+    function addNoteRow(n){
+      const row = document.createElement('div'); row.className='list-item';
+      const time = new Date(n.time).toLocaleString();
+      row.innerHTML = `<div class="grow"><strong>${n.desc}</strong><div>${n.data}</div><div><small>${time}</small></div></div>`+
+                      `<div class="actions"><button class="icon-btn" data-act="edit" data-id="${n.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${n.id}" aria-label="Delete">${ICON_DELETE}</button></div>`;
+      row.onclick = async (e)=>{
+        const act = e.target.closest('button')?.dataset?.act; if(!act) return;
+        const notes = Store.notes();
+        const idx = notes.findIndex(x=>x.id===n.id);
+        if(act==='del'){
+          if(await Dialog.confirm('Delete this note?')){ notes.splice(idx,1); Store.setNotes(notes); renderNotes(); }
         }
+        if(act==='edit'){
+          els.noteDesc.value = n.desc;
+          els.noteData.value = n.data;
+          editingNoteId = n.id;
+          els.addNote.textContent = 'Update Note';
+        }
+      };
+      els.notesList.appendChild(row);
+    }
+
+    function renderNotes(){
+      els.notesList.innerHTML = '';
+      const notes = Store.notes();
+      notes.forEach(n=> addNoteRow(n));
+    }
 
     // ---- Event wiring
     els.addIncome.onclick = ()=>{
@@ -814,6 +853,25 @@
       else els.txList.scrollTo({top:els.txList.scrollHeight,behavior:'smooth'});
     };
     els.txList.addEventListener('scroll', updateTxJump);
+
+    els.addNote.onclick = ()=>{
+      const desc = els.noteDesc.value.trim();
+      const data = els.noteData.value.trim();
+      if(!desc && !data) return;
+      const notes = Store.notes();
+      if(editingNoteId){
+        const n = notes.find(x=>x.id===editingNoteId);
+        if(n){ n.desc = desc; n.data = data; }
+        editingNoteId = null;
+        els.addNote.textContent = 'Add Note';
+      } else {
+        notes.push({id:Date.now(), desc, data, time: Date.now()});
+      }
+      Store.setNotes(notes);
+      els.noteDesc.value='';
+      els.noteData.value='';
+      renderNotes();
+    };
 
     // Learning panel
     els.learnAdd.onclick = ()=>{ Predictor.learn(els.learnDesc.value, els.learnCat.value); DescPredictor.learn(els.learnDesc.value); els.learnDesc.value=''; renderLearnList(); };
@@ -1186,8 +1244,10 @@
     els.tabBudget.onclick = ()=>selectTab('budget');
     els.tabTx.onclick = ()=>selectTab('tx');
     els.tabAnalysis.onclick = ()=>{ selectTab('analysis'); runAnalysis(); };
-    els.tabLearning.onclick = ()=>{ selectTab('learn'); renderLearnList(); };
     els.tabCalendar.onclick = ()=>{ calendarDate = new Date(); renderCalendar(); els.calendarDialog.showModal(); };
+    els.tabNotes.onclick = ()=>{ editingNoteId=null; els.addNote.textContent='Add Note'; els.noteDesc.value=''; els.noteData.value=''; renderNotes(); els.notesDialog.showModal(); };
+    els.tabLearning.onclick = ()=>{ selectTab('learn'); renderLearnList(); };
+    els.notesClose.onclick = ()=>els.notesDialog.close();
     els.calendarClose.onclick = ()=>els.calendarDialog.close();
     els.calendarPrev.onclick = ()=>{ calendarDate.setMonth(calendarDate.getMonth()-1); renderCalendar(); };
     els.calendarNext.onclick = ()=>{ calendarDate.setMonth(calendarDate.getMonth()+1); renderCalendar(); };
