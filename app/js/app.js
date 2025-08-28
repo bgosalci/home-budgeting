@@ -690,7 +690,7 @@
     function addNoteRow(n){
       const row = document.createElement('div'); row.className='list-item';
       const time = new Date(n.time).toLocaleString();
-      row.innerHTML = `<div class="grow"><strong>${n.desc}</strong><div>${n.data}</div><div><small>${time}</small></div></div>`+
+      row.innerHTML = `<div class="grow"><strong>${n.desc}</strong><div class="note-text">${n.data}</div><div><small>${time}</small></div></div>`+
                       `<div class="actions"><button class="icon-btn" data-act="edit" data-id="${n.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${n.id}" aria-label="Delete">${ICON_DELETE}</button></div>`;
       row.onclick = async (e)=>{
         const act = e.target.closest('button')?.dataset?.act; if(!act) return;
