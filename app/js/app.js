@@ -407,6 +407,8 @@
       analysisMonth: document.getElementById('analysis-month'),
       analysisGroupRow: document.getElementById('analysis-group-row'),
       analysisGroup: document.getElementById('analysis-group'),
+      analysisCategoryRow: document.getElementById('analysis-category-row'),
+      analysisCategory: document.getElementById('analysis-category'),
 
       // Income
       incomeList: document.getElementById('income-list'),
@@ -1027,6 +1029,7 @@
       if(opt === 'budget-spread'){
         els.analysisMonthRow.classList.remove('hidden');
         els.analysisGroupRow.classList.add('hidden');
+        els.analysisCategoryRow.classList.add('hidden');
         const months = Store.allMonths();
         const opts = months.map(m=>`<option value="${m}">${new Date(m+'-01').toLocaleString(undefined,{month:'short',year:'numeric'})}</option>`).join('');
         const prev = els.analysisMonth.value;
@@ -1038,12 +1041,20 @@
       }else if(opt === 'monthly-spend'){
         els.analysisMonthRow.classList.add('hidden');
         els.analysisGroupRow.classList.remove('hidden');
+        els.analysisCategoryRow.classList.remove('hidden');
         const catsCur = Store.categories(currentMonthKey);
         const groups = [...new Set(Object.values(catsCur).map(x=>x.group||'Other'))].sort();
         const prevGroup = els.analysisGroup.value;
-        const opts = ['<option value="">All</option>', ...groups.map(g=>`<option value="${g}">${g}</option>`)];
-        els.analysisGroup.innerHTML = opts.join('');
+        const groupOpts = ['<option value="">All</option>', ...groups.map(g=>`<option value="${g}">${g}</option>`)];
+        els.analysisGroup.innerHTML = groupOpts.join('');
         els.analysisGroup.value = groups.includes(prevGroup) ? prevGroup : '';
+        const prevCat = els.analysisCategory.value;
+        const groupSel = els.analysisGroup.value;
+        const allCats = Object.keys(catsCur).sort();
+        const catList = allCats.filter(c=>!groupSel || (catsCur[c].group||'Other')===groupSel);
+        const catOpts = ['<option value="">All</option>', ...catList.map(c=>`<option value="${c}">${c}</option>`)];
+        els.analysisCategory.innerHTML = catOpts.join('');
+        els.analysisCategory.value = catList.includes(prevCat) ? prevCat : '';
         const prevType = els.analysisChartType.value;
         els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
         els.analysisChartType.value = ['line','bar'].includes(prevType) ? prevType : 'line';
@@ -1058,18 +1069,20 @@
         const months = Store.allMonths();
         const labels = months;
         const group = els.analysisGroup.value;
+        const category = els.analysisCategory.value;
         const data = months.map(mk=>{
           const m = Store.getMonth(mk) || {transactions:[], categories:{}};
           const cats = m.categories || {};
           const txs = m.transactions||[];
           return Utils.sum(txs.filter(t=>{
+            if(category) return t.category === category;
             if(!group) return true;
             const meta = cats[t.category] || {};
             const g = meta.group || 'Other';
             return g === group;
           }), t=>t.amount);
         });
-        const label = group ? `${group} Spend` : 'Total Spend';
+        const label = category ? `${category} Spend` : group ? `${group} Spend` : 'Total Spend';
         analysisChart = new Chart(els.analysisChart.getContext('2d'), {
           type: style === 'bar' ? 'bar' : 'line',
           data: {
@@ -1182,6 +1195,7 @@
     els.analysisChartType.onchange = runAnalysis;
     els.analysisMonth.onchange = runAnalysis;
     els.analysisGroup.onchange = runAnalysis;
+    els.analysisCategory.onchange = runAnalysis;
 
     function renderCalendar(){
       const year = calendarDate.getFullYear();
