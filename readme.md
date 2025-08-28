@@ -90,5 +90,8 @@ The add transaction form now requires a date, description and amount before a tr
 ### Calendar
 A **Calendar** tab opens a wide view-only calendar in a pop‑up dialog for quick date reference. The calendar shows the current month name, centers all weekday labels and dates, highlights today's date in bold, starts weeks on Monday, includes arrows to navigate between months, and shows each day's total transaction amount in the bottom-right corner of its cell using a secondary font color.
 
+### Notes
+The **Notes** tab opens a pop‑up dialog listing all saved notes. Each entry displays its description, note text and the time it was added, with edit and delete icon buttons for changes. Notes are stored in your browser's local storage so they are available across all months. Use the multi‑line textarea to enter longer notes. The Add Note button sits beneath the note field with extra space above and below for easier access. The dialog is fixed at 600px wide and long notes automatically wrap for easier reading.
+
 ## Tests
 Run `npm test` to verify the project is set up correctly.

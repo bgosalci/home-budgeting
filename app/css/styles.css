@@ -435,6 +435,10 @@ dialog.dialog.confirm .dialog-content {
   width: 700px;
   max-width: 90vw;
 }
+
+#notes-dialog .dialog-content {
+  width: 600px;
+}
 .calendar-header {
   display: flex;
   justify-content: space-between;
@@ -454,4 +458,21 @@ dialog.dialog.confirm .dialog-content {
 }
 .calendar-table td.today {
   font-weight: bold;
+}
+
+#notes-dialog textarea {
+  min-height: 80px;
+}
+#notes-dialog #add-note {
+  display: inline-block;
+  margin: 10px 0;
+}
+
+#notes-list .grow {
+  min-width: 0;
+}
+
+#notes-dialog .note-text {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
