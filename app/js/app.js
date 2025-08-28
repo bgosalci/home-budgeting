@@ -1,75 +1,6 @@
-  // ===== Utils
-  const Utils = (()=>{
-    const fmt = (n)=>`£${(n||0).toFixed(2)}`;
-    const setText = (el,n)=>{ el.textContent = fmt(n); el.classList.toggle('danger', n<0); };
-    const id = () => Math.random().toString(36).slice(2,9);
-    const monthKey = (d)=>{
-      if(typeof d === 'string') return d; // already key
-      const dt = d || new Date();
-      const m = String(dt.getMonth()+1).padStart(2,'0');
-      return `${dt.getFullYear()}-${m}`;
-    };
-    const groupBy = (arr, fn)=>arr.reduce((a,x)=>{const k=fn(x);(a[k]=a[k]||[]).push(x);return a;},{});
-    const sum = (arr, fn=(x)=>x)=>arr.reduce((a,x)=>a+fn(x),0);
-    const clone = (o)=>JSON.parse(JSON.stringify(o));
-    const parseCSV = (text, map, hasHeader=true, invert=false)=>{
-      const lines = text.trim().split(/\r?\n/).filter(l=>l);
-      if(hasHeader) lines.shift();
-      let idx = {date:0, desc:1, category:2, amount:3};
-      if(map){
-        idx = {};
-        for(const [k,v] of Object.entries(map)){
-          idx[k] = (v==='' || v===null) ? -1 : Number(v);
-        }
-      }
-      const splitLine = (line)=>{
-        const cols = [];
-        let cur = '';
-        let inQuotes = false;
-        for(let i=0;i<line.length;i++){
-          const ch = line[i];
-          if(ch === '"'){
-            if(inQuotes && line[i+1] === '"'){ cur+='"'; i++; }
-            else inQuotes = !inQuotes;
-          }else if(ch===',' && !inQuotes){
-            cols.push(cur.trim());
-            cur='';
-          }else{
-            cur+=ch;
-          }
-        }
-        cols.push(cur.trim());
-        return cols.map(s=>s.replace(/^"|"$/g,'').replace(/""/g,'"'));
-      };
-      return lines.map(line=>{
-        const cols = splitLine(line);
-        const dRaw = idx.date>=0 ? cols[idx.date]||'' : '';
-        const desc = idx.desc>=0 ? cols[idx.desc]||'' : '';
-        const category = idx.category>=0 ? cols[idx.category]||'' : '';
-        let aRaw = idx.amount>=0 ? cols[idx.amount]||'' : '';
-        if(idx.amount>=0 && cols.length>Math.max(idx.amount+1,4)){
-          aRaw = cols.slice(idx.amount).join('');
-        }
-        let date = '';
-        if(dRaw){
-          const [dd,mm,yyyy] = dRaw.split(/[\/]/);
-          if(yyyy && mm && dd) date = `${yyyy}-${mm}-${dd}`;
-        }
-        let amount = Number(aRaw.replace(/[^0-9.-]/g,'')) || 0;
-        if(invert) amount = -amount;
-        return {date,desc,category,amount};
-      });
-    };
-    const toCSV = (txs)=>[
-      'Date,Description,Category,Amount',
-      ...txs.map(t=>{
-        const [y,m,d] = (t.date||'').split('-');
-        const date = d?`${d}/${m}/${y}`:'';
-        return [date,t.desc,t.category,`£${Number(t.amount||0).toFixed(2)}`].join(',');
-      })
-    ].join('\n');
-    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV,toCSV,setText};
-  })();
+import { Utils } from './utils.js';
+import { Store } from './storage.js';
+import { monthlySpendChart, budgetSpreadCharts } from './chart.js';
 
   // ===== Dialog (modal pop-ups)
   const Dialog = (()=>{
@@ -93,149 +24,6 @@
     const confirm = (m)=>open('confirm',m,true);
     return {alert,info,confirm};
   })();
-
-  // ===== Storage (localStorage) – closure encapsulation
-  const Store = (()=>{
-    const KEY = 'budget.local.v1';
-    const load = ()=>{
-      try{
-        return JSON.parse(localStorage.getItem(KEY)) || {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[], notes:[]};
-      }
-      catch{
-        return {version:1, months:{}, mapping:{exact:{}, tokens:{}}, descMap:{exact:{}, tokens:{}}, ui:{collapsed:{}}, descList:[], notes:[]};
-      }
-    };
-    const save = (state)=>localStorage.setItem(KEY, JSON.stringify(state));
-    const state = load();
-    for(const m of Object.values(state.months||{})){
-      m.categories = m.categories || {};
-    }
-    state.notes = state.notes || [];
-    if(state.categories){
-      for(const m of Object.values(state.months)){
-        m.categories = {...Utils.clone(state.categories), ...m.categories};
-      }
-      delete state.categories;
-      save(state);
-    }
-    const getMonth = (mk)=> state.months[mk];
-    const setMonth = (mk, data)=>{ state.months[mk]=data; save(state); };
-    const allMonths = ()=> Object.keys(state.months).sort();
-    const categories = (mk)=> state.months[mk]?.categories || {};
-    const mapping = ()=> state.mapping;
-    const setMapping = (m)=>{ state.mapping = m; save(state); };
-    const descMap = ()=> state.descMap || (state.descMap={exact:{},tokens:{}});
-    const setDescMap = (m)=>{ state.descMap = m; save(state); };
-    const descList = ()=> state.descList || (state.descList=[]);
-    const setDescList = (list)=>{ state.descList = list; save(state); };
-    const exportData = (kind, mk)=>{
-      if(kind==='transactions'){
-        const m = state.months[mk];
-        return m ? (m.transactions||[]) : [];
-      }
-      if(kind==='categories'){
-        const m = state.months[mk];
-        return {categories: m ? (m.categories||{}) : {}};
-      }
-      if(kind==='prediction'){
-        return {mapping: state.mapping, descMap: state.descMap, descList: state.descList||[]};
-      }
-      // all data
-      return {version:state.version, months: state.months, mapping: state.mapping, descMap: state.descMap, descList: state.descList||[]};
-    };
-    const importData = (json)=>{
-      const incoming = typeof json === 'string' ? JSON.parse(json) : json;
-      if(!incoming || !incoming.months) return;
-      state.version = incoming.version || state.version;
-      state.mapping.exact = {...state.mapping.exact, ...(incoming.mapping?.exact||{})};
-      for(const [k,v] of Object.entries(incoming.mapping?.tokens||{})){
-        const cur = state.mapping.tokens[k] || {};
-        for(const [cat,cnt] of Object.entries(v)) cur[cat] = (cur[cat]||0)+cnt;
-        state.mapping.tokens[k] = cur;
-      }
-      state.descMap = state.descMap || {exact:{},tokens:{}};
-      state.descMap.exact = {...state.descMap.exact, ...(incoming.descMap?.exact||{})};
-      for(const [k,v] of Object.entries(incoming.descMap?.tokens||{})){
-        const cur = state.descMap.tokens[k] || {};
-        for(const [desc,cnt] of Object.entries(v)) cur[desc] = (cur[desc]||0)+cnt;
-        state.descMap.tokens[k] = cur;
-      }
-      const inList = incoming.descList || [];
-      const curList = descList();
-      for(const d of inList){
-        if(!curList.some(x=>x.toLowerCase()===d.toLowerCase())) curList.push(d);
-      }
-      state.descList = curList;
-      if(incoming.categories){
-        for(const m of Object.values(incoming.months)){
-          m.categories = {...incoming.categories, ...(m.categories||{})};
-        }
-      }
-      for(const [mk,month] of Object.entries(incoming.months)){
-        month.categories = month.categories || {};
-        state.months[mk]=month;
-      } // last-write-wins
-      save(state);
-    };
-    // Collapsed groups (UI state)
-    const collapsedFor = (mk)=>{ state.ui = state.ui || {collapsed:{}}; state.ui.collapsed = state.ui.collapsed || {}; state.ui.collapsed[mk] = state.ui.collapsed[mk] || {}; return state.ui.collapsed[mk]; };
-    const isCollapsed = (mk,g)=> !!collapsedFor(mk)[g];
-    const setCollapsed = (mk,g,val)=>{ collapsedFor(mk)[g]=!!val; save(state); };
-    const toggleCollapsed = (mk,g)=>{ setCollapsed(mk,g,!isCollapsed(mk,g)); };
-    const setAllCollapsed = (mk, groups, val)=>{ const obj = collapsedFor(mk); (groups||[]).forEach(g=>obj[g]=!!val); save(state); };
-    const notes = ()=> state.notes || [];
-    const setNotes = (list)=>{ state.notes = list; save(state); };
-    return {state,getMonth,setMonth,allMonths,categories,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportData,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed,notes,setNotes};
-  })();
-
-  // ===== Charts (vanilla Canvas)
-  const Charts = (()=>{
-    const bar = (canvas, labels, series)=>{
-      if(!canvas) return; const ctx = canvas.getContext('2d');
-      const W = canvas.width = canvas.clientWidth*2; const H = canvas.height = canvas.clientHeight*2;
-      ctx.clearRect(0,0,W,H); ctx.font = '24px system-ui'; ctx.fillStyle = '#111';
-      const left=90, right=40, bottom=80, top=30; const plotW=W-left-right, plotH=H-top-bottom;
-      const max = Math.max(1, ...series.flat());
-      // axes
-      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(left,top); ctx.lineTo(left,H-bottom); ctx.lineTo(W-right,H-bottom); ctx.stroke();
-      const n = labels.length; const groups = series.length; const band = plotW/n; const barW = Math.min(50,(band-20)/groups);
-      const colors = ['#f59e0b','#0ea5e9','#10b981','#ef4444','#8b5cf6'];
-      labels.forEach((lab,i)=>{
-        const x0 = left + i*band + 10;
-        series.forEach((s,g)=>{
-          const val = s[i]||0; const h = (val/max)*plotH; const x = x0 + g*(barW+8); const y = H-bottom - h;
-          ctx.fillStyle = colors[g%colors.length]; ctx.fillRect(x,y,barW,h);
-        });
-        ctx.save(); ctx.fillStyle = '#374151'; ctx.textAlign='center';
-        ctx.translate(x0+band/2-10,H-bottom+28); ctx.rotate(-0.2); ctx.fillText(lab,0,0); ctx.restore();
-      });
-      // legend
-      const names = ['Budget','Actual'];
-      names.forEach((name,i)=>{ ctx.fillStyle = colors[i]; ctx.fillRect(left + i*160, 8, 28, 18); ctx.fillStyle='#111'; ctx.fillText(name, left + i*160 + 36, 24); });
-    };
-
-    const donut = (canvas, parts)=>{
-      if(!canvas) return; const ctx = canvas.getContext('2d');
-      const W = canvas.width = canvas.clientWidth*2; const H = canvas.height = canvas.clientHeight*2;
-      ctx.clearRect(0,0,W,H);
-      const cx=W/2, cy=H/2, r=Math.min(W,H)/3, r2=r*0.64; const total = Object.values(parts).reduce((a,b)=>a+b,0)||1;
-      let start=-Math.PI/2; const colors=['#0ea5e9','#ef4444','#10b981','#f59e0b','#8b5cf6','#14b8a6','#e11d48','#84cc16','#06b6d4'];
-      let i=0; for(const [k,v] of Object.entries(parts)){
-        const ang = (v/total)*Math.PI*2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.fillStyle = colors[i++%colors.length];
-        ctx.arc(cx,cy,r,start,start+ang); ctx.closePath(); ctx.fill();
-        // label
-        const mid=start+ang/2; const lx=cx+Math.cos(mid)*(r+24); const ly=cy+Math.sin(mid)*(r+24);
-        ctx.fillStyle='#111'; ctx.font='22px system-ui'; ctx.fillText(`${k}`, lx-10, ly);
-        start += ang;
-      }
-      // hole
-      ctx.globalCompositeOperation='destination-out'; ctx.beginPath(); ctx.arc(cx,cy,r2,0,Math.PI*2); ctx.fill(); ctx.globalCompositeOperation='source-over';
-      ctx.fillStyle='#111'; ctx.font='28px system-ui'; ctx.textAlign='center'; ctx.fillText('Budget',cx,cy+10);
-    };
-
-    return {bar,donut};
-  })();
-
   // ===== Predictor (learn tokens)
   const Predictor = (()=>{
     const tokensOf = (s)=> (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
@@ -1145,21 +933,13 @@
         const total = Utils.sum(data);
         els.analysisTotal.textContent = Utils.fmt(total);
         const label = category ? `${category} Spend` : group ? `${group} Spend` : 'Total Spend';
-        analysisChart = new Chart(els.analysisChart.getContext('2d'), {
-          type: style === 'bar' ? 'bar' : 'line',
-          data: {
-            labels,
-            datasets: [{
-              label,
-              data,
-              borderColor: '#0ea5e9',
-              backgroundColor: '#0ea5e9',
-              tension: 0.2,
-              fill: false
-            }]
-          },
-          options: { scales: { y: { beginAtZero: true } } }
-        });
+        analysisChart = monthlySpendChart(
+          els.analysisChart.getContext('2d'),
+          labels,
+          data,
+          style,
+          label
+        );
       }else if(opt === 'budget-spread'){
         const mk = els.analysisMonth.value || currentMonthKey;
         // Fetch the selected month's data rather than the currently open month
@@ -1175,62 +955,25 @@
         const actualPct = actual.map(v=> actualTot ? (v/actualTot*100) : 0);
         const palette = ['#0ea5e9','#f43f5e','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#22c55e','#d946ef'];
         const colors = labels.map((_,i)=>palette[i%palette.length]);
-        const percentPlugin = {
-          id:'pct',
-          afterDatasetsDraw(chart){
-            const {ctx} = chart;
-            const dataset = chart.data.datasets[0];
-            chart.getDatasetMeta(0).data.forEach((arc,i)=>{
-              const val = dataset.data[i]||0;
-              const pos = arc.tooltipPosition();
-              ctx.save();
-              ctx.fillStyle='#fff';
-              ctx.font='14px system-ui';
-              ctx.textAlign='center';
-              ctx.textBaseline='middle';
-              ctx.fillText(`${val.toFixed(1)}%`, pos.x, pos.y);
-              ctx.restore();
-            });
-          }
-        };
-        const pieOpts = {
-          plugins:{
-            tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}}
-          }
-        };
-        const barOpts = {
-          plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${Utils.fmt(c.parsed.y)}`}}},
-          scales:{y:{beginAtZero:true,ticks:{callback:v=>Utils.fmt(v)}}}
-        };
+        const charts = budgetSpreadCharts(
+          els.analysisChart.getContext('2d'),
+          els.analysisChartActual.getContext('2d'),
+          labels,
+          planned,
+          actual,
+          style,
+          colors,
+          plannedPct,
+          actualPct,
+          Utils.fmt
+        );
+        analysisChart = charts.chart;
+        analysisChartActual = charts.actualChart;
         if(style === 'pie'){
           els.analysisCharts.classList.add('charts');
           els.analysisPlannedTitle.classList.remove('hidden');
           els.analysisActualTitle.classList.remove('hidden');
           els.analysisChartActual.classList.remove('hidden');
-          analysisChart = new Chart(els.analysisChart.getContext('2d'), {
-            type:'pie',
-            data:{labels,datasets:[{label:'Planned %', data: plannedPct, backgroundColor: colors}]},
-            options: pieOpts,
-            plugins:[percentPlugin]
-          });
-          analysisChartActual = new Chart(els.analysisChartActual.getContext('2d'), {
-            type:'pie',
-            data:{labels,datasets:[{label:'Actual %', data: actualPct, backgroundColor: colors}]},
-            options: pieOpts,
-            plugins:[percentPlugin]
-          });
-        }else{
-          analysisChart = new Chart(els.analysisChart.getContext('2d'), {
-            type:'bar',
-            data:{
-              labels,
-              datasets:[
-                {label:'Planned', data: planned, backgroundColor:'#0ea5e9'},
-                {label:'Actual', data: actual, backgroundColor:'#f43f5e'}
-              ]
-            },
-            options: barOpts
-          });
         }
       }
     };
