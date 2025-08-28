@@ -455,3 +455,7 @@ dialog.dialog.confirm .dialog-content {
 .calendar-table td.today {
   font-weight: bold;
 }
+
+#notes-dialog textarea {
+  min-height: 80px;
+}
