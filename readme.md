@@ -5,7 +5,7 @@ This repository contains a simple monthly home budgeting app.
 The web page title is now "Home Budgeting".
 
 ## Usage
-Open `index.html` in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace.
+Run `npm start` and open [http://localhost:8000](http://localhost:8000) in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace. Loading the files directly from disk may trigger a CORS error because the JavaScript uses ES modules, so a local web server is required.
 
 The app now starts with no pre-filled categories or incomes. Previously seeded "Salary" and "Vala" income examples have been removed, so you can build your budget entirely from scratch. The previous *Clear* button has been removed; delete categories individually or start a new month if you need a blank slate. Categories can be collapsed or expanded using the secondary-styled controls above the table.
 
