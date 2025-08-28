@@ -12,8 +12,11 @@ export const Store = (()=>{
   };
   const save = (state)=>localStorage.setItem(KEY, JSON.stringify(state));
   const state = load();
-  for(const m of Object.values(state.months||{})){
+  state.months = state.months || {};
+  for(const m of Object.values(state.months)){
     m.categories = m.categories || {};
+    m.incomes = m.incomes || [];
+    m.transactions = m.transactions || [];
   }
   state.notes = state.notes || [];
   if(state.categories){

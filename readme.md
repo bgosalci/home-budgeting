@@ -18,6 +18,8 @@ The JavaScript code is split into modules:
 - `chart.js` – chart rendering helpers
 - `app.js` – main application logic
 
+Saved months with missing income or transaction lists are now restored correctly when the app loads.
+
 ### Month Controls
 You can add a new budget month or switch between months using the inline controls in the header. New months start with a copy of the previous month's categories so each month's budget can evolve independently. The previous **Duplicate Prev** button has been removed, and the **Add Month** and **Open Month** controls now appear on a single line for quicker access.
 
