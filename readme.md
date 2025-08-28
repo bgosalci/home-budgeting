@@ -56,6 +56,7 @@ An **Analysis** tab is now available after the Transactions tab. It provides **B
 
 Selecting a different month in the Analysis tab now shows both planned and actual spending for that specific month instead of always using the current month.
 The Monthly Spend view can now be filtered by group using the Group selector, which defaults to showing all groups. A Category selector beneath it lets you drill down to a single category.
+The Analysis Chart header now displays the total for the selected view, showing both planned and actual totals for Budget Spread or the combined spend for Monthly Spend.
 
 ### Transaction Editing
 Each monthly transaction entry includes an edit icon so existing records can be updated.

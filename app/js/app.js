@@ -413,6 +413,7 @@
       analysisChart: document.getElementById('analysis-chart'),
       analysisChartActual: document.getElementById('analysis-chart-actual'),
       analysisCharts: document.getElementById('analysis-charts'),
+      analysisTotal: document.getElementById('analysis-total'),
       analysisMonthRow: document.getElementById('analysis-month-row'),
       analysisMonth: document.getElementById('analysis-month'),
       analysisGroupRow: document.getElementById('analysis-group-row'),
@@ -1084,6 +1085,7 @@
     const runAnalysis = ()=>{
       const opt = els.analysisSelect.value;
       els.analysisCharts.classList.remove('charts');
+      els.analysisTotal.textContent = '';
       if(opt === 'budget-spread'){
         els.analysisMonthRow.classList.remove('hidden');
         els.analysisGroupRow.classList.add('hidden');
@@ -1140,6 +1142,8 @@
             return g === group;
           }), t=>t.amount);
         });
+        const total = Utils.sum(data);
+        els.analysisTotal.textContent = Utils.fmt(total);
         const label = category ? `${category} Spend` : group ? `${group} Spend` : 'Total Spend';
         analysisChart = new Chart(els.analysisChart.getContext('2d'), {
           type: style === 'bar' ? 'bar' : 'line',
@@ -1166,6 +1170,7 @@
         const actual = labels.map(l=>totals.groups[l]?.actual || 0);
         const plannedTot = Utils.sum(planned);
         const actualTot = Utils.sum(actual);
+        els.analysisTotal.textContent = `Planned ${Utils.fmt(plannedTot)} / Actual ${Utils.fmt(actualTot)}`;
         const plannedPct = planned.map(v=> plannedTot ? (v/plannedTot*100) : 0);
         const actualPct = actual.map(v=> actualTot ? (v/actualTot*100) : 0);
         const palette = ['#0ea5e9','#f43f5e','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#22c55e','#d946ef'];
