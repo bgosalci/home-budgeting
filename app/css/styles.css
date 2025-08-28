@@ -459,3 +459,7 @@ dialog.dialog.confirm .dialog-content {
 #notes-dialog textarea {
   min-height: 80px;
 }
+#notes-dialog #add-note {
+  display: inline-block;
+  margin: 10px 0;
+}
