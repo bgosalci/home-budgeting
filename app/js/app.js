@@ -416,6 +416,8 @@
       analysisTotal: document.getElementById('analysis-total'),
       analysisMonthRow: document.getElementById('analysis-month-row'),
       analysisMonth: document.getElementById('analysis-month'),
+      analysisYearRow: document.getElementById('analysis-year-row'),
+      analysisYear: document.getElementById('analysis-year'),
       analysisGroupRow: document.getElementById('analysis-group-row'),
       analysisGroup: document.getElementById('analysis-group'),
       analysisCategoryRow: document.getElementById('analysis-category-row'),
@@ -1088,6 +1090,7 @@
       els.analysisTotal.textContent = '';
       if(opt === 'budget-spread'){
         els.analysisMonthRow.classList.remove('hidden');
+        els.analysisYearRow.classList.add('hidden');
         els.analysisGroupRow.classList.add('hidden');
         els.analysisCategoryRow.classList.add('hidden');
         const months = Store.allMonths();
@@ -1100,8 +1103,15 @@
         els.analysisChartType.value = ['pie','bar'].includes(prevType) ? prevType : 'bar';
       }else if(opt === 'monthly-spend'){
         els.analysisMonthRow.classList.add('hidden');
+        els.analysisYearRow.classList.remove('hidden');
         els.analysisGroupRow.classList.remove('hidden');
         els.analysisCategoryRow.classList.remove('hidden');
+        const monthsAll = Store.allMonths();
+        const years = [...new Set(monthsAll.map(m=>m.slice(0,4)))].sort();
+        const prevYear = els.analysisYear.value;
+        const yearOpts = ['<option value="">All</option>', ...years.map(y=>`<option value="${y}">${y}</option>`)];
+        els.analysisYear.innerHTML = yearOpts.join('');
+        els.analysisYear.value = years.includes(prevYear) ? prevYear : '';
         const catsCur = Store.categories(currentMonthKey);
         const groups = [...new Set(Object.values(catsCur).map(x=>x.group||'Other'))].sort();
         const prevGroup = els.analysisGroup.value;
@@ -1126,7 +1136,8 @@
       els.analysisActualTitle.classList.add('hidden');
       els.analysisChartActual.classList.add('hidden');
       if(opt === 'monthly-spend'){
-        const months = Store.allMonths();
+        const yearSel = els.analysisYear.value;
+        const months = Store.allMonths().filter(m=>!yearSel || m.startsWith(yearSel));
         const labels = months;
         const group = els.analysisGroup.value;
         const category = els.analysisCategory.value;
@@ -1259,6 +1270,7 @@
     els.analysisSelect.onchange = runAnalysis;
     els.analysisChartType.onchange = runAnalysis;
     els.analysisMonth.onchange = runAnalysis;
+    els.analysisYear.onchange = runAnalysis;
     els.analysisGroup.onchange = runAnalysis;
     els.analysisCategory.onchange = runAnalysis;
 
