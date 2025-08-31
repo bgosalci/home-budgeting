@@ -1101,6 +1101,29 @@
         const prevType = els.analysisChartType.value;
         els.analysisChartType.innerHTML = `<option value="pie">Pie Chart</option><option value="bar">Bar Chart</option>`;
         els.analysisChartType.value = ['pie','bar'].includes(prevType) ? prevType : 'bar';
+      }else if(opt === 'money-in'){
+        els.analysisMonthRow.classList.add('hidden');
+        els.analysisYearRow.classList.remove('hidden');
+        els.analysisGroupRow.classList.remove('hidden');
+        els.analysisCategoryRow.classList.remove('hidden');
+        const monthsAll = Store.allMonths();
+        const years = [...new Set(monthsAll.map(m=>m.slice(0,4)))].sort();
+        const prevYear = els.analysisYear.value;
+        const yearOpts = ['<option value="">All</option>', ...years.map(y=>`<option value="${y}">${y}</option>`)];
+        els.analysisYear.innerHTML = yearOpts.join('');
+        els.analysisYear.value = years.includes(prevYear) ? prevYear : '';
+        const incomesCur = (Store.getMonth(currentMonthKey) || {}).incomes || [];
+        const groupOpts = ['<option value="">All</option>'];
+        els.analysisGroup.innerHTML = groupOpts.join('');
+        els.analysisGroup.value = '';
+        const prevCat = els.analysisCategory.value;
+        const catList = incomesCur.map(x=>x.name).sort();
+        const catOpts = ['<option value="">All</option>', ...catList.map(c=>`<option value="${c}">${c}</option>`)];
+        els.analysisCategory.innerHTML = catOpts.join('');
+        els.analysisCategory.value = catList.includes(prevCat) ? prevCat : '';
+        const prevType = els.analysisChartType.value;
+        els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
+        els.analysisChartType.value = ['line','bar'].includes(prevType) ? prevType : 'line';
       }else if(opt === 'monthly-spend'){
         els.analysisMonthRow.classList.add('hidden');
         els.analysisYearRow.classList.remove('hidden');
@@ -1165,6 +1188,34 @@
               data,
               borderColor: '#0ea5e9',
               backgroundColor: '#0ea5e9',
+              tension: 0.2,
+              fill: false
+            }]
+          },
+          options: { scales: { y: { beginAtZero: true } } }
+        });
+      }else if(opt === 'money-in'){
+        const yearSel = els.analysisYear.value;
+        const months = Store.allMonths().filter(m=>!yearSel || m.startsWith(yearSel));
+        const labels = months;
+        const category = els.analysisCategory.value;
+        const data = months.map(mk=>{
+          const m = Store.getMonth(mk) || {incomes:[]};
+          const incomes = m.incomes || [];
+          return Utils.sum(incomes.filter(i=>!category || i.name===category), i=>i.amount);
+        });
+        const total = Utils.sum(data);
+        els.analysisTotal.textContent = Utils.fmt(total);
+        const label = category ? `${category} Income` : 'Total Income';
+        analysisChart = new Chart(els.analysisChart.getContext('2d'), {
+          type: style === 'bar' ? 'bar' : 'line',
+          data: {
+            labels,
+            datasets: [{
+              label,
+              data,
+              borderColor: '#10b981',
+              backgroundColor: '#10b981',
               tension: 0.2,
               fill: false
             }]
