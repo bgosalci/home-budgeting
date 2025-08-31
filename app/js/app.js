@@ -1116,8 +1116,12 @@
         els.analysisGroup.innerHTML = groupOpts.join('');
         els.analysisGroup.value = '';
         const prevCat = els.analysisCategory.value;
-        const incomesAll = monthsAll.flatMap(mk => (Store.getMonth(mk)?.incomes || []));
-        const catList = [...new Set(incomesAll.map(x=>x.name))].sort();
+        const allMonthsData = Store.exportData().months || {};
+        const catSet = new Set();
+        for(const m of Object.values(allMonthsData)){
+          (m.incomes||[]).forEach(i=>catSet.add(i.name));
+        }
+        const catList = [...catSet].sort();
         const catOpts = ['<option value="">All</option>', ...catList.map(c=>`<option value="${c}">${c}</option>`)];
         els.analysisCategory.innerHTML = catOpts.join('');
         els.analysisCategory.value = catList.includes(prevCat) ? prevCat : '';

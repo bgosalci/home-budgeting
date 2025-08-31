@@ -58,7 +58,7 @@ An **Analysis** tab is now available after the Transactions tab. It provides **B
 
 Selecting a different month in the Analysis tab now shows both planned and actual spending for that specific month instead of always using the current month.
 The Monthly Spend view can now be filtered by year using the Year selector, which lists each available data year along with an All option. A Group selector lets you narrow by group, defaulting to all groups, and a Category selector beneath it lets you drill down to a single category. The Money In view offers the same filters, letting you explore income over time or by source.
-The Money In view now pulls income labels from every month so the source selector and chart include all categories.
+The Money In view now pulls income labels from every stored month so the source selector and chart include all categories across your history.
 The Analysis Chart header now displays the total for the selected view, showing both planned and actual totals for Budget Spread or the combined spend for Monthly Spend.
 
 ### Transaction Editing
