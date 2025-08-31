@@ -54,10 +54,10 @@ Each transaction row now begins with a row number. Prices are bold, match the st
 Transaction rows highlight on mouse hover for improved readability.
 
 ### Analysis Tab
-An **Analysis** tab is now available after the Transactions tab. It provides **Budget Spread** and **Monthly Spend** options (listed alphabetically) to explore your data. The tab now defaults to the **Budget Spread** displayed as a bar chart. Use the **Chart Style** selector to switch between available chart types for the chosen analysis.
+An **Analysis** tab is now available after the Transactions tab. It provides **Budget Spread**, **Money In** and **Monthly Spend** options (listed alphabetically) to explore your data. The tab now defaults to the **Budget Spread** displayed as a bar chart. Use the **Chart Style** selector to switch between available chart types for the chosen analysis.
 
 Selecting a different month in the Analysis tab now shows both planned and actual spending for that specific month instead of always using the current month.
-The Monthly Spend view can now be filtered by year using the Year selector, which lists each available data year along with an All option. A Group selector lets you narrow by group, defaulting to all groups, and a Category selector beneath it lets you drill down to a single category.
+The Monthly Spend view can now be filtered by year using the Year selector, which lists each available data year along with an All option. A Group selector lets you narrow by group, defaulting to all groups, and a Category selector beneath it lets you drill down to a single category. The Money In view offers the same filters, letting you explore income over time or by source.
 The Analysis Chart header now displays the total for the selected view, showing both planned and actual totals for Budget Spread or the combined spend for Monthly Spend.
 
 ### Transaction Editing
