@@ -1112,12 +1112,16 @@
         const yearOpts = ['<option value="">All</option>', ...years.map(y=>`<option value="${y}">${y}</option>`)];
         els.analysisYear.innerHTML = yearOpts.join('');
         els.analysisYear.value = years.includes(prevYear) ? prevYear : '';
-        const incomesCur = (Store.getMonth(currentMonthKey) || {}).incomes || [];
         const groupOpts = ['<option value="">All</option>'];
         els.analysisGroup.innerHTML = groupOpts.join('');
         els.analysisGroup.value = '';
         const prevCat = els.analysisCategory.value;
-        const catList = incomesCur.map(x=>x.name).sort();
+        const allMonthsData = Store.exportData().months || {};
+        const catSet = new Set();
+        for(const m of Object.values(allMonthsData)){
+          (m.incomes||[]).forEach(i=>catSet.add(i.name));
+        }
+        const catList = [...catSet].sort();
         const catOpts = ['<option value="">All</option>', ...catList.map(c=>`<option value="${c}">${c}</option>`)];
         els.analysisCategory.innerHTML = catOpts.join('');
         els.analysisCategory.value = catList.includes(prevCat) ? prevCat : '';
