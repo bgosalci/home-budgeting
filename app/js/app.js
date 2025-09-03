@@ -1,5 +1,6 @@
   // ===== Utils
   const Utils = (()=>{
+    console.log('Home Budgeting Utils module loaded'); // (important-comment)
     const fmt = (n)=>`£${(n||0).toFixed(2)}`;
     const setText = (el,n)=>{ el.textContent = fmt(n); el.classList.toggle('danger', n<0); };
     const id = () => Math.random().toString(36).slice(2,9);
