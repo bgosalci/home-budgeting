@@ -1,0 +1,42 @@
+import { exportData, importData, setMapping, mapping, reset, setDescList, descList } from '../app/js/modules/store.js';
+
+beforeEach(()=>{
+  reset();
+});
+
+test('import/export transactions and categories', ()=>{
+  const data = {
+    version: 1,
+    months: {
+      '2024-07': {
+        incomes: [{id:'i1', name:'Salary', amount:1000}],
+        transactions: [{id:'t1', date:'2024-07-01', desc:'Groceries', amount:50, category:'Food'}],
+        categories: { Food: {group:'Living', budget:200} }
+      }
+    },
+    mapping: {exact:{}, tokens:{}},
+    descMap: {exact:{}, tokens:{}},
+    descList: []
+  };
+  importData(data);
+  const txs = exportData('transactions', '2024-07');
+  expect(txs.length).toBe(1);
+  const cats = exportData('categories', '2024-07');
+  expect(cats.categories.Food.budget).toBe(200);
+});
+
+test('mapping merge and desc list', ()=>{
+  setMapping({exact:{'tesco':'Food'}, tokens:{tesco:{Food:2}}});
+  importData({
+    version:1,
+    months:{},
+    mapping:{exact:{'uber':'Transport'}, tokens:{uber:{Transport:3}}},
+    descMap:{},
+    descList:['Waitrose','Lidl']
+  });
+  const m = mapping();
+  expect(m.exact.uber).toBe('Transport');
+  expect(m.tokens.uber.Transport).toBe(3);
+  setDescList(['A']);
+  expect(descList()).toContain('A');
+});

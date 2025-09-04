@@ -14,6 +14,11 @@ The app now starts with no pre-filled categories or incomes. Previously seeded "
 ## File Structure
 JavaScript files are located in `app/js` and stylesheets in `app/css`.
 
+- app/js/app.js – legacy entry containing UI wiring
+- app/js/main.js – ES module entry that imports app.js
+- app/js/modules/ – modularized core logic
+  - utils.js, dialog.js, store.js, charts.js, predictor.js, descPredictor.js, model.js
+
 ### Month Controls
 You can add a new budget month or switch between months using the inline controls in the header. New months start with a copy of the previous month's categories so each month's budget can evolve independently. The previous **Duplicate Prev** button has been removed, and the **Add Month** and **Open Month** controls now appear on a single line for quicker access.
 
