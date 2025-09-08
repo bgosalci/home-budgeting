@@ -9,6 +9,8 @@ A favicon has been added using `hb-pie_bottom-left-1024x1024.png`.
 ## Usage
 Open `index.html` in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace.
 
+The interface automatically switches between light and dark themes based on your system appearance.
+
 The app now starts with no pre-filled categories or incomes. Previously seeded "Salary" and "Vala" income examples have been removed, so you can build your budget entirely from scratch. The previous *Clear* button has been removed; delete categories individually or start a new month if you need a blank slate. Categories can be collapsed or expanded using the secondary-styled controls above the table.
 
 ## File Structure
