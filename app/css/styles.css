@@ -192,7 +192,8 @@ main {
   flex: 1 1 160px;
 }
 input:not([type="checkbox"]),
-select {
+select,
+textarea {
   width: 100%;
   padding: 8px;
   color: var(--ink);
@@ -444,7 +445,7 @@ dialog.dialog.confirm .dialog-content {
   bottom: 2px;
   right: 4px;
   font-size: 0.75em;
-  color: var(--sub);
+  color: var(--ink);
 }
 #calendar-dialog .dialog-content {
   width: 700px;
@@ -481,6 +482,10 @@ dialog.dialog.confirm .dialog-content {
 #notes-dialog #add-note {
   display: inline-block;
   margin: 10px 0;
+}
+
+#notes-list small {
+  color: var(--ink);
 }
 
 #notes-list .grow {
