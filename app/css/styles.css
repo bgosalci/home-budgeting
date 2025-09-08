@@ -99,14 +99,15 @@ main {
 .tab {
   border: 1px solid var(--border);
   background: var(--card);
+  color: var(--ink);
   padding: 8px 12px;
   border-radius: 10px;
   cursor: pointer;
 }
 .tab[aria-selected="true"] {
-  background: #111827;
+  background: var(--brand);
   color: #fff;
-  border-color: #111827;
+  border-color: var(--brand);
 }
 
 .grid {
@@ -194,6 +195,7 @@ input:not([type="checkbox"]),
 select {
   width: 100%;
   padding: 8px;
+  color: var(--ink);
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--card);
