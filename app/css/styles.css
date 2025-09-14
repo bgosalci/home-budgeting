@@ -208,6 +208,15 @@ input[type="checkbox"] {
   width: auto;
   margin-right: 6px;
 }
+
+html.dark input[type="date"] {
+  accent-color: var(--brand);
+}
+
+html.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(54%) sepia(82%) saturate(3563%) hue-rotate(4deg)
+    brightness(96%) contrast(101%);
+}
 button.primary {
   background: #000;
   color: #fff;
