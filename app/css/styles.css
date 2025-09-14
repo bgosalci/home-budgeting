@@ -213,6 +213,9 @@ button.primary {
   border-radius: 10px;
   cursor: pointer;
 }
+html.dark button.primary {
+  background: var(--brand);
+}
 button.secondary {
   background: var(--sub);
   color: #fff;
@@ -436,6 +439,9 @@ dialog.dialog.confirm .dialog-content {
 }
 .calendar-table th {
   background: var(--muted);
+}
+html.dark .calendar-table th {
+  color: var(--brand);
 }
 .calendar-table td {
   position: relative;
