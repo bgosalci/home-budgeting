@@ -164,6 +164,9 @@ main {
   cursor: pointer;
   margin-right: 6px;
 }
+html.dark .group-row .toggle {
+  color: var(--brand);
+}
 
 .kpi {
   display: grid;
@@ -400,6 +403,7 @@ dialog.dialog {
   padding: 0;
   border-radius: 12px;
   background: var(--card);
+  color: var(--ink);
 }
 dialog.dialog::backdrop {
   background: rgba(0, 0, 0, 0.4);
@@ -446,6 +450,9 @@ html.dark .calendar-table th {
 .calendar-table td {
   position: relative;
 }
+html.dark .calendar-table td {
+  color: var(--brand);
+}
 .calendar-table .day-total {
   position: absolute;
   bottom: 2px;
@@ -478,6 +485,12 @@ html.dark .calendar-table th {
   padding: 4px 8px;
   cursor: pointer;
 }
+html.dark #calendar-month {
+  color: var(--brand);
+}
+html.dark .calendar-header button {
+  color: var(--brand);
+}
 .calendar-table td.today {
   font-weight: bold;
 }
@@ -501,4 +514,5 @@ html.dark .calendar-table th {
 #notes-dialog .note-text {
   white-space: pre-wrap;
   word-break: break-word;
+  color: var(--ink);
 }
