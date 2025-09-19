@@ -1,3 +1,5 @@
+import { predictBalance as predictMonthBalance } from './modules/balancePredictor.js';
+
   // ===== Utils
   const Utils = (()=>{
     console.log('Home Budgeting Utils module loaded'); // (important-comment)
@@ -352,6 +354,8 @@
     const els = {
       headerMonth: document.getElementById('header-month'),
       leftoverPill: document.getElementById('leftover-pill'),
+      leftoverPillActual: document.getElementById('leftover-pill-actual'),
+      leftoverPillPrediction: document.getElementById('leftover-pill-prediction'),
       monthPicker: document.getElementById('month-picker'),
       newMonth: document.getElementById('new-month'),
       openMonth: document.getElementById('open-month'),
@@ -681,14 +685,42 @@
       updateTxJump();
     }
 
-        function refreshKPIs(){
-          const month = Store.getMonth(currentMonthKey);
-          const t = Model.totals(month);
-          Utils.setText(els.totalIncome, t.income);
+    function refreshKPIs(){
+      const month = Store.getMonth(currentMonthKey);
+      const t = Model.totals(month);
+      Utils.setText(els.totalIncome, t.income);
       Utils.setText(els.leftoverActual, t.leftoverActual);
-      els.leftoverPill.textContent = `Left Over ${Utils.fmt(t.leftoverActual)}`;
+
+      const actualText = `Left Over ${Utils.fmt(t.leftoverActual)}`;
+      if(els.leftoverPillActual){
+        els.leftoverPillActual.textContent = actualText;
+        els.leftoverPillActual.classList.toggle('danger', t.leftoverActual < 0);
+      }else{
+        els.leftoverPill.textContent = actualText;
+      }
       els.leftoverPill.classList.toggle('danger', t.leftoverActual < 0);
 
+      const prediction = predictMonthBalance(currentMonthKey, Store.state.months);
+      if(els.leftoverPillPrediction){
+        if(prediction && Number.isFinite(prediction.predictedLeftover)){
+          const predicted = prediction.predictedLeftover;
+          els.leftoverPillPrediction.textContent = `Predicted ${Utils.fmt(predicted)}`;
+          els.leftoverPillPrediction.classList.toggle('danger', predicted < 0);
+          if(prediction.sampleSize){
+            const plural = prediction.sampleSize === 1 ? '' : 's';
+            const dayLabel = typeof prediction.remainderUsedDay === 'number'
+              ? `day ${prediction.remainderUsedDay}`
+              : 'historical data';
+            els.leftoverPillPrediction.title = `Based on ${prediction.sampleSize} historical month${plural} (${dayLabel}).`;
+          }else{
+            els.leftoverPillPrediction.removeAttribute('title');
+          }
+        }else{
+          els.leftoverPillPrediction.textContent = 'Predicted –';
+          els.leftoverPillPrediction.classList.remove('danger');
+          els.leftoverPillPrediction.removeAttribute('title');
+        }
+      }
     }
 
     function addNoteRow(n){

@@ -58,6 +58,15 @@ header h1 {
   background: rgba(255, 255, 255, 0.16);
   padding: 6px 10px;
   border-radius: 999px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pill .prediction {
+  font-size: 0.85em;
+  opacity: 0.85;
 }
 
 .toolbar {
