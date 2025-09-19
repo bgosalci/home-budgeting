@@ -1,0 +1,1651 @@
+(() => {
+  // app/js/modules/utils.js
+  var monthKey = (d) => {
+    if (typeof d === "string") return d;
+    const dt = d || /* @__PURE__ */ new Date();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    return `${dt.getFullYear()}-${m}`;
+  };
+  var sum = (arr, fn = (x) => x) => arr.reduce((a, x) => a + fn(x), 0);
+
+  // app/js/modules/balancePredictor.js
+  var parseMonthKey = (mk) => {
+    if (typeof mk !== "string") return null;
+    const match = mk.match(/^(\d{4})-(\d{2})$/);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
+    return { year, month };
+  };
+  var dayFromDate = (date) => {
+    if (typeof date !== "string") return null;
+    const parts = date.split("-");
+    if (parts.length !== 3) return null;
+    const day = Number(parts[2]);
+    return Number.isFinite(day) ? day : null;
+  };
+  var daysInMonth = (year, month) => {
+    if (!Number.isFinite(year) || !Number.isFinite(month)) return 31;
+    return new Date(year, month, 0).getDate();
+  };
+  var accumulateByDay = (transactions, monthLength) => {
+    const totals = Array(monthLength + 1).fill(0);
+    for (const tx of transactions || []) {
+      const day = dayFromDate(tx == null ? void 0 : tx.date);
+      if (!day || day < 1 || day > monthLength) continue;
+      const amount = Number(tx == null ? void 0 : tx.amount) || 0;
+      totals[day] += amount;
+    }
+    const cumulative = Array(monthLength + 1).fill(0);
+    for (let day = 1; day <= monthLength; day += 1) {
+      cumulative[day] = cumulative[day - 1] + totals[day];
+    }
+    return { totals, cumulative };
+  };
+  var median = (values) => {
+    if (!values || values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2) return sorted[mid];
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  };
+  var computeHistoryRemainders = (months, excludeKey) => {
+    const map = /* @__PURE__ */ new Map();
+    for (const [mk, month] of Object.entries(months || {})) {
+      if (!month || mk === excludeKey) continue;
+      const parsed = parseMonthKey(mk);
+      if (!parsed) continue;
+      const monthLength = daysInMonth(parsed.year, parsed.month);
+      const { cumulative } = accumulateByDay(month.transactions || [], monthLength);
+      const finalSpend = cumulative[monthLength] || 0;
+      for (let day = 0; day <= monthLength; day += 1) {
+        const spentSoFar = cumulative[day] || 0;
+        const remainder = finalSpend - spentSoFar;
+        if (!map.has(day)) map.set(day, []);
+        map.get(day).push(remainder);
+      }
+    }
+    return map;
+  };
+  var pickRemainder = (map, targetDay) => {
+    if (!map || map.size === 0) return { remainder: 0, sourceDay: null, sampleSize: 0 };
+    const direct = map.get(targetDay);
+    if (direct && direct.length) {
+      return { remainder: median(direct), sourceDay: targetDay, sampleSize: direct.length };
+    }
+    for (let offset = 1; offset < 32; offset += 1) {
+      const lower = targetDay - offset;
+      if (lower >= 0) {
+        const arr2 = map.get(lower);
+        if (arr2 && arr2.length) {
+          return { remainder: median(arr2), sourceDay: lower, sampleSize: arr2.length };
+        }
+      }
+      const higher = targetDay + offset;
+      const arr = map.get(higher);
+      if (arr && arr.length) {
+        return { remainder: median(arr), sourceDay: higher, sampleSize: arr.length };
+      }
+    }
+    const entries = [...map.entries()].sort((a, b) => a[0] - b[0]);
+    if (entries.length) {
+      const [day, arr] = entries[entries.length - 1];
+      return { remainder: median(arr), sourceDay: day, sampleSize: arr.length };
+    }
+    return { remainder: 0, sourceDay: null, sampleSize: 0 };
+  };
+  var determineObservationDay = (monthKey2, transactions, today) => {
+    const parsed = parseMonthKey(monthKey2);
+    if (!parsed) return { day: 0, monthLength: 31 };
+    const monthLength = daysInMonth(parsed.year, parsed.month);
+    const todayKey = monthKey(today);
+    if (monthKey2 < todayKey) {
+      return { day: monthLength, monthLength };
+    }
+    const txDays = (transactions || []).map((tx) => dayFromDate(tx == null ? void 0 : tx.date)).filter((day) => day && day >= 1 && day <= monthLength);
+    if (monthKey2 === todayKey) {
+      const todayDay = Math.min(today.getDate(), monthLength);
+      if (txDays.length) {
+        return { day: Math.max(Math.max(...txDays), todayDay), monthLength };
+      }
+      return { day: todayDay, monthLength };
+    }
+    if (txDays.length) {
+      return { day: Math.max(...txDays), monthLength };
+    }
+    return { day: 0, monthLength };
+  };
+  var predictBalance = (monthKey2, months, today = /* @__PURE__ */ new Date()) => {
+    if (!months || !monthKey2) return null;
+    const month = months[monthKey2];
+    if (!month) return null;
+    const { day: observationDay, monthLength } = determineObservationDay(
+      monthKey2,
+      month.transactions || [],
+      today
+    );
+    const { cumulative } = accumulateByDay(month.transactions || [], monthLength);
+    const spentSoFar = cumulative[Math.min(observationDay, monthLength)] || 0;
+    const incomesTotal = sum(month.incomes || [], (inc) => Number(inc == null ? void 0 : inc.amount) || 0);
+    const remainders = computeHistoryRemainders(months, monthKey2);
+    const { remainder, sourceDay, sampleSize } = pickRemainder(remainders, observationDay);
+    const predictedSpend = Math.max(0, spentSoFar + remainder);
+    const predictedLeftover = incomesTotal - predictedSpend;
+    return {
+      predictedSpend,
+      predictedLeftover,
+      spentSoFar,
+      incomesTotal,
+      observationDay,
+      remainderUsedDay: sourceDay,
+      sampleSize
+    };
+  };
+
+  // app/js/app.js
+  var Utils = (() => {
+    console.log("Home Budgeting Utils module loaded");
+    const fmt = (n) => `\xA3${(n || 0).toFixed(2)}`;
+    const setText = (el, n) => {
+      el.textContent = fmt(n);
+      el.classList.toggle("danger", n < 0);
+    };
+    const id = () => Math.random().toString(36).slice(2, 9);
+    const monthKey2 = (d) => {
+      if (typeof d === "string") return d;
+      const dt = d || /* @__PURE__ */ new Date();
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      return `${dt.getFullYear()}-${m}`;
+    };
+    const groupBy = (arr, fn) => arr.reduce((a, x) => {
+      const k = fn(x);
+      (a[k] = a[k] || []).push(x);
+      return a;
+    }, {});
+    const sum2 = (arr, fn = (x) => x) => arr.reduce((a, x) => a + fn(x), 0);
+    const clone = (o) => JSON.parse(JSON.stringify(o));
+    const parseCSV = (text, map, hasHeader = true, invert = false) => {
+      const lines = text.trim().split(/\r?\n/).filter((l) => l);
+      if (hasHeader) lines.shift();
+      let idx = { date: 0, desc: 1, category: 2, amount: 3 };
+      if (map) {
+        idx = {};
+        for (const [k, v] of Object.entries(map)) {
+          idx[k] = v === "" || v === null ? -1 : Number(v);
+        }
+      }
+      const splitLine = (line) => {
+        const cols = [];
+        let cur = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else inQuotes = !inQuotes;
+          } else if (ch === "," && !inQuotes) {
+            cols.push(cur.trim());
+            cur = "";
+          } else {
+            cur += ch;
+          }
+        }
+        cols.push(cur.trim());
+        return cols.map((s) => s.replace(/^"|"$/g, "").replace(/""/g, '"'));
+      };
+      return lines.map((line) => {
+        const cols = splitLine(line);
+        const dRaw = idx.date >= 0 ? cols[idx.date] || "" : "";
+        const desc = idx.desc >= 0 ? cols[idx.desc] || "" : "";
+        const category = idx.category >= 0 ? cols[idx.category] || "" : "";
+        let aRaw = idx.amount >= 0 ? cols[idx.amount] || "" : "";
+        if (idx.amount >= 0 && cols.length > Math.max(idx.amount + 1, 4)) {
+          aRaw = cols.slice(idx.amount).join("");
+        }
+        let date = "";
+        if (dRaw) {
+          const [dd, mm, yyyy] = dRaw.split(/[\/]/);
+          if (yyyy && mm && dd) date = `${yyyy}-${mm}-${dd}`;
+        }
+        let amount = Number(aRaw.replace(/[^0-9.-]/g, "")) || 0;
+        if (invert) amount = -amount;
+        return { date, desc, category, amount };
+      });
+    };
+    const toCSV = (txs) => [
+      "Date,Description,Category,Amount",
+      ...txs.map((t) => {
+        const [y, m, d] = (t.date || "").split("-");
+        const date = d ? `${d}/${m}/${y}` : "";
+        return [date, t.desc, t.category, `\xA3${Number(t.amount || 0).toFixed(2)}`].join(",");
+      })
+    ].join("\n");
+    return { fmt, id, monthKey: monthKey2, groupBy, sum: sum2, clone, parseCSV, toCSV, setText };
+  })();
+  var Dialog = (() => {
+    const dlg = document.getElementById("dialog");
+    const msg = document.getElementById("dialog-message");
+    const ok = document.getElementById("dialog-ok");
+    const cancel = document.getElementById("dialog-cancel");
+    const open = (type, message, showCancel) => {
+      dlg.className = `dialog ${type}`;
+      msg.textContent = message;
+      return new Promise((resolve) => {
+        cancel.classList.toggle("hidden", !showCancel);
+        ok.onclick = () => {
+          dlg.close();
+          resolve(true);
+        };
+        cancel.onclick = () => {
+          dlg.close();
+          resolve(false);
+        };
+        dlg.oncancel = (e) => {
+          e.preventDefault();
+          dlg.close();
+          resolve(false);
+        };
+        dlg.showModal();
+      });
+    };
+    const alert = (m) => open("alert", m, false).then(() => {
+    });
+    const info = (m) => open("info", m, false).then(() => {
+    });
+    const confirm = (m) => open("confirm", m, true);
+    return { alert, info, confirm };
+  })();
+  var Store = (() => {
+    const KEY = "budget.local.v1";
+    const load = () => {
+      try {
+        return JSON.parse(localStorage.getItem(KEY)) || { version: 1, months: {}, mapping: { exact: {}, tokens: {} }, descMap: { exact: {}, tokens: {} }, ui: { collapsed: {} }, descList: [], notes: [] };
+      } catch (e) {
+        return { version: 1, months: {}, mapping: { exact: {}, tokens: {} }, descMap: { exact: {}, tokens: {} }, ui: { collapsed: {} }, descList: [], notes: [] };
+      }
+    };
+    const save = (state2) => localStorage.setItem(KEY, JSON.stringify(state2));
+    const state = load();
+    for (const m of Object.values(state.months || {})) {
+      m.categories = m.categories || {};
+    }
+    state.notes = state.notes || [];
+    if (state.categories) {
+      for (const m of Object.values(state.months)) {
+        m.categories = { ...Utils.clone(state.categories), ...m.categories };
+      }
+      delete state.categories;
+      save(state);
+    }
+    const getMonth = (mk) => state.months[mk];
+    const setMonth = (mk, data) => {
+      state.months[mk] = data;
+      save(state);
+    };
+    const allMonths = () => Object.keys(state.months).sort();
+    const categories = (mk) => {
+      var _a;
+      return ((_a = state.months[mk]) == null ? void 0 : _a.categories) || {};
+    };
+    const mapping = () => state.mapping;
+    const setMapping = (m) => {
+      state.mapping = m;
+      save(state);
+    };
+    const descMap = () => state.descMap || (state.descMap = { exact: {}, tokens: {} });
+    const setDescMap = (m) => {
+      state.descMap = m;
+      save(state);
+    };
+    const descList = () => state.descList || (state.descList = []);
+    const setDescList = (list) => {
+      state.descList = list;
+      save(state);
+    };
+    const exportData = (kind, mk) => {
+      if (kind === "transactions") {
+        const m = state.months[mk];
+        return m ? m.transactions || [] : [];
+      }
+      if (kind === "categories") {
+        const m = state.months[mk];
+        return { categories: m ? m.categories || {} : {} };
+      }
+      if (kind === "prediction") {
+        return { mapping: state.mapping, descMap: state.descMap, descList: state.descList || [] };
+      }
+      return { version: state.version, months: state.months, mapping: state.mapping, descMap: state.descMap, descList: state.descList || [] };
+    };
+    const importData = (json) => {
+      var _a, _b, _c, _d;
+      const incoming = typeof json === "string" ? JSON.parse(json) : json;
+      if (!incoming || !incoming.months) return;
+      state.version = incoming.version || state.version;
+      state.mapping.exact = { ...state.mapping.exact, ...((_a = incoming.mapping) == null ? void 0 : _a.exact) || {} };
+      for (const [k, v] of Object.entries(((_b = incoming.mapping) == null ? void 0 : _b.tokens) || {})) {
+        const cur = state.mapping.tokens[k] || {};
+        for (const [cat, cnt] of Object.entries(v)) cur[cat] = (cur[cat] || 0) + cnt;
+        state.mapping.tokens[k] = cur;
+      }
+      state.descMap = state.descMap || { exact: {}, tokens: {} };
+      state.descMap.exact = { ...state.descMap.exact, ...((_c = incoming.descMap) == null ? void 0 : _c.exact) || {} };
+      for (const [k, v] of Object.entries(((_d = incoming.descMap) == null ? void 0 : _d.tokens) || {})) {
+        const cur = state.descMap.tokens[k] || {};
+        for (const [desc, cnt] of Object.entries(v)) cur[desc] = (cur[desc] || 0) + cnt;
+        state.descMap.tokens[k] = cur;
+      }
+      const inList = incoming.descList || [];
+      const curList = descList();
+      for (const d of inList) {
+        if (!curList.some((x) => x.toLowerCase() === d.toLowerCase())) curList.push(d);
+      }
+      state.descList = curList;
+      if (incoming.categories) {
+        for (const m of Object.values(incoming.months)) {
+          m.categories = { ...incoming.categories, ...m.categories || {} };
+        }
+      }
+      for (const [mk, month] of Object.entries(incoming.months)) {
+        month.categories = month.categories || {};
+        state.months[mk] = month;
+      }
+      save(state);
+    };
+    const collapsedFor = (mk) => {
+      state.ui = state.ui || { collapsed: {} };
+      state.ui.collapsed = state.ui.collapsed || {};
+      state.ui.collapsed[mk] = state.ui.collapsed[mk] || {};
+      return state.ui.collapsed[mk];
+    };
+    const isCollapsed = (mk, g) => !!collapsedFor(mk)[g];
+    const setCollapsed = (mk, g, val) => {
+      collapsedFor(mk)[g] = !!val;
+      save(state);
+    };
+    const toggleCollapsed = (mk, g) => {
+      setCollapsed(mk, g, !isCollapsed(mk, g));
+    };
+    const setAllCollapsed = (mk, groups, val) => {
+      const obj = collapsedFor(mk);
+      (groups || []).forEach((g) => obj[g] = !!val);
+      save(state);
+    };
+    const notes = () => state.notes || [];
+    const setNotes = (list) => {
+      state.notes = list;
+      save(state);
+    };
+    return { state, getMonth, setMonth, allMonths, categories, mapping, setMapping, descMap, setDescMap, descList, setDescList, exportData, importData, collapsedFor, isCollapsed, setCollapsed, toggleCollapsed, setAllCollapsed, notes, setNotes };
+  })();
+  var Predictor = /* @__PURE__ */ (() => {
+    const tokensOf = (s) => (s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+    const predict = (desc, cats, amount) => {
+      const map = Store.mapping();
+      const base = desc == null ? void 0 : desc.trim().toLowerCase();
+      if (!base) return "";
+      if (amount !== void 0 && !isNaN(amount)) {
+        const amtKey = base + "|" + Number(amount).toFixed(2);
+        const exactAmt = map.exact[amtKey];
+        if (exactAmt) return exactAmt;
+      }
+      const exact = map.exact[base];
+      if (exact) return exact;
+      const tok = tokensOf(desc);
+      const scores = {};
+      for (const t of tok) {
+        const counts = map.tokens[t];
+        if (counts) for (const [cat, v] of Object.entries(counts)) scores[cat] = (scores[cat] || 0) + v;
+      }
+      let best = null, bestScore = 0;
+      for (const [cat, score] of Object.entries(scores)) if (score > bestScore) {
+        best = cat;
+        bestScore = score;
+      }
+      return best && cats.includes(best) ? best : "";
+    };
+    const learn = (desc, cat, amount) => {
+      if (!desc || !cat) return;
+      const map = Store.mapping();
+      const base = desc.trim().toLowerCase();
+      if (amount !== void 0 && !isNaN(amount)) {
+        const amtKey = base + "|" + Number(amount).toFixed(2);
+        map.exact[amtKey] = cat;
+      } else {
+        map.exact[base] = cat;
+      }
+      for (const t of desc.toLowerCase().split(/\s+/).filter(Boolean)) {
+        const bag = map.tokens[t] || {};
+        bag[cat] = (bag[cat] || 0) + 1;
+        map.tokens[t] = bag;
+      }
+      Store.setMapping(map);
+    };
+    return { predict, learn };
+  })();
+  var DescPredictor = /* @__PURE__ */ (() => {
+    const predict = (partial) => {
+      if (!partial) return [];
+      const list = Store.descList();
+      const lower = partial.trim().toLowerCase();
+      return list.filter((d) => d.toLowerCase().startsWith(lower)).slice(0, 4);
+    };
+    const learn = (desc) => {
+      if (!desc) return;
+      const list = Store.descList();
+      const norm = desc.trim();
+      const exists = list.some((d) => d.toLowerCase() === norm.toLowerCase());
+      if (!exists) {
+        list.push(norm);
+        Store.setDescList(list);
+      }
+    };
+    return { predict, learn };
+  })();
+  var Model = /* @__PURE__ */ (() => {
+    const emptyMonth = () => ({
+      incomes: [],
+      transactions: [],
+      // {id,date,desc,amount,category}
+      categories: {}
+    });
+    const template = () => emptyMonth();
+    const addCat = (month, name, group, budget) => {
+      month.categories[name] = { group, budget: Number(budget) || 0 };
+    };
+    const setCat = (month, name, group, budget) => {
+      addCat(month, name, group, budget);
+    };
+    const delCat = (month, name) => {
+      delete month.categories[name];
+    };
+    const addIncome = (month, name, amount) => {
+      month.incomes.push({ id: Utils.id(), name, amount: Number(amount) || 0 });
+    };
+    const setIncome = (month, id, name, amount) => {
+      const inc = month.incomes.find((x) => x.id === id);
+      if (inc) {
+        inc.name = name;
+        inc.amount = Number(amount) || 0;
+      }
+    };
+    const delIncome = (month, id) => {
+      month.incomes = month.incomes.filter((x) => x.id !== id);
+    };
+    const addTx = (month, { date, desc, amount, category }) => {
+      month.transactions.push({ id: Utils.id(), date, desc, amount: Number(amount) || 0, category });
+    };
+    const delTx = (month, id) => {
+      month.transactions = month.transactions.filter((x) => x.id !== id);
+    };
+    const clearTx = (month) => {
+      month.transactions = [];
+    };
+    const totals = (month) => {
+      const income = Utils.sum(month.incomes, (x) => x.amount);
+      const budgetPerCat = {};
+      const actualPerCat = {};
+      const cats = month.categories || {};
+      for (const [name, meta] of Object.entries(cats)) budgetPerCat[name] = meta.budget || 0;
+      for (const tx of month.transactions) actualPerCat[tx.category] = (actualPerCat[tx.category] || 0) + tx.amount;
+      const groups = {};
+      for (const [cat, meta] of Object.entries(cats)) {
+        const g = meta.group || "Other";
+        const b = budgetPerCat[cat] || 0;
+        const a = actualPerCat[cat] || 0;
+        const gg = groups[g] || { budget: 0, actual: 0 };
+        gg.budget += b;
+        gg.actual += a;
+        groups[g] = gg;
+      }
+      const budgetTotal = Utils.sum(Object.values(budgetPerCat));
+      const actualTotal = Utils.sum(Object.values(actualPerCat));
+      return { income, budgetPerCat, actualPerCat, groups, budgetTotal, actualTotal, leftoverActual: income - actualTotal, leftoverBudget: income - budgetTotal };
+    };
+    return { emptyMonth, template, addCat, setCat, delCat, addIncome, setIncome, delIncome, addTx, delTx, clearTx, totals };
+  })();
+  var UI = (() => {
+    const els = {
+      headerMonth: document.getElementById("header-month"),
+      leftoverPill: document.getElementById("leftover-pill"),
+      leftoverPillActual: document.getElementById("leftover-pill-actual"),
+      leftoverPillPrediction: document.getElementById("leftover-pill-prediction"),
+      monthPicker: document.getElementById("month-picker"),
+      newMonth: document.getElementById("new-month"),
+      openMonth: document.getElementById("open-month"),
+      exportBtn: document.getElementById("export-data"),
+      exportDialog: document.getElementById("export-dialog"),
+      exportKind: document.getElementById("export-kind"),
+      exportMonth: document.getElementById("export-month"),
+      exportMonthRow: document.getElementById("export-month-row"),
+      exportType: document.getElementById("export-type"),
+      exportTypeRow: document.getElementById("export-type-row"),
+      exportConfirm: document.getElementById("export-confirm"),
+      exportCancel: document.getElementById("export-cancel"),
+      importBtn: document.getElementById("import-trans"),
+      importDialog: document.getElementById("import-dialog"),
+      importKind: document.getElementById("import-kind"),
+      importMonth: document.getElementById("import-month"),
+      importMonthRow: document.getElementById("import-month-row"),
+      importType: document.getElementById("import-type"),
+      importTypeRow: document.getElementById("import-type-row"),
+      importFile: document.getElementById("import-file"),
+      importConfirm: document.getElementById("import-confirm"),
+      importCancel: document.getElementById("import-cancel"),
+      csvMapDialog: document.getElementById("csv-map-dialog"),
+      csvMapDate: document.getElementById("csv-map-date"),
+      csvMapDesc: document.getElementById("csv-map-desc"),
+      csvMapCat: document.getElementById("csv-map-cat"),
+      csvMapAmt: document.getElementById("csv-map-amt"),
+      csvMapHeader: document.getElementById("csv-map-header"),
+      csvMapInvert: document.getElementById("csv-map-invert"),
+      csvMapConfirm: document.getElementById("csv-map-confirm"),
+      csvMapCancel: document.getElementById("csv-map-cancel"),
+      calendarDialog: document.getElementById("calendar-dialog"),
+      calendarContainer: document.getElementById("calendar-container"),
+      calendarClose: document.getElementById("calendar-close"),
+      calendarPrev: document.getElementById("calendar-prev"),
+      calendarNext: document.getElementById("calendar-next"),
+      calendarMonth: document.getElementById("calendar-month"),
+      notesDialog: document.getElementById("notes-dialog"),
+      noteDesc: document.getElementById("note-desc"),
+      noteData: document.getElementById("note-data"),
+      addNote: document.getElementById("add-note"),
+      notesList: document.getElementById("notes-list"),
+      notesClose: document.getElementById("notes-close"),
+      // Tabs
+      tabBudget: document.getElementById("tab-budget"),
+      tabTx: document.getElementById("tab-transactions"),
+      tabAnalysis: document.getElementById("tab-analysis"),
+      tabCalendar: document.getElementById("tab-calendar"),
+      tabNotes: document.getElementById("tab-notes"),
+      tabLearning: document.getElementById("tab-learning"),
+      panelBudget: document.getElementById("panel-budget"),
+      panelTx: document.getElementById("panel-transactions"),
+      panelAnalysis: document.getElementById("panel-analysis"),
+      panelLearning: document.getElementById("panel-learning"),
+      analysisSelect: document.getElementById("analysis-select"),
+      analysisChartType: document.getElementById("analysis-chart-type"),
+      analysisPlannedTitle: document.getElementById("analysis-planned-title"),
+      analysisActualTitle: document.getElementById("analysis-actual-title"),
+      analysisChart: document.getElementById("analysis-chart"),
+      analysisChartActual: document.getElementById("analysis-chart-actual"),
+      analysisCharts: document.getElementById("analysis-charts"),
+      analysisTotal: document.getElementById("analysis-total"),
+      analysisMonthRow: document.getElementById("analysis-month-row"),
+      analysisMonth: document.getElementById("analysis-month"),
+      analysisYearRow: document.getElementById("analysis-year-row"),
+      analysisYear: document.getElementById("analysis-year"),
+      analysisGroupRow: document.getElementById("analysis-group-row"),
+      analysisGroup: document.getElementById("analysis-group"),
+      analysisCategoryRow: document.getElementById("analysis-category-row"),
+      analysisCategory: document.getElementById("analysis-category"),
+      // Income
+      incomeList: document.getElementById("income-list"),
+      incomeName: document.getElementById("income-name"),
+      incomeAmount: document.getElementById("income-amount"),
+      addIncome: document.getElementById("add-income"),
+      totalIncome: document.getElementById("total-income"),
+      leftoverActual: document.getElementById("leftover-actual"),
+      // Categories table
+      catName: document.getElementById("cat-name"),
+      catGroup: document.getElementById("cat-group"),
+      catBudget: document.getElementById("cat-budget"),
+      addCategory: document.getElementById("add-category"),
+      collapseAll: document.getElementById("collapse-all"),
+      expandAll: document.getElementById("expand-all"),
+      catTable: document.getElementById("category-table").querySelector("tbody"),
+      totBud: document.getElementById("tot-bud"),
+      totAct: document.getElementById("tot-act"),
+      totDiff: document.getElementById("tot-diff"),
+      // Transactions
+      txDate: document.getElementById("tx-date"),
+      txDesc: document.getElementById("tx-desc"),
+      txAmt: document.getElementById("tx-amt"),
+      txCat: document.getElementById("tx-cat"),
+      txSearch: document.getElementById("tx-search"),
+      txFilterCat: document.getElementById("tx-filter-cat"),
+      addTx: document.getElementById("add-tx"),
+      txList: document.getElementById("tx-list"),
+      txTotal: document.getElementById("tx-total"),
+      txJump: document.getElementById("tx-jump"),
+      txDeleteAll: document.getElementById("tx-delete-all"),
+      predictHint: document.getElementById("predict-hint"),
+      descPredictHint: document.getElementById("desc-predict-hint"),
+      descTooltip: document.getElementById("desc-tooltip"),
+      // Learning
+      learnDesc: document.getElementById("learn-desc"),
+      learnCat: document.getElementById("learn-cat"),
+      learnAdd: document.getElementById("learn-add"),
+      learnList: document.getElementById("learn-list")
+    };
+    let currentMonthKey = Utils.monthKey();
+    let editingIncomeId = null;
+    let editingTxId = null;
+    let editingNoteId = null;
+    let analysisChart = null;
+    let analysisChartActual = null;
+    let calendarDate = /* @__PURE__ */ new Date();
+    let pendingCSV = null;
+    const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/></svg>`;
+    const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5-3h4a1 1 0 0 1 1 1v2H9V4a1 1 0 0 1 1-1z"/></svg>`;
+    const ICON_CHEVRONS_DOWN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"></polyline><polyline points="7 6 12 11 17 6"></polyline></svg>`;
+    const ICON_CHEVRONS_UP = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 18 12 13 7 18"></polyline></svg>`;
+    els.txDeleteAll.innerHTML = ICON_DELETE;
+    els.descPredictHint.textContent = "Desc: \u2013";
+    els.descTooltip.classList.add("hidden");
+    let descSuggestions = [];
+    let descSelIdx = 0;
+    const hideDescSuggestions = () => {
+      descSuggestions = [];
+      els.descTooltip.classList.add("hidden");
+      els.descTooltip.innerHTML = "";
+    };
+    const renderDescSuggestions = () => {
+      els.descTooltip.innerHTML = "";
+      descSuggestions.forEach((s, i) => {
+        const div = document.createElement("div");
+        div.textContent = s;
+        div.className = "option" + (i === descSelIdx ? " selected" : "");
+        div.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          chooseDescSuggestion(i);
+        });
+        els.descTooltip.appendChild(div);
+      });
+      els.descTooltip.classList.remove("hidden");
+    };
+    const highlightDescSuggestion = () => {
+      [...els.descTooltip.children].forEach((el, i) => {
+        el.classList.toggle("selected", i === descSelIdx);
+      });
+    };
+    const chooseDescSuggestion = (i) => {
+      if (!descSuggestions[i]) return;
+      els.txDesc.value = descSuggestions[i] + " ";
+      hideDescSuggestions();
+      els.txDesc.dispatchEvent(new Event("input"));
+    };
+    (function bootstrap() {
+      if (Store.allMonths().length === 0) {
+        const mk = Utils.monthKey(/* @__PURE__ */ new Date());
+        const month = Model.template();
+        Store.setMonth(mk, month);
+      }
+      currentMonthKey = Store.allMonths().slice(-1)[0] || Utils.monthKey();
+      els.monthPicker.value = currentMonthKey;
+    })();
+    function loadMonth(mk) {
+      const month = Store.getMonth(mk);
+      if (!month) return;
+      editingIncomeId = null;
+      els.addIncome.textContent = "Add Income";
+      editingTxId = null;
+      els.addTx.textContent = "Add";
+      currentMonthKey = mk;
+      els.headerMonth.textContent = (/* @__PURE__ */ new Date(mk + "-01")).toLocaleString(void 0, { month: "long", year: "numeric" });
+      els.incomeList.innerHTML = "";
+      month.incomes.forEach((x) => addIncomeRow(x));
+      renderCategories(month);
+      refreshCategoryDropdowns();
+      els.txSearch.value = "";
+      els.txFilterCat.value = "";
+      renderTransactions(month);
+      refreshMonthPicker();
+      refreshKPIs();
+    }
+    function refreshMonthPicker() {
+      const opts = Store.allMonths().map((mk) => `<option value="${mk}" ${mk === currentMonthKey ? "selected" : ""}>${(/* @__PURE__ */ new Date(mk + "-01")).toLocaleString(void 0, { month: "short", year: "numeric" })}</option>`).join("");
+      els.openMonth.innerHTML = `<option value="">Select Month</option>` + opts;
+      els.openMonth.value = currentMonthKey;
+    }
+    function addIncomeRow(x) {
+      const row = document.createElement("div");
+      row.className = "list-item";
+      row.innerHTML = `<div class="grow"><strong>${x.name}</strong><div><small></small></div></div><div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div>`;
+      Utils.setText(row.querySelector("small"), x.amount);
+      row.onclick = async (e) => {
+        var _a, _b;
+        const act = (_b = (_a = e.target.closest("button")) == null ? void 0 : _a.dataset) == null ? void 0 : _b.act;
+        if (!act) return;
+        const m = Store.getMonth(currentMonthKey);
+        if (act === "del") {
+          if (await Dialog.confirm("Delete this income?")) {
+            Model.delIncome(m, x.id);
+            Store.setMonth(currentMonthKey, m);
+            loadMonth(currentMonthKey);
+          }
+        }
+        if (act === "edit") {
+          els.incomeName.value = x.name;
+          els.incomeAmount.value = x.amount;
+          editingIncomeId = x.id;
+          els.addIncome.textContent = "Update Income";
+        }
+      };
+      els.incomeList.appendChild(row);
+    }
+    function renderCategories(month) {
+      var _a, _b;
+      els.catTable.innerHTML = "";
+      const totals = Model.totals(month);
+      const cats = month.categories || {};
+      const entries = Object.entries(cats);
+      const byGroup = {};
+      for (const [name, meta] of entries) {
+        const g = meta.group || "Other";
+        (byGroup[g] = byGroup[g] || []).push([name, meta]);
+      }
+      const groups = Object.keys(byGroup).sort();
+      for (const g of groups) {
+        const gBud = ((_a = totals.groups[g]) == null ? void 0 : _a.budget) || 0;
+        const gAct = ((_b = totals.groups[g]) == null ? void 0 : _b.actual) || 0;
+        const gDiff = gBud - gAct;
+        const gCls = gDiff >= 0 ? "success" : "danger";
+        const gBudCls = gBud < 0 ? "danger" : "";
+        const gActCls = gAct < 0 ? "danger" : "";
+        const collapsed = Store.isCollapsed(currentMonthKey, g);
+        const icon = collapsed ? "\u25B6" : "\u25BC";
+        const trh = document.createElement("tr");
+        trh.className = "group-row";
+        trh.innerHTML = `<td colspan="2"><button class="toggle" data-group="${g}" aria-label="toggle">${icon}</button><strong>${g}</strong></td>
+                         <td class="right ${gBudCls}">${Utils.fmt(gBud)}</td>
+                         <td class="right ${gActCls}">${Utils.fmt(gAct)}</td>
+                         <td class="right ${gCls}">${Utils.fmt(gDiff)}</td>
+                         <td></td>`;
+        trh.querySelector("button.toggle").onclick = (e) => {
+          e.stopPropagation();
+          Store.toggleCollapsed(currentMonthKey, g);
+          renderCategories(month);
+        };
+        els.catTable.appendChild(trh);
+        const items = byGroup[g].sort((a, b) => a[0].localeCompare(b[0]));
+        for (const [name, meta] of items) {
+          const act = totals.actualPerCat[name] || 0;
+          const diff = (meta.budget || 0) - act;
+          const cls = diff >= 0 ? "success" : "danger";
+          const budCls = (meta.budget || 0) < 0 ? "danger" : "";
+          const actCls = act < 0 ? "danger" : "";
+          const tr = document.createElement("tr");
+          if (collapsed) tr.classList.add("hidden");
+          tr.dataset.cat = name;
+          tr.dataset.group = g;
+          tr.innerHTML = `<td></td>
+                          <td>${name}</td>
+                          <td class="right ${budCls}">${Utils.fmt(meta.budget || 0)}</td>
+                          <td class="right ${actCls}">${Utils.fmt(act)}</td>
+                          <td class="right ${cls}">${Utils.fmt(diff)}</td>
+                          <td class="right"><div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" aria-label="Delete">${ICON_DELETE}</button></div></td>`;
+          tr.onclick = async (e) => {
+            var _a2, _b2;
+            const actn = (_b2 = (_a2 = e.target.closest("button")) == null ? void 0 : _a2.dataset) == null ? void 0 : _b2.act;
+            if (!actn) return;
+            if (actn === "del") {
+              if (await Dialog.confirm("Delete this category?")) {
+                Model.delCat(month, name);
+                Store.setMonth(currentMonthKey, month);
+                renderCategories(month);
+                refreshKPIs();
+                refreshCategoryDropdowns();
+              }
+            }
+            if (actn === "edit") {
+              els.catName.value = name;
+              els.catGroup.value = meta.group || "";
+              els.catBudget.value = meta.budget || 0;
+            }
+          };
+          els.catTable.appendChild(tr);
+        }
+      }
+      const t = Model.totals(month);
+      Utils.setText(els.totBud, t.budgetTotal);
+      Utils.setText(els.totAct, t.actualTotal);
+      Utils.setText(els.totDiff, t.budgetTotal - t.actualTotal);
+    }
+    function refreshCategoryDropdowns() {
+      const cats = Store.categories(currentMonthKey);
+      const opts = Object.keys(cats).sort().map((c) => `<option>${c}</option>`).join("");
+      const curFilter = els.txFilterCat.value;
+      els.txCat.innerHTML = `<option value="">\u2014 select \u2014</option>` + opts;
+      els.learnCat.innerHTML = opts;
+      els.txFilterCat.innerHTML = `<option value="">All categories</option>` + opts;
+      els.txFilterCat.value = curFilter;
+    }
+    function renderTransactions(month) {
+      els.txList.innerHTML = "";
+      const search = els.txSearch.value.trim().toLowerCase();
+      const filterCat = els.txFilterCat.value;
+      const items = month.transactions.filter((t) => (search === "" || t.desc.toLowerCase().includes(search)) && (!filterCat || t.category === filterCat)).slice().sort((a, b) => a.date.localeCompare(b.date));
+      const byDate = Utils.groupBy(items, (t) => t.date);
+      const dates = Object.keys(byDate).sort();
+      let idx = 1;
+      let runningTotal = 0;
+      for (const date of dates) {
+        const dayTotal = Utils.sum(byDate[date], (t) => t.amount);
+        const dayCount = byDate[date].length;
+        runningTotal += dayTotal;
+        const hdr = document.createElement("div");
+        hdr.className = "tx-date";
+        const dateLabel = new Date(date).toLocaleDateString(void 0, { weekday: "short", day: "numeric", month: "short" });
+        hdr.innerHTML = `<span>${dateLabel}<span class="tx-count"><span class="badge">${dayCount}</span> transactions</span></span><span class="totals"><span class="day"></span><span class="run"></span></span>`;
+        const dayEl = hdr.querySelector(".day");
+        dayEl.textContent = `Day: ${Utils.fmt(dayTotal)}`;
+        if (dayTotal < 0) dayEl.classList.add("danger");
+        const runEl = hdr.querySelector(".run");
+        runEl.textContent = `Total: ${Utils.fmt(runningTotal)}`;
+        if (runningTotal < 0) runEl.classList.add("danger");
+        els.txList.appendChild(hdr);
+        for (const t of byDate[date]) {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const aCls = t.amount < 0 ? "danger" : "";
+          row.innerHTML = `<div class="tx-index">${idx++}</div><div class="grow"><strong>${t.desc}</strong><div><small>${t.category || "Uncategorised"}</small></div></div><div class="tx-amount ${aCls}">${Utils.fmt(t.amount)}</div><div class="actions"><button class="icon-btn" data-act="edit" data-id="${t.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${t.id}" aria-label="Delete">${ICON_DELETE}</button></div>`;
+          row.querySelector('[data-act="del"]').onclick = async () => {
+            if (await Dialog.confirm("Delete this transaction?")) {
+              const m = Store.getMonth(currentMonthKey);
+              Model.delTx(m, t.id);
+              Store.setMonth(currentMonthKey, m);
+              loadMonth(currentMonthKey);
+            }
+          };
+          row.querySelector('[data-act="edit"]').onclick = () => {
+            els.txDate.value = t.date;
+            els.txDesc.value = t.desc;
+            els.txAmt.value = t.amount;
+            els.txCat.value = t.category;
+            editingTxId = t.id;
+            els.addTx.textContent = "Update";
+          };
+          els.txList.appendChild(row);
+        }
+      }
+      const total = Utils.sum(items, (t) => t.amount);
+      Utils.setText(els.txTotal, total);
+      refreshKPIs();
+      updateTxJump();
+    }
+    function refreshKPIs() {
+      const month = Store.getMonth(currentMonthKey);
+      const t = Model.totals(month);
+      Utils.setText(els.totalIncome, t.income);
+      Utils.setText(els.leftoverActual, t.leftoverActual);
+      const actualText = `Left Over ${Utils.fmt(t.leftoverActual)}`;
+      if (els.leftoverPillActual) {
+        els.leftoverPillActual.textContent = actualText;
+        els.leftoverPillActual.classList.toggle("danger", t.leftoverActual < 0);
+      } else {
+        els.leftoverPill.textContent = actualText;
+      }
+      els.leftoverPill.classList.toggle("danger", t.leftoverActual < 0);
+      const prediction = predictBalance(currentMonthKey, Store.state.months);
+      if (els.leftoverPillPrediction) {
+        if (prediction && Number.isFinite(prediction.predictedLeftover)) {
+          const predicted = prediction.predictedLeftover;
+          els.leftoverPillPrediction.textContent = `Predicted ${Utils.fmt(predicted)}`;
+          els.leftoverPillPrediction.classList.toggle("danger", predicted < 0);
+          if (prediction.sampleSize) {
+            const plural = prediction.sampleSize === 1 ? "" : "s";
+            const dayLabel = typeof prediction.remainderUsedDay === "number" ? `day ${prediction.remainderUsedDay}` : "historical data";
+            els.leftoverPillPrediction.title = `Based on ${prediction.sampleSize} historical month${plural} (${dayLabel}).`;
+          } else {
+            els.leftoverPillPrediction.removeAttribute("title");
+          }
+        } else {
+          els.leftoverPillPrediction.textContent = "Predicted \u2013";
+          els.leftoverPillPrediction.classList.remove("danger");
+          els.leftoverPillPrediction.removeAttribute("title");
+        }
+      }
+    }
+    function addNoteRow(n) {
+      const row = document.createElement("div");
+      row.className = "list-item";
+      const time = new Date(n.time).toLocaleString();
+      row.innerHTML = `<div class="grow"><strong>${n.desc}</strong><div class="note-text">${n.data}</div><div><small>${time}</small></div></div><div class="actions"><button class="icon-btn" data-act="edit" data-id="${n.id}" aria-label="Edit">${ICON_EDIT}</button> <button class="icon-btn" data-act="del" data-id="${n.id}" aria-label="Delete">${ICON_DELETE}</button></div>`;
+      row.onclick = async (e) => {
+        var _a, _b;
+        const act = (_b = (_a = e.target.closest("button")) == null ? void 0 : _a.dataset) == null ? void 0 : _b.act;
+        if (!act) return;
+        const notes = Store.notes();
+        const idx = notes.findIndex((x) => x.id === n.id);
+        if (act === "del") {
+          if (await Dialog.confirm("Delete this note?")) {
+            notes.splice(idx, 1);
+            Store.setNotes(notes);
+            renderNotes();
+          }
+        }
+        if (act === "edit") {
+          els.noteDesc.value = n.desc;
+          els.noteData.value = n.data;
+          editingNoteId = n.id;
+          els.addNote.textContent = "Update Note";
+        }
+      };
+      els.notesList.appendChild(row);
+    }
+    function renderNotes() {
+      els.notesList.innerHTML = "";
+      const notes = Store.notes();
+      notes.forEach((n) => addNoteRow(n));
+    }
+    els.addIncome.onclick = () => {
+      const name = els.incomeName.value.trim() || "Income";
+      const amt = parseFloat(els.incomeAmount.value || "0");
+      const m = Store.getMonth(currentMonthKey);
+      if (editingIncomeId) {
+        Model.setIncome(m, editingIncomeId, name, amt);
+        editingIncomeId = null;
+        els.addIncome.textContent = "Add Income";
+      } else {
+        Model.addIncome(m, name, amt);
+      }
+      Store.setMonth(currentMonthKey, m);
+      els.incomeName.value = "";
+      els.incomeAmount.value = "";
+      loadMonth(currentMonthKey);
+    };
+    els.addCategory.onclick = () => {
+      const name = els.catName.value.trim();
+      const group = els.catGroup.value.trim() || "Other";
+      const bud = parseFloat(els.catBudget.value || "0");
+      if (!name) return;
+      const m = Store.getMonth(currentMonthKey);
+      Model.setCat(m, name, group, bud);
+      Store.setMonth(currentMonthKey, m);
+      els.catName.value = "";
+      els.catGroup.value = "";
+      els.catBudget.value = "";
+      loadMonth(currentMonthKey);
+    };
+    els.collapseAll.onclick = () => {
+      const m = Store.getMonth(currentMonthKey);
+      const groups = [...new Set(Object.values(Store.categories(currentMonthKey)).map((x) => x.group || "Other"))];
+      Store.setAllCollapsed(currentMonthKey, groups, true);
+      renderCategories(m);
+    };
+    els.expandAll.onclick = () => {
+      const m = Store.getMonth(currentMonthKey);
+      const groups = [...new Set(Object.values(Store.categories(currentMonthKey)).map((x) => x.group || "Other"))];
+      Store.setAllCollapsed(currentMonthKey, groups, false);
+      renderCategories(m);
+    };
+    els.txDesc.addEventListener("input", () => {
+      const cats = Object.keys(Store.categories(currentMonthKey));
+      const guess = Predictor.predict(els.txDesc.value, cats, parseFloat(els.txAmt.value));
+      els.predictHint.textContent = "Prediction: " + (guess || "\u2013");
+      if (guess) {
+        els.txCat.value = guess;
+      }
+      const val = els.txDesc.value;
+      const matches = DescPredictor.predict(val);
+      els.descPredictHint.textContent = "Desc: " + (matches[0] || "\u2013");
+      descSuggestions = matches.filter((d) => d.toLowerCase() !== val.trim().toLowerCase());
+      if (descSuggestions.length) {
+        descSelIdx = 0;
+        renderDescSuggestions();
+      } else {
+        hideDescSuggestions();
+      }
+    });
+    els.txDesc.addEventListener("keydown", (e) => {
+      if (!descSuggestions.length) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        descSelIdx = (descSelIdx + 1) % descSuggestions.length;
+        highlightDescSuggestion();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        descSelIdx = (descSelIdx - 1 + descSuggestions.length) % descSuggestions.length;
+        highlightDescSuggestion();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        chooseDescSuggestion(descSelIdx);
+      }
+    });
+    els.txDesc.addEventListener("blur", () => {
+      setTimeout(hideDescSuggestions, 100);
+    });
+    const handleAddTx = () => {
+      const date = els.txDate.value.trim();
+      const desc = els.txDesc.value.trim();
+      const amt = parseFloat(els.txAmt.value);
+      const cat = els.txCat.value;
+      if (!date || !desc || isNaN(amt)) return;
+      const m = Store.getMonth(currentMonthKey);
+      if (editingTxId) {
+        const tx = m.transactions.find((x) => x.id === editingTxId);
+        if (tx) {
+          tx.date = date;
+          tx.desc = desc;
+          tx.amount = amt;
+          tx.category = cat;
+        }
+        editingTxId = null;
+        els.addTx.textContent = "Add";
+      } else {
+        Model.addTx(m, { date, desc, amount: amt, category: cat });
+      }
+      Store.setMonth(currentMonthKey, m);
+      Predictor.learn(desc, cat, amt);
+      DescPredictor.learn(desc);
+      els.txDesc.value = "";
+      els.txAmt.value = "";
+      renderTransactions(m);
+      renderCategories(m);
+      els.descPredictHint.textContent = "Desc: \u2013";
+      hideDescSuggestions();
+      els.txDesc.focus();
+    };
+    els.addTx.onclick = handleAddTx;
+    [els.txDate, els.txDesc, els.txAmt, els.txCat].forEach((el) => {
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          if (el === els.txDesc && descSuggestions.length) {
+            e.preventDefault();
+            return;
+          }
+          handleAddTx();
+        }
+      });
+    });
+    els.txSearch.oninput = () => renderTransactions(Store.getMonth(currentMonthKey));
+    els.txFilterCat.onchange = () => renderTransactions(Store.getMonth(currentMonthKey));
+    els.txDeleteAll.onclick = async () => {
+      if (await Dialog.confirm("Delete all transactions for this month?")) {
+        const m = Store.getMonth(currentMonthKey);
+        Model.clearTx(m);
+        Store.setMonth(currentMonthKey, m);
+        renderTransactions(m);
+        renderCategories(m);
+      }
+    };
+    const txListScrollable = () => els.txList.scrollHeight > els.txList.clientHeight + 1;
+    const txListAtBottom = () => els.txList.scrollTop + els.txList.clientHeight >= els.txList.scrollHeight - 1;
+    const updateTxJump = () => {
+      if (!txListScrollable()) {
+        els.txJump.classList.add("hidden");
+        return;
+      }
+      els.txJump.classList.remove("hidden");
+      const atBottom = txListAtBottom();
+      els.txJump.innerHTML = atBottom ? ICON_CHEVRONS_UP : ICON_CHEVRONS_DOWN;
+      els.txJump.setAttribute("aria-label", atBottom ? "Top" : "Bottom");
+    };
+    els.txJump.onclick = () => {
+      if (txListAtBottom()) els.txList.scrollTo({ top: 0, behavior: "smooth" });
+      else els.txList.scrollTo({ top: els.txList.scrollHeight, behavior: "smooth" });
+    };
+    els.txList.addEventListener("scroll", updateTxJump);
+    els.addNote.onclick = () => {
+      const desc = els.noteDesc.value.trim();
+      const data = els.noteData.value.trim();
+      if (!desc && !data) return;
+      const notes = Store.notes();
+      if (editingNoteId) {
+        const n = notes.find((x) => x.id === editingNoteId);
+        if (n) {
+          n.desc = desc;
+          n.data = data;
+        }
+        editingNoteId = null;
+        els.addNote.textContent = "Add Note";
+      } else {
+        notes.push({ id: Date.now(), desc, data, time: Date.now() });
+      }
+      Store.setNotes(notes);
+      els.noteDesc.value = "";
+      els.noteData.value = "";
+      renderNotes();
+    };
+    els.learnAdd.onclick = () => {
+      Predictor.learn(els.learnDesc.value, els.learnCat.value);
+      DescPredictor.learn(els.learnDesc.value);
+      els.learnDesc.value = "";
+      renderLearnList();
+    };
+    function renderLearnList() {
+      const map = Store.mapping();
+      els.learnList.innerHTML = "";
+      for (const [k, v] of Object.entries(map.exact)) {
+        const [d, a] = k.split("|");
+        const disp = a ? `${d} (\xA3${a})` : d;
+        const row = document.createElement("div");
+        row.className = "list-item";
+        row.innerHTML = `<div><strong>${disp}</strong><div><small>${v}</small></div></div>`;
+        els.learnList.appendChild(row);
+      }
+    }
+    els.newMonth.onclick = () => {
+      const mk = els.monthPicker.value || Utils.monthKey();
+      if (Store.getMonth(mk)) {
+        Dialog.alert("Month already exists. Choose a different month.");
+        return;
+      }
+      const month = Model.template();
+      const months = Store.allMonths();
+      if (months.length) {
+        const prev = months[months.length - 1];
+        month.categories = Utils.clone(Store.categories(prev));
+      }
+      Store.setMonth(mk, month);
+      loadMonth(mk);
+    };
+    els.openMonth.onchange = (e) => {
+      if (e.target.value) loadMonth(e.target.value);
+    };
+    function download(name, data, type = "json") {
+      const blob = type === "csv" ? new Blob([data], { type: "text/csv" }) : new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+    }
+    function updateExportVis() {
+      const tx = els.exportKind.value === "transactions";
+      els.exportMonthRow.classList.toggle("hidden", !tx);
+      els.exportTypeRow.classList.toggle("hidden", !tx);
+    }
+    els.exportBtn.onclick = () => {
+      els.exportKind.value = "transactions";
+      els.exportMonth.value = currentMonthKey;
+      els.exportType.value = "json";
+      updateExportVis();
+      els.exportDialog.showModal();
+    };
+    els.exportCancel.onclick = () => {
+      els.exportDialog.close();
+    };
+    els.exportKind.onchange = updateExportVis;
+    els.exportConfirm.onclick = () => {
+      const kind = els.exportKind.value;
+      if (kind === "transactions") {
+        const mk = Utils.monthKey(els.exportMonth.value);
+        if (!mk) {
+          Dialog.alert("Select month");
+          return;
+        }
+        const txs = Store.exportData("transactions", mk);
+        if (els.exportType.value === "csv") {
+          const csv = Utils.toCSV(txs);
+          download(`transactions-${mk}.csv`, csv, "csv");
+        } else {
+          download(`transactions-${mk}.json`, txs);
+        }
+      } else if (kind === "categories") {
+        const data = Store.exportData("categories", currentMonthKey);
+        download("categories.json", data);
+      } else if (kind === "prediction") {
+        const data = Store.exportData("prediction");
+        download("prediction-map.json", data);
+      } else {
+        const data = Store.exportData("all");
+        download("budget-all.json", data);
+      }
+      els.exportDialog.close();
+    };
+    function updateImportVis() {
+      const tx = els.importKind.value === "transactions";
+      els.importMonthRow.classList.toggle("hidden", !tx);
+      els.importTypeRow.classList.toggle("hidden", !tx);
+      const t = els.importType.value;
+      els.importFile.accept = tx && t === "csv" ? ".csv" : "application/json,.json";
+    }
+    els.importBtn.onclick = () => {
+      els.importKind.value = "transactions";
+      els.importMonth.value = currentMonthKey;
+      els.importType.value = "json";
+      els.importFile.value = "";
+      updateImportVis();
+      els.importDialog.showModal();
+    };
+    els.importCancel.onclick = () => {
+      els.importDialog.close();
+    };
+    els.importKind.onchange = updateImportVis;
+    els.importType.onchange = updateImportVis;
+    els.importConfirm.onclick = () => {
+      const kind = els.importKind.value;
+      const file = els.importFile.files[0];
+      if (!file) {
+        Dialog.alert("Select file");
+        return;
+      }
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const text = r.result;
+          let targetMonth = currentMonthKey;
+          if (kind === "transactions") {
+            const mk = Utils.monthKey(els.importMonth.value);
+            if (!mk) {
+              Dialog.alert("Select month");
+              return;
+            }
+            targetMonth = mk;
+            let txs;
+            if (els.importType.value === "json") {
+              const parsed = JSON.parse(text);
+              txs = Array.isArray(parsed) ? parsed : parsed.transactions;
+            } else {
+              const lines = text.trim().split(/\r?\n/).filter((l) => l);
+              const headers = lines[0].split(",").map((s) => s.trim());
+              const exp = ["Date", "Description", "Category", "Amount"];
+              const match = exp.every((h, i) => headers[i] && headers[i].toLowerCase() === h.toLowerCase());
+              if (match) {
+                txs = Utils.parseCSV(text);
+              } else {
+                pendingCSV = { text, headers, mk };
+                const opts = ['<option value=""></option>', ...headers.map((h, i) => `<option value="${i}">${h}</option>`)].join("");
+                els.csvMapDate.innerHTML = opts;
+                els.csvMapDesc.innerHTML = opts;
+                els.csvMapCat.innerHTML = opts;
+                els.csvMapAmt.innerHTML = opts;
+                const guess = (n) => headers.findIndex((h) => h.toLowerCase().includes(n));
+                els.csvMapDate.value = (guess("date") >= 0 ? guess("date") : 0).toString();
+                els.csvMapDesc.value = (guess("desc") >= 0 ? guess("desc") : guess("description") >= 0 ? guess("description") : 1).toString();
+                els.csvMapCat.value = (guess("cat") >= 0 ? guess("cat") : guess("category") >= 0 ? guess("category") : 2).toString();
+                els.csvMapAmt.value = (guess("amount") >= 0 ? guess("amount") : 3).toString();
+                const headerGuess = headers.some((h) => /[a-zA-Z]/.test(h));
+                els.csvMapHeader.checked = headerGuess;
+                els.csvMapInvert.checked = false;
+                els.importDialog.close();
+                els.csvMapDialog.showModal();
+                return;
+              }
+            }
+            if (!Array.isArray(txs)) throw new Error("bad");
+            let m = Store.getMonth(mk) || Model.emptyMonth();
+            const catSet = new Set(Object.keys(m.categories));
+            for (const t of txs) {
+              if (!t.category) {
+                t.category = Predictor.predict(t.desc, [...catSet], t.amount) || "";
+              }
+              Model.addTx(m, t);
+              if (t.category) Predictor.learn(t.desc, t.category, t.amount);
+              DescPredictor.learn(t.desc);
+              if (t.category) catSet.add(t.category);
+            }
+            Store.setMonth(mk, m);
+          } else if (kind === "categories") {
+            const parsed = JSON.parse(text);
+            const cats = parsed.categories || parsed;
+            const m = Store.getMonth(targetMonth) || Model.emptyMonth();
+            m.categories = { ...m.categories, ...cats };
+            Store.setMonth(targetMonth, m);
+          } else if (kind === "prediction") {
+            const parsed = JSON.parse(text);
+            Store.importData({ months: {}, ...parsed });
+          } else {
+            const parsed = JSON.parse(text);
+            Store.importData(parsed);
+          }
+          loadMonth(targetMonth);
+          Dialog.info("Import completed.");
+          els.importDialog.close();
+        } catch (e) {
+          Dialog.alert("Invalid file");
+        }
+      };
+      r.readAsText(file);
+    };
+    els.csvMapCancel.onclick = () => {
+      els.csvMapDialog.close();
+    };
+    els.csvMapConfirm.onclick = () => {
+      if (!pendingCSV) return;
+      const map = {
+        date: els.csvMapDate.value,
+        desc: els.csvMapDesc.value,
+        category: els.csvMapCat.value,
+        amount: els.csvMapAmt.value
+      };
+      const hasHeader = els.csvMapHeader.checked;
+      const invert = els.csvMapInvert.checked;
+      try {
+        const txs = Utils.parseCSV(pendingCSV.text, map, hasHeader, invert);
+        let m = Store.getMonth(pendingCSV.mk) || Model.emptyMonth();
+        const catSet = new Set(Object.keys(m.categories));
+        for (const t of txs) {
+          if (!t.category) {
+            t.category = Predictor.predict(t.desc, [...catSet], t.amount) || "";
+          }
+          Model.addTx(m, t);
+          if (t.category) Predictor.learn(t.desc, t.category, t.amount);
+          DescPredictor.learn(t.desc);
+          if (t.category) catSet.add(t.category);
+        }
+        Store.setMonth(pendingCSV.mk, m);
+        loadMonth(pendingCSV.mk);
+        Dialog.info("Import completed.");
+        pendingCSV = null;
+        els.csvMapDialog.close();
+      } catch (e) {
+        Dialog.alert("Import failed. Adjust field mapping.");
+      }
+    };
+    const runAnalysis = () => {
+      const opt = els.analysisSelect.value;
+      els.analysisCharts.classList.remove("charts");
+      els.analysisTotal.textContent = "";
+      if (opt === "budget-spread") {
+        els.analysisMonthRow.classList.remove("hidden");
+        els.analysisYearRow.classList.add("hidden");
+        els.analysisGroupRow.classList.add("hidden");
+        els.analysisCategoryRow.classList.add("hidden");
+        const months = Store.allMonths();
+        const opts = months.map((m) => `<option value="${m}">${(/* @__PURE__ */ new Date(m + "-01")).toLocaleString(void 0, { month: "short", year: "numeric" })}</option>`).join("");
+        const prev = els.analysisMonth.value;
+        els.analysisMonth.innerHTML = opts;
+        els.analysisMonth.value = months.includes(prev) ? prev : currentMonthKey;
+        const prevType = els.analysisChartType.value;
+        els.analysisChartType.innerHTML = `<option value="pie">Pie Chart</option><option value="bar">Bar Chart</option>`;
+        els.analysisChartType.value = ["pie", "bar"].includes(prevType) ? prevType : "bar";
+      } else if (opt === "money-in") {
+        els.analysisMonthRow.classList.add("hidden");
+        els.analysisYearRow.classList.remove("hidden");
+        els.analysisGroupRow.classList.remove("hidden");
+        els.analysisCategoryRow.classList.remove("hidden");
+        const monthsAll = Store.allMonths();
+        const years = [...new Set(monthsAll.map((m) => m.slice(0, 4)))].sort();
+        const prevYear = els.analysisYear.value;
+        const yearOpts = ['<option value="">All</option>', ...years.map((y) => `<option value="${y}">${y}</option>`)];
+        els.analysisYear.innerHTML = yearOpts.join("");
+        els.analysisYear.value = years.includes(prevYear) ? prevYear : "";
+        const groupOpts = ['<option value="">All</option>'];
+        els.analysisGroup.innerHTML = groupOpts.join("");
+        els.analysisGroup.value = "";
+        const prevCat = els.analysisCategory.value;
+        const allMonthsData = Store.exportData().months || {};
+        const catSet = /* @__PURE__ */ new Set();
+        for (const m of Object.values(allMonthsData)) {
+          (m.incomes || []).forEach((i) => catSet.add(i.name));
+        }
+        const catList = [...catSet].sort();
+        const catOpts = ['<option value="">All</option>', ...catList.map((c) => `<option value="${c}">${c}</option>`)];
+        els.analysisCategory.innerHTML = catOpts.join("");
+        els.analysisCategory.value = catList.includes(prevCat) ? prevCat : "";
+        const prevType = els.analysisChartType.value;
+        els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
+        els.analysisChartType.value = ["line", "bar"].includes(prevType) ? prevType : "line";
+      } else if (opt === "monthly-spend") {
+        els.analysisMonthRow.classList.add("hidden");
+        els.analysisYearRow.classList.remove("hidden");
+        els.analysisGroupRow.classList.remove("hidden");
+        els.analysisCategoryRow.classList.remove("hidden");
+        const monthsAll = Store.allMonths();
+        const years = [...new Set(monthsAll.map((m) => m.slice(0, 4)))].sort();
+        const prevYear = els.analysisYear.value;
+        const yearOpts = ['<option value="">All</option>', ...years.map((y) => `<option value="${y}">${y}</option>`)];
+        els.analysisYear.innerHTML = yearOpts.join("");
+        els.analysisYear.value = years.includes(prevYear) ? prevYear : "";
+        const catsCur = Store.categories(currentMonthKey);
+        const groups = [...new Set(Object.values(catsCur).map((x) => x.group || "Other"))].sort();
+        const prevGroup = els.analysisGroup.value;
+        const groupOpts = ['<option value="">All</option>', ...groups.map((g) => `<option value="${g}">${g}</option>`)];
+        els.analysisGroup.innerHTML = groupOpts.join("");
+        els.analysisGroup.value = groups.includes(prevGroup) ? prevGroup : "";
+        const prevCat = els.analysisCategory.value;
+        const groupSel = els.analysisGroup.value;
+        const allCats = Object.keys(catsCur).sort();
+        const catList = allCats.filter((c) => !groupSel || (catsCur[c].group || "Other") === groupSel);
+        const catOpts = ['<option value="">All</option>', ...catList.map((c) => `<option value="${c}">${c}</option>`)];
+        els.analysisCategory.innerHTML = catOpts.join("");
+        els.analysisCategory.value = catList.includes(prevCat) ? prevCat : "";
+        const prevType = els.analysisChartType.value;
+        els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
+        els.analysisChartType.value = ["line", "bar"].includes(prevType) ? prevType : "line";
+      }
+      const style = els.analysisChartType.value;
+      if (analysisChart) {
+        analysisChart.destroy();
+        analysisChart = null;
+      }
+      if (analysisChartActual) {
+        analysisChartActual.destroy();
+        analysisChartActual = null;
+      }
+      els.analysisPlannedTitle.classList.add("hidden");
+      els.analysisActualTitle.classList.add("hidden");
+      els.analysisChartActual.classList.add("hidden");
+      if (opt === "monthly-spend") {
+        const yearSel = els.analysisYear.value;
+        const months = Store.allMonths().filter((m) => !yearSel || m.startsWith(yearSel));
+        const labels = months;
+        const group = els.analysisGroup.value;
+        const category = els.analysisCategory.value;
+        const data = months.map((mk) => {
+          const m = Store.getMonth(mk) || { transactions: [], categories: {} };
+          const cats = m.categories || {};
+          const txs = m.transactions || [];
+          return Utils.sum(txs.filter((t) => {
+            if (category) return t.category === category;
+            if (!group) return true;
+            const meta = cats[t.category] || {};
+            const g = meta.group || "Other";
+            return g === group;
+          }), (t) => t.amount);
+        });
+        const total = Utils.sum(data);
+        els.analysisTotal.textContent = Utils.fmt(total);
+        const label = category ? `${category} Spend` : group ? `${group} Spend` : "Total Spend";
+        analysisChart = new Chart(els.analysisChart.getContext("2d"), {
+          type: style === "bar" ? "bar" : "line",
+          data: {
+            labels,
+            datasets: [{
+              label,
+              data,
+              borderColor: "#0ea5e9",
+              backgroundColor: "#0ea5e9",
+              tension: 0.2,
+              fill: false
+            }]
+          },
+          options: { scales: { y: { beginAtZero: true } } }
+        });
+      } else if (opt === "money-in") {
+        const yearSel = els.analysisYear.value;
+        const months = Store.allMonths().filter((m) => !yearSel || m.startsWith(yearSel));
+        const labels = months;
+        const category = els.analysisCategory.value;
+        const data = months.map((mk) => {
+          const m = Store.getMonth(mk) || { incomes: [] };
+          const incomes = m.incomes || [];
+          return Utils.sum(incomes.filter((i) => !category || i.name === category), (i) => i.amount);
+        });
+        const total = Utils.sum(data);
+        els.analysisTotal.textContent = Utils.fmt(total);
+        const label = category ? `${category} Income` : "Total Income";
+        analysisChart = new Chart(els.analysisChart.getContext("2d"), {
+          type: style === "bar" ? "bar" : "line",
+          data: {
+            labels,
+            datasets: [{
+              label,
+              data,
+              borderColor: "#10b981",
+              backgroundColor: "#10b981",
+              tension: 0.2,
+              fill: false
+            }]
+          },
+          options: { scales: { y: { beginAtZero: true } } }
+        });
+      } else if (opt === "budget-spread") {
+        const mk = els.analysisMonth.value || currentMonthKey;
+        const monthForChart = Utils.clone(Store.getMonth(mk) || Model.emptyMonth());
+        const totals = Model.totals(monthForChart);
+        const labels = Object.keys(totals.groups).sort();
+        const planned = labels.map((l) => {
+          var _a;
+          return ((_a = totals.groups[l]) == null ? void 0 : _a.budget) || 0;
+        });
+        const actual = labels.map((l) => {
+          var _a;
+          return ((_a = totals.groups[l]) == null ? void 0 : _a.actual) || 0;
+        });
+        const plannedTot = Utils.sum(planned);
+        const actualTot = Utils.sum(actual);
+        els.analysisTotal.textContent = `Planned ${Utils.fmt(plannedTot)} / Actual ${Utils.fmt(actualTot)}`;
+        const plannedPct = planned.map((v) => plannedTot ? v / plannedTot * 100 : 0);
+        const actualPct = actual.map((v) => actualTot ? v / actualTot * 100 : 0);
+        const palette = ["#0ea5e9", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#22c55e", "#d946ef"];
+        const colors = labels.map((_, i) => palette[i % palette.length]);
+        const percentPlugin = {
+          id: "pct",
+          afterDatasetsDraw(chart) {
+            const { ctx } = chart;
+            const dataset = chart.data.datasets[0];
+            chart.getDatasetMeta(0).data.forEach((arc, i) => {
+              const val = dataset.data[i] || 0;
+              const pos = arc.tooltipPosition();
+              ctx.save();
+              ctx.fillStyle = "#fff";
+              ctx.font = "14px system-ui";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText(`${val.toFixed(1)}%`, pos.x, pos.y);
+              ctx.restore();
+            });
+          }
+        };
+        const pieOpts = {
+          plugins: {
+            tooltip: { callbacks: { label: (c) => `${c.label}: ${c.parsed.toFixed(1)}%` } }
+          }
+        };
+        const barOpts = {
+          plugins: { tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${Utils.fmt(c.parsed.y)}` } } },
+          scales: { y: { beginAtZero: true, ticks: { callback: (v) => Utils.fmt(v) } } }
+        };
+        if (style === "pie") {
+          els.analysisCharts.classList.add("charts");
+          els.analysisPlannedTitle.classList.remove("hidden");
+          els.analysisActualTitle.classList.remove("hidden");
+          els.analysisChartActual.classList.remove("hidden");
+          analysisChart = new Chart(els.analysisChart.getContext("2d"), {
+            type: "pie",
+            data: { labels, datasets: [{ label: "Planned %", data: plannedPct, backgroundColor: colors }] },
+            options: pieOpts,
+            plugins: [percentPlugin]
+          });
+          analysisChartActual = new Chart(els.analysisChartActual.getContext("2d"), {
+            type: "pie",
+            data: { labels, datasets: [{ label: "Actual %", data: actualPct, backgroundColor: colors }] },
+            options: pieOpts,
+            plugins: [percentPlugin]
+          });
+        } else {
+          analysisChart = new Chart(els.analysisChart.getContext("2d"), {
+            type: "bar",
+            data: {
+              labels,
+              datasets: [
+                { label: "Planned", data: planned, backgroundColor: "#0ea5e9" },
+                { label: "Actual", data: actual, backgroundColor: "#f43f5e" }
+              ]
+            },
+            options: barOpts
+          });
+        }
+      }
+    };
+    function selectTab(key) {
+      const map = {
+        budget: [els.tabBudget, els.panelBudget],
+        tx: [els.tabTx, els.panelTx],
+        analysis: [els.tabAnalysis, els.panelAnalysis],
+        learn: [els.tabLearning, els.panelLearning]
+      };
+      for (const [k, [btn, pan]] of Object.entries(map)) {
+        const on = k === key;
+        btn.setAttribute("aria-selected", on);
+        pan.classList.toggle("hidden", !on);
+      }
+      if (key === "tx") updateTxJump();
+    }
+    els.tabBudget.onclick = () => selectTab("budget");
+    els.tabTx.onclick = () => selectTab("tx");
+    els.tabAnalysis.onclick = () => {
+      selectTab("analysis");
+      runAnalysis();
+    };
+    els.tabCalendar.onclick = () => {
+      calendarDate = /* @__PURE__ */ new Date();
+      renderCalendar();
+      els.calendarDialog.showModal();
+    };
+    els.tabNotes.onclick = () => {
+      editingNoteId = null;
+      els.addNote.textContent = "Add Note";
+      els.noteDesc.value = "";
+      els.noteData.value = "";
+      renderNotes();
+      els.notesDialog.showModal();
+    };
+    els.tabLearning.onclick = () => {
+      selectTab("learn");
+      renderLearnList();
+    };
+    els.notesClose.onclick = () => els.notesDialog.close();
+    els.calendarClose.onclick = () => els.calendarDialog.close();
+    els.calendarPrev.onclick = () => {
+      calendarDate.setMonth(calendarDate.getMonth() - 1);
+      renderCalendar();
+    };
+    els.calendarNext.onclick = () => {
+      calendarDate.setMonth(calendarDate.getMonth() + 1);
+      renderCalendar();
+    };
+    els.analysisSelect.onchange = runAnalysis;
+    els.analysisChartType.onchange = runAnalysis;
+    els.analysisMonth.onchange = runAnalysis;
+    els.analysisYear.onchange = runAnalysis;
+    els.analysisGroup.onchange = runAnalysis;
+    els.analysisCategory.onchange = runAnalysis;
+    function renderCalendar() {
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+      const mk = Utils.monthKey(calendarDate);
+      const m = Store.getMonth(mk) || { transactions: [] };
+      const totals = {};
+      for (const tx of m.transactions) {
+        const d = Number(tx.date.slice(8, 10));
+        totals[d] = (totals[d] || 0) + Math.abs(tx.amount);
+      }
+      const first = new Date(year, month, 1);
+      const start = (first.getDay() + 6) % 7;
+      const days = new Date(year, month + 1, 0).getDate();
+      const names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      els.calendarMonth.textContent = `${monthNames[month]} ${year}`;
+      const today = /* @__PURE__ */ new Date();
+      let html = '<table class="calendar-table"><thead><tr>';
+      for (const n of names) html += `<th>${n}</th>`;
+      html += "</tr></thead><tbody><tr>";
+      let day = 1;
+      for (let i = 0; i < start; i++) html += "<td></td>";
+      for (let i = start; i < 7; i++) html += cell(day++);
+      html += "</tr>";
+      while (day <= days) {
+        html += "<tr>";
+        for (let i = 0; i < 7; i++) html += day <= days ? cell(day++) : "<td></td>";
+        html += "</tr>";
+      }
+      html += "</tbody></table>";
+      els.calendarContainer.innerHTML = html;
+      function cell(d) {
+        const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+        const total = totals[d];
+        const amt = total ? `<span class="day-total">${Utils.fmt(total)}</span>` : "";
+        return `<td${isToday ? ' class="today"' : ""}>${d}${amt}</td>`;
+      }
+    }
+    loadMonth(currentMonthKey);
+  })();
+})();
+//# sourceMappingURL=app.bundle.js.map

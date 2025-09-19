@@ -146,3 +146,7 @@ Thumbs.db
 # Ignore duplicate README
 README.md
 
+# Commit the browser bundle used by index.html
+!app/js/dist/
+!app/js/dist/*
+
