@@ -11,6 +11,8 @@ Open `index.html` in a browser to track your income and expenses for each month.
 
 The interface automatically switches between light and dark themes based on your system appearance.
 
+In dark mode, calendar elements, the transaction date picker, and primary buttons now use an orange accent for better contrast.
+
 The app now starts with no pre-filled categories or incomes. Previously seeded "Salary" and "Vala" income examples have been removed, so you can build your budget entirely from scratch. The previous *Clear* button has been removed; delete categories individually or start a new month if you need a blank slate. Categories can be collapsed or expanded using the secondary-styled controls above the table.
 
 ## File Structure

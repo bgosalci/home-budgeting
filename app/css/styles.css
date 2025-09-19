@@ -164,6 +164,9 @@ main {
   cursor: pointer;
   margin-right: 6px;
 }
+html.dark .group-row .toggle {
+  color: var(--brand);
+}
 
 .kpi {
   display: grid;
@@ -205,6 +208,15 @@ input[type="checkbox"] {
   width: auto;
   margin-right: 6px;
 }
+
+html.dark input[type="date"] {
+  accent-color: var(--brand);
+}
+
+html.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(54%) sepia(82%) saturate(3563%) hue-rotate(4deg)
+    brightness(96%) contrast(101%);
+}
 button.primary {
   background: #000;
   color: #fff;
@@ -212,6 +224,9 @@ button.primary {
   padding: 8px 12px;
   border-radius: 10px;
   cursor: pointer;
+}
+html.dark button.primary {
+  background: var(--brand);
 }
 button.secondary {
   background: var(--sub);
@@ -397,6 +412,7 @@ dialog.dialog {
   padding: 0;
   border-radius: 12px;
   background: var(--card);
+  color: var(--ink);
 }
 dialog.dialog::backdrop {
   background: rgba(0, 0, 0, 0.4);
@@ -437,8 +453,14 @@ dialog.dialog.confirm .dialog-content {
 .calendar-table th {
   background: var(--muted);
 }
+html.dark .calendar-table th {
+  color: var(--brand);
+}
 .calendar-table td {
   position: relative;
+}
+html.dark .calendar-table td {
+  color: var(--brand);
 }
 .calendar-table .day-total {
   position: absolute;
@@ -472,6 +494,12 @@ dialog.dialog.confirm .dialog-content {
   padding: 4px 8px;
   cursor: pointer;
 }
+html.dark #calendar-month {
+  color: var(--brand);
+}
+html.dark .calendar-header button {
+  color: var(--brand);
+}
 .calendar-table td.today {
   font-weight: bold;
 }
@@ -495,4 +523,5 @@ dialog.dialog.confirm .dialog-content {
 #notes-dialog .note-text {
   white-space: pre-wrap;
   word-break: break-word;
+  color: var(--ink);
 }
