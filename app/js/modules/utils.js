@@ -7,6 +7,11 @@ export const monthKey = (d)=>{
   const m = String(dt.getMonth()+1).padStart(2,'0');
   return `${dt.getFullYear()}-${m}`;
 };
+export const isFutureMonth = (mk, referenceDate)=>{
+  if(!mk) return false;
+  const base = monthKey(referenceDate);
+  return mk > base;
+};
 export const groupBy = (arr, fn)=>arr.reduce((a,x)=>{const k=fn(x);(a[k]=a[k]||[]).push(x);return a;},{});
 export const sum = (arr, fn=(x)=>x)=>arr.reduce((a,x)=>a+fn(x),0);
 export const clone = (o)=>JSON.parse(JSON.stringify(o));

@@ -12,6 +12,11 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
       const m = String(dt.getMonth()+1).padStart(2,'0');
       return `${dt.getFullYear()}-${m}`;
     };
+    const isFutureMonth = (mk, referenceDate)=>{
+      if(!mk) return false;
+      const base = monthKey(referenceDate);
+      return mk > base;
+    };
     const groupBy = (arr, fn)=>arr.reduce((a,x)=>{const k=fn(x);(a[k]=a[k]||[]).push(x);return a;},{});
     const sum = (arr, fn=(x)=>x)=>arr.reduce((a,x)=>a+fn(x),0);
     const clone = (o)=>JSON.parse(JSON.stringify(o));
@@ -71,7 +76,7 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
         return [date,t.desc,t.category,`£${Number(t.amount||0).toFixed(2)}`].join(',');
       })
     ].join('\n');
-    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV,toCSV,setText};
+    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV,toCSV,setText,isFutureMonth};
   })();
 
   // ===== Dialog (modal pop-ups)
@@ -575,7 +580,7 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
     const updateDeleteNextMonthButton = (monthsList)=>{
       if(!els.deleteNextMonth) return;
       const nextKey = getNextStoredMonthKey(monthsList);
-      if(nextKey){
+      if(nextKey && Utils.isFutureMonth(nextKey)){
         const label = new Date(nextKey+'-01').toLocaleString(undefined,{month:'short',year:'numeric'});
         els.deleteNextMonth.disabled = false;
         els.deleteNextMonth.title = `Delete ${label} from your budget`;
@@ -969,7 +974,10 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
     els.deleteNextMonth.onclick = async ()=>{
       if(els.deleteNextMonth.disabled) return;
       const nextKey = getNextStoredMonthKey();
-      if(!nextKey) return;
+      if(!nextKey || !Utils.isFutureMonth(nextKey)){
+        updateDeleteNextMonthButton(Store.allMonths());
+        return;
+      }
       const nextLabel = new Date(nextKey+'-01').toLocaleString(undefined,{month:'long',year:'numeric'});
       const confirmed = await Dialog.confirm(`Delete ${nextLabel}? This will remove all data for that month.`);
       if(!confirmed) return;

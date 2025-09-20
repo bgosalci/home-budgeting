@@ -158,6 +158,11 @@
       const m = String(dt.getMonth() + 1).padStart(2, "0");
       return `${dt.getFullYear()}-${m}`;
     };
+    const isFutureMonth = (mk, referenceDate) => {
+      if (!mk) return false;
+      const base = monthKey2(referenceDate);
+      return mk > base;
+    };
     const groupBy = (arr, fn) => arr.reduce((a, x) => {
       const k = fn(x);
       (a[k] = a[k] || []).push(x);
@@ -223,7 +228,7 @@
         return [date, t.desc, t.category, `\xA3${Number(t.amount || 0).toFixed(2)}`].join(",");
       })
     ].join("\n");
-    return { fmt, id, monthKey: monthKey2, groupBy, sum: sum2, clone, parseCSV, toCSV, setText };
+    return { fmt, id, monthKey: monthKey2, groupBy, sum: sum2, clone, parseCSV, toCSV, setText, isFutureMonth };
   })();
   var Dialog = (() => {
     const dlg = document.getElementById("dialog");
@@ -714,7 +719,7 @@
     const updateDeleteNextMonthButton = (monthsList) => {
       if (!els.deleteNextMonth) return;
       const nextKey = getNextStoredMonthKey(monthsList);
-      if (nextKey) {
+      if (nextKey && Utils.isFutureMonth(nextKey)) {
         const label = (/* @__PURE__ */ new Date(nextKey + "-01")).toLocaleString(void 0, { month: "short", year: "numeric" });
         els.deleteNextMonth.disabled = false;
         els.deleteNextMonth.title = `Delete ${label} from your budget`;
@@ -1166,7 +1171,10 @@
     els.deleteNextMonth.onclick = async () => {
       if (els.deleteNextMonth.disabled) return;
       const nextKey = getNextStoredMonthKey();
-      if (!nextKey) return;
+      if (!nextKey || !Utils.isFutureMonth(nextKey)) {
+        updateDeleteNextMonthButton(Store.allMonths());
+        return;
+      }
       const nextLabel = (/* @__PURE__ */ new Date(nextKey + "-01")).toLocaleString(void 0, { month: "long", year: "numeric" });
       const confirmed = await Dialog.confirm(`Delete ${nextLabel}? This will remove all data for that month.`);
       if (!confirmed) return;

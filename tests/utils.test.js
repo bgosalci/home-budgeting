@@ -1,4 +1,4 @@
-import { fmt, monthKey, sum, parseCSV, toCSV } from '../app/js/modules/utils.js';
+import { fmt, monthKey, sum, parseCSV, toCSV, isFutureMonth } from '../app/js/modules/utils.js';
 
 test('fmt formats currency with pound sign and two decimals', ()=>{
   expect(fmt(0)).toBe('£0.00');
@@ -10,6 +10,15 @@ test('monthKey returns yyyy-mm for Date and passthrough for string', ()=>{
   const d = new Date('2024-07-15');
   expect(monthKey(d)).toBe('2024-07');
   expect(monthKey('2025-09')).toBe('2025-09');
+});
+
+test('isFutureMonth only allows months after the reference date', ()=>{
+  const ref = new Date('2024-09-20T12:00:00Z');
+  expect(isFutureMonth('2024-10', ref)).toBe(true);
+  expect(isFutureMonth('2024-09', ref)).toBe(false);
+  expect(isFutureMonth('2024-08', ref)).toBe(false);
+  expect(isFutureMonth(undefined, ref)).toBe(false);
+  expect(isFutureMonth('2024-11', '2024-10')).toBe(true);
 });
 
 test('sum adds values using mapper', ()=>{
