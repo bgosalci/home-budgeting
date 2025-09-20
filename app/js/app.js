@@ -12,6 +12,11 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
       const m = String(dt.getMonth()+1).padStart(2,'0');
       return `${dt.getFullYear()}-${m}`;
     };
+    const isFutureMonth = (mk, referenceDate)=>{
+      if(!mk) return false;
+      const base = monthKey(referenceDate);
+      return mk > base;
+    };
     const groupBy = (arr, fn)=>arr.reduce((a,x)=>{const k=fn(x);(a[k]=a[k]||[]).push(x);return a;},{});
     const sum = (arr, fn=(x)=>x)=>arr.reduce((a,x)=>a+fn(x),0);
     const clone = (o)=>JSON.parse(JSON.stringify(o));
@@ -71,7 +76,7 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
         return [date,t.desc,t.category,`£${Number(t.amount||0).toFixed(2)}`].join(',');
       })
     ].join('\n');
-    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV,toCSV,setText};
+    return {fmt,id,monthKey,groupBy,sum,clone,parseCSV,toCSV,setText,isFutureMonth};
   })();
 
   // ===== Dialog (modal pop-ups)
@@ -123,6 +128,14 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
     }
     const getMonth = (mk)=> state.months[mk];
     const setMonth = (mk, data)=>{ state.months[mk]=data; save(state); };
+    const deleteMonth = (mk)=>{
+      if(!state.months[mk]) return;
+      delete state.months[mk];
+      if(state.ui?.collapsed){
+        delete state.ui.collapsed[mk];
+      }
+      save(state);
+    };
     const allMonths = ()=> Object.keys(state.months).sort();
     const categories = (mk)=> state.months[mk]?.categories || {};
     const mapping = ()=> state.mapping;
@@ -188,7 +201,7 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
     const setAllCollapsed = (mk, groups, val)=>{ const obj = collapsedFor(mk); (groups||[]).forEach(g=>obj[g]=!!val); save(state); };
     const notes = ()=> state.notes || [];
     const setNotes = (list)=>{ state.notes = list; save(state); };
-    return {state,getMonth,setMonth,allMonths,categories,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportData,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed,notes,setNotes};
+    return {state,getMonth,setMonth,deleteMonth,allMonths,categories,mapping,setMapping,descMap,setDescMap,descList,setDescList,exportData,importData,collapsedFor,isCollapsed,setCollapsed,toggleCollapsed,setAllCollapsed,notes,setNotes};
   })();
 
   // ===== Charts (vanilla Canvas)
@@ -358,6 +371,8 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
       leftoverPillPrediction: document.getElementById('leftover-pill-prediction'),
       monthPicker: document.getElementById('month-picker'),
       newMonth: document.getElementById('new-month'),
+      deleteNextMonth: document.getElementById('delete-next-month'),
+      deleteNextMonthHint: document.getElementById('delete-next-month-hint'),
       openMonth: document.getElementById('open-month'),
       exportBtn: document.getElementById('export-data'),
       exportDialog: document.getElementById('export-dialog'),
@@ -557,10 +572,44 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
       refreshKPIs();
     }
 
+    const getNextStoredMonthKey = (monthsList)=>{
+      const months = monthsList || Store.allMonths();
+      const idx = months.indexOf(currentMonthKey);
+      return idx>=0 ? months[idx+1] : null;
+    };
+
+    const updateDeleteNextMonthButton = (monthsList)=>{
+      if(!els.deleteNextMonth) return;
+      const nextKey = getNextStoredMonthKey(monthsList);
+      const hintEl = els.deleteNextMonthHint;
+      if(nextKey && Utils.isFutureMonth(nextKey)){
+        const label = new Date(nextKey+'-01').toLocaleString(undefined,{month:'short',year:'numeric'});
+        els.deleteNextMonth.disabled = false;
+        els.deleteNextMonth.title = `Delete ${label} from your budget`;
+        if(hintEl){
+          hintEl.textContent = '';
+          hintEl.classList.add('hidden');
+          hintEl.setAttribute('aria-hidden', 'true');
+        }
+      }else{
+        const currentLabel = new Date().toLocaleString(undefined,{month:'long',year:'numeric'});
+        els.deleteNextMonth.disabled = true;
+        els.deleteNextMonth.title = `Only future months can be deleted. The next stored month must be after ${currentLabel}.`;
+        if(hintEl){
+          hintEl.textContent = `Only future months can be deleted. The next stored month must be after ${currentLabel}.`;
+          hintEl.classList.remove('hidden');
+          hintEl.setAttribute('aria-hidden', 'false');
+        }
+      }
+      els.deleteNextMonth.setAttribute('aria-disabled', String(els.deleteNextMonth.disabled));
+    };
+
     function refreshMonthPicker(){
-      const opts = Store.allMonths().map(mk=>`<option value="${mk}" ${mk===currentMonthKey?'selected':''}>${new Date(mk+'-01').toLocaleString(undefined,{month:'short',year:'numeric'})}</option>`).join('');
+      const months = Store.allMonths();
+      const opts = months.map(mk=>`<option value="${mk}" ${mk===currentMonthKey?'selected':''}>${new Date(mk+'-01').toLocaleString(undefined,{month:'short',year:'numeric'})}</option>`).join('');
       els.openMonth.innerHTML = `<option value="">Select Month</option>` + opts;
       els.openMonth.value = currentMonthKey;
+      updateDeleteNextMonthButton(months);
     }
 
     function addIncomeRow(x){
@@ -935,6 +984,28 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
         month.categories = Utils.clone(Store.categories(prev));
       }
       Store.setMonth(mk, month); loadMonth(mk);
+    };
+    els.deleteNextMonth.onclick = async ()=>{
+      if(els.deleteNextMonth.disabled) return;
+      const nextKey = getNextStoredMonthKey();
+      if(!nextKey || !Utils.isFutureMonth(nextKey)){
+        updateDeleteNextMonthButton(Store.allMonths());
+        return;
+      }
+      const nextLabel = new Date(nextKey+'-01').toLocaleString(undefined,{month:'long',year:'numeric'});
+      const confirmed = await Dialog.confirm(`Delete ${nextLabel}? This will remove all data for that month.`);
+      if(!confirmed) return;
+      Store.deleteMonth(nextKey);
+      const months = Store.allMonths();
+      const target = months.includes(currentMonthKey) ? currentMonthKey : (months.slice(-1)[0] || null);
+      if(target){
+        loadMonth(target);
+      }else{
+        const mkNew = Utils.monthKey(new Date());
+        const month = Model.template();
+        Store.setMonth(mkNew, month);
+        loadMonth(mkNew);
+      }
     };
     els.openMonth.onchange = (e)=>{ if(e.target.value) loadMonth(e.target.value); };
 

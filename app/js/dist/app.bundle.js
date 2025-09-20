@@ -158,6 +158,11 @@
       const m = String(dt.getMonth() + 1).padStart(2, "0");
       return `${dt.getFullYear()}-${m}`;
     };
+    const isFutureMonth = (mk, referenceDate) => {
+      if (!mk) return false;
+      const base = monthKey2(referenceDate);
+      return mk > base;
+    };
     const groupBy = (arr, fn) => arr.reduce((a, x) => {
       const k = fn(x);
       (a[k] = a[k] || []).push(x);
@@ -223,7 +228,7 @@
         return [date, t.desc, t.category, `\xA3${Number(t.amount || 0).toFixed(2)}`].join(",");
       })
     ].join("\n");
-    return { fmt, id, monthKey: monthKey2, groupBy, sum: sum2, clone, parseCSV, toCSV, setText };
+    return { fmt, id, monthKey: monthKey2, groupBy, sum: sum2, clone, parseCSV, toCSV, setText, isFutureMonth };
   })();
   var Dialog = (() => {
     const dlg = document.getElementById("dialog");
@@ -283,6 +288,15 @@
     const getMonth = (mk) => state.months[mk];
     const setMonth = (mk, data) => {
       state.months[mk] = data;
+      save(state);
+    };
+    const deleteMonth = (mk) => {
+      var _a;
+      if (!state.months[mk]) return;
+      delete state.months[mk];
+      if ((_a = state.ui) == null ? void 0 : _a.collapsed) {
+        delete state.ui.collapsed[mk];
+      }
       save(state);
     };
     const allMonths = () => Object.keys(state.months).sort();
@@ -378,7 +392,7 @@
       state.notes = list;
       save(state);
     };
-    return { state, getMonth, setMonth, allMonths, categories, mapping, setMapping, descMap, setDescMap, descList, setDescList, exportData, importData, collapsedFor, isCollapsed, setCollapsed, toggleCollapsed, setAllCollapsed, notes, setNotes };
+    return { state, getMonth, setMonth, deleteMonth, allMonths, categories, mapping, setMapping, descMap, setDescMap, descList, setDescList, exportData, importData, collapsedFor, isCollapsed, setCollapsed, toggleCollapsed, setAllCollapsed, notes, setNotes };
   })();
   var Predictor = /* @__PURE__ */ (() => {
     const tokensOf = (s) => (s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
@@ -514,6 +528,8 @@
       leftoverPillPrediction: document.getElementById("leftover-pill-prediction"),
       monthPicker: document.getElementById("month-picker"),
       newMonth: document.getElementById("new-month"),
+      deleteNextMonth: document.getElementById("delete-next-month"),
+      deleteNextMonthHint: document.getElementById("delete-next-month-hint"),
       openMonth: document.getElementById("open-month"),
       exportBtn: document.getElementById("export-data"),
       exportDialog: document.getElementById("export-dialog"),
@@ -696,10 +712,42 @@
       refreshMonthPicker();
       refreshKPIs();
     }
+    const getNextStoredMonthKey = (monthsList) => {
+      const months = monthsList || Store.allMonths();
+      const idx = months.indexOf(currentMonthKey);
+      return idx >= 0 ? months[idx + 1] : null;
+    };
+    const updateDeleteNextMonthButton = (monthsList) => {
+      if (!els.deleteNextMonth) return;
+      const nextKey = getNextStoredMonthKey(monthsList);
+      const hintEl = els.deleteNextMonthHint;
+      if (nextKey && Utils.isFutureMonth(nextKey)) {
+        const label = (/* @__PURE__ */ new Date(nextKey + "-01")).toLocaleString(void 0, { month: "short", year: "numeric" });
+        els.deleteNextMonth.disabled = false;
+        els.deleteNextMonth.title = `Delete ${label} from your budget`;
+        if (hintEl) {
+          hintEl.textContent = "";
+          hintEl.classList.add("hidden");
+          hintEl.setAttribute("aria-hidden", "true");
+        }
+      } else {
+        const currentLabel = (/* @__PURE__ */ new Date()).toLocaleString(void 0, { month: "long", year: "numeric" });
+        els.deleteNextMonth.disabled = true;
+        els.deleteNextMonth.title = `Only future months can be deleted. The next stored month must be after ${currentLabel}.`;
+        if (hintEl) {
+          hintEl.textContent = `Only future months can be deleted. The next stored month must be after ${currentLabel}.`;
+          hintEl.classList.remove("hidden");
+          hintEl.setAttribute("aria-hidden", "false");
+        }
+      }
+      els.deleteNextMonth.setAttribute("aria-disabled", String(els.deleteNextMonth.disabled));
+    };
     function refreshMonthPicker() {
-      const opts = Store.allMonths().map((mk) => `<option value="${mk}" ${mk === currentMonthKey ? "selected" : ""}>${(/* @__PURE__ */ new Date(mk + "-01")).toLocaleString(void 0, { month: "short", year: "numeric" })}</option>`).join("");
+      const months = Store.allMonths();
+      const opts = months.map((mk) => `<option value="${mk}" ${mk === currentMonthKey ? "selected" : ""}>${(/* @__PURE__ */ new Date(mk + "-01")).toLocaleString(void 0, { month: "short", year: "numeric" })}</option>`).join("");
       els.openMonth.innerHTML = `<option value="">Select Month</option>` + opts;
       els.openMonth.value = currentMonthKey;
+      updateDeleteNextMonthButton(months);
     }
     function addIncomeRow(x) {
       const row = document.createElement("div");
@@ -1133,6 +1181,28 @@
       }
       Store.setMonth(mk, month);
       loadMonth(mk);
+    };
+    els.deleteNextMonth.onclick = async () => {
+      if (els.deleteNextMonth.disabled) return;
+      const nextKey = getNextStoredMonthKey();
+      if (!nextKey || !Utils.isFutureMonth(nextKey)) {
+        updateDeleteNextMonthButton(Store.allMonths());
+        return;
+      }
+      const nextLabel = (/* @__PURE__ */ new Date(nextKey + "-01")).toLocaleString(void 0, { month: "long", year: "numeric" });
+      const confirmed = await Dialog.confirm(`Delete ${nextLabel}? This will remove all data for that month.`);
+      if (!confirmed) return;
+      Store.deleteMonth(nextKey);
+      const months = Store.allMonths();
+      const target = months.includes(currentMonthKey) ? currentMonthKey : months.slice(-1)[0] || null;
+      if (target) {
+        loadMonth(target);
+      } else {
+        const mkNew = Utils.monthKey(/* @__PURE__ */ new Date());
+        const month = Model.template();
+        Store.setMonth(mkNew, month);
+        loadMonth(mkNew);
+      }
     };
     els.openMonth.onchange = (e) => {
       if (e.target.value) loadMonth(e.target.value);
