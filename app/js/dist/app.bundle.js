@@ -529,6 +529,7 @@
       monthPicker: document.getElementById("month-picker"),
       newMonth: document.getElementById("new-month"),
       deleteNextMonth: document.getElementById("delete-next-month"),
+      deleteNextMonthHint: document.getElementById("delete-next-month-hint"),
       openMonth: document.getElementById("open-month"),
       exportBtn: document.getElementById("export-data"),
       exportDialog: document.getElementById("export-dialog"),
@@ -719,14 +720,25 @@
     const updateDeleteNextMonthButton = (monthsList) => {
       if (!els.deleteNextMonth) return;
       const nextKey = getNextStoredMonthKey(monthsList);
+      const hintEl = els.deleteNextMonthHint;
       if (nextKey && Utils.isFutureMonth(nextKey)) {
         const label = (/* @__PURE__ */ new Date(nextKey + "-01")).toLocaleString(void 0, { month: "short", year: "numeric" });
         els.deleteNextMonth.disabled = false;
         els.deleteNextMonth.title = `Delete ${label} from your budget`;
+        if (hintEl) {
+          hintEl.textContent = "";
+          hintEl.classList.add("hidden");
+        }
       } else {
+        const currentLabel = (/* @__PURE__ */ new Date()).toLocaleString(void 0, { month: "long", year: "numeric" });
         els.deleteNextMonth.disabled = true;
-        els.deleteNextMonth.removeAttribute("title");
+        els.deleteNextMonth.title = `Only future months can be deleted. The next stored month must be after ${currentLabel}.`;
+        if (hintEl) {
+          hintEl.textContent = `Only future months can be deleted. The next stored month must be after ${currentLabel}.`;
+          hintEl.classList.remove("hidden");
+        }
       }
+      els.deleteNextMonth.setAttribute("aria-disabled", String(els.deleteNextMonth.disabled));
     };
     function refreshMonthPicker() {
       const months = Store.allMonths();

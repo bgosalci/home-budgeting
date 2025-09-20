@@ -89,6 +89,14 @@ header h1 {
 .toolbar button {
   cursor: pointer;
 }
+.toolbar-note {
+  align-self: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+  margin-left: 4px;
+  max-width: 260px;
+}
 .inline-field {
   display: inline-flex;
   align-items: center;
