@@ -31,7 +31,7 @@ JavaScript files are located in `app/js` and stylesheets in `app/css`.
 
 ### Month Controls
 You can add a new budget month or switch between months using the inline controls in the header. New months start with a copy of the previous month's categories so each month's budget can evolve independently. The previous **Duplicate Prev** button has been removed, and the **Add Month** and **Open Month** controls now appear on a single line for quicker access.
-A **Delete Next Month** button sits beside these controls so you can remove the next stored month that falls after the current calendar month once you confirm the action. When no future month is available, the control stays disabled and explains that only months after the current calendar month can be deleted.
+A **Delete Next Month** button sits beside these controls so you can remove the next stored month that falls after the current calendar month once you confirm the action. When no future month is available, the control stays disabled and surfaces a hover tooltip explaining that only months after the current calendar month can be deleted.
 
 ### Action Icons
 Edit and delete actions across the app now use circular icon buttons for a cleaner look.

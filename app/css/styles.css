@@ -89,13 +89,47 @@ header h1 {
 .toolbar button {
   cursor: pointer;
 }
+.toolbar-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
 .toolbar-note {
-  align-self: center;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translate(-50%, 0);
+  background: rgba(17, 24, 39, 0.9);
+  color: #fff;
   font-size: 12px;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.85);
-  margin-left: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.35);
   max-width: 260px;
+  display: inline-block;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  z-index: 5;
+}
+.toolbar-note::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: rgba(17, 24, 39, 0.9) transparent transparent transparent;
+}
+.toolbar-tooltip:hover .toolbar-note,
+.toolbar-tooltip:focus-within .toolbar-note {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -4px);
 }
 .inline-field {
   display: inline-flex;

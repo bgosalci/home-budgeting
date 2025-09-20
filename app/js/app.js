@@ -589,6 +589,7 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
         if(hintEl){
           hintEl.textContent = '';
           hintEl.classList.add('hidden');
+          hintEl.setAttribute('aria-hidden', 'true');
         }
       }else{
         const currentLabel = new Date().toLocaleString(undefined,{month:'long',year:'numeric'});
@@ -597,6 +598,7 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
         if(hintEl){
           hintEl.textContent = `Only future months can be deleted. The next stored month must be after ${currentLabel}.`;
           hintEl.classList.remove('hidden');
+          hintEl.setAttribute('aria-hidden', 'false');
         }
       }
       els.deleteNextMonth.setAttribute('aria-disabled', String(els.deleteNextMonth.disabled));

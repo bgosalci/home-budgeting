@@ -728,6 +728,7 @@
         if (hintEl) {
           hintEl.textContent = "";
           hintEl.classList.add("hidden");
+          hintEl.setAttribute("aria-hidden", "true");
         }
       } else {
         const currentLabel = (/* @__PURE__ */ new Date()).toLocaleString(void 0, { month: "long", year: "numeric" });
@@ -736,6 +737,7 @@
         if (hintEl) {
           hintEl.textContent = `Only future months can be deleted. The next stored month must be after ${currentLabel}.`;
           hintEl.classList.remove("hidden");
+          hintEl.setAttribute("aria-hidden", "false");
         }
       }
       els.deleteNextMonth.setAttribute("aria-disabled", String(els.deleteNextMonth.disabled));
