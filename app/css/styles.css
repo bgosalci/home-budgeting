@@ -103,10 +103,11 @@ header h1 {
   color: #fff;
   font-size: 12px;
   line-height: 1.4;
-  padding: 8px 10px;
+  padding: 8px 14px;
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.35);
-  max-width: 260px;
+  min-width: 260px;
+  max-width: 360px;
   display: inline-block;
   text-align: center;
   opacity: 0;
@@ -130,6 +131,13 @@ header h1 {
   opacity: 1;
   visibility: visible;
   transform: translate(-50%, 0);
+}
+
+@media (max-width: 420px) {
+  .toolbar-note {
+    min-width: calc(100vw - 48px);
+    max-width: calc(100vw - 48px);
+  }
 }
 .inline-field {
   display: inline-flex;
