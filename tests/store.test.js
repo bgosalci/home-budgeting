@@ -1,4 +1,18 @@
-import { exportData, importData, setMapping, mapping, reset, setDescList, descList } from '../app/js/modules/store.js';
+import {
+  exportData,
+  importData,
+  setMapping,
+  mapping,
+  reset,
+  setDescList,
+  descList,
+  setMonth,
+  deleteMonth,
+  allMonths,
+  getMonth,
+  state,
+  setCollapsed
+} from '../app/js/modules/store.js';
 
 beforeEach(()=>{
   reset();
@@ -39,4 +53,14 @@ test('mapping merge and desc list', ()=>{
   expect(m.tokens.uber.Transport).toBe(3);
   setDescList(['A']);
   expect(descList()).toContain('A');
+});
+
+test('deleteMonth removes stored data and ui state', ()=>{
+  setMonth('2024-08', { incomes: [], transactions: [], categories: {} });
+  setCollapsed('2024-08', 'Group', true);
+  expect(allMonths()).toContain('2024-08');
+  deleteMonth('2024-08');
+  expect(allMonths()).not.toContain('2024-08');
+  expect(getMonth('2024-08')).toBeUndefined();
+  expect(state.ui?.collapsed?.['2024-08']).toBeUndefined();
 });

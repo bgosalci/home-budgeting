@@ -25,6 +25,14 @@ if(state.categories){
 
 export const getMonth = (mk)=> state.months[mk];
 export const setMonth = (mk, data)=>{ state.months[mk]=data; save(state); };
+export const deleteMonth = (mk)=>{
+  if(!state.months[mk]) return;
+  delete state.months[mk];
+  if(state.ui?.collapsed){
+    delete state.ui.collapsed[mk];
+  }
+  save(state);
+};
 export const allMonths = ()=> Object.keys(state.months).sort();
 export const categories = (mk)=> state.months[mk]?.categories || {};
 export const mapping = ()=> state.mapping;
