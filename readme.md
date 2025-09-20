@@ -13,6 +13,12 @@ The interface automatically switches between light and dark themes based on your
 
 In dark mode, calendar elements, the transaction date picker, and primary buttons now use an orange accent for better contrast.
 
+### JavaScript bundle
+The browser loads `app/js/dist/app.bundle.js`, which is generated from the ES module sources in `app/js/` using [esbuild](https://esbuild.github.io/). The compiled bundle is committed to the repository so the app keeps working when you open `index.html` directly from disk. After changing any JavaScript modules run `npm run build` to regenerate the bundle before reloading the page.
+
+### Predicted Balance
+The header's **Left Over** pill now shows a predicted end-of-month balance beside the current figure. The estimate learns from your historical monthly spending patterns, updating as you record new transactions. Hovering the prediction reveals how many past months informed the forecast.
+
 The app now starts with no pre-filled categories or incomes. Previously seeded "Salary" and "Vala" income examples have been removed, so you can build your budget entirely from scratch. The previous *Clear* button has been removed; delete categories individually or start a new month if you need a blank slate. Categories can be collapsed or expanded using the secondary-styled controls above the table.
 
 ## File Structure
