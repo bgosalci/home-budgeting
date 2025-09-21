@@ -272,6 +272,22 @@ public final class BudgetViewModel: ObservableObject {
         }
     }
 
+    func updateCategory(originalName: String, name: String, group: String, budget: Double) {
+        guard let monthKey = uiState.selectedMonthKey else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let normalizedGroup = group.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Other" : group
+        Task {
+            let state = await repository.upsertMonth(monthKey) { month in
+                var month = month
+                month.categories.removeValue(forKey: originalName)
+                month.categories[trimmed] = BudgetCategory(group: normalizedGroup, budget: budget)
+                return month
+            }
+            await MainActor.run { self.applyState(state) }
+        }
+    }
+
     func deleteCategory(name: String) {
         guard let monthKey = uiState.selectedMonthKey else { return }
         Task {
