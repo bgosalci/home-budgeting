@@ -702,7 +702,7 @@ private struct MonthPickerField: View {
         return lower...upper
     }
 
-    private static func extendedRange(_ range: ClosedRange<Int>, toInclude year: Int) -> ClosedRange<Int> {
+    fileprivate static func extendedRange(_ range: ClosedRange<Int>, toInclude year: Int) -> ClosedRange<Int> {
         var lower = range.lowerBound
         var upper = range.upperBound
         if year <= lower {
