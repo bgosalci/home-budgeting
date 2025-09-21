@@ -309,15 +309,6 @@ public final class BudgetViewModel: ObservableObject {
         }
     }
 
-    func setAllGroupsCollapsed(_ collapsed: Bool) {
-        guard let monthKey = uiState.selectedMonthKey else { return }
-        let groups = Array(Set(uiState.categories.map { $0.group }))
-        Task {
-            let state = await repository.setAllCollapsed(monthKey: monthKey, groups: groups, collapsed: collapsed)
-            await MainActor.run { self.applyState(state) }
-        }
-    }
-
     func addOrUpdateTransaction(date: String, desc: String, amount: Double, category: String?, editingId: String? = nil) {
         guard let monthKey = uiState.selectedMonthKey,
               !date.isEmpty,

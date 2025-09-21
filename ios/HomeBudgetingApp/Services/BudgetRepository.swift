@@ -103,17 +103,6 @@ actor BudgetRepository {
     }
 
     @discardableResult
-    func setAllCollapsed(monthKey: String, groups: [String], collapsed: Bool) -> BudgetState {
-        updateState { state in
-            if collapsed {
-                state.ui.collapsed[monthKey] = Dictionary(uniqueKeysWithValues: groups.map { ($0, true) })
-            } else {
-                state.ui.collapsed.removeValue(forKey: monthKey)
-            }
-        }
-    }
-
-    @discardableResult
     func importData(_ incoming: BudgetState) -> BudgetState {
         updateState { state in
             let sanitized = incoming.ensured()
