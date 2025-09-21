@@ -9,6 +9,45 @@ struct BudgetState: Codable {
     var descList: [String] = []
     var notes: [BudgetNote] = []
 
+    private enum CodingKeys: String, CodingKey {
+        case version
+        case months
+        case mapping
+        case descMap
+        case ui
+        case descList
+        case notes
+    }
+
+    init(
+        version: Int = 1,
+        months: [String: BudgetMonth] = [:],
+        mapping: PredictionMapping = PredictionMapping(),
+        descMap: DescriptionMap = DescriptionMap(),
+        ui: UiPreferences = UiPreferences(),
+        descList: [String] = [],
+        notes: [BudgetNote] = []
+    ) {
+        self.version = version
+        self.months = months
+        self.mapping = mapping
+        self.descMap = descMap
+        self.ui = ui
+        self.descList = descList
+        self.notes = notes
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        months = try container.decodeIfPresent([String: BudgetMonth].self, forKey: .months) ?? [:]
+        mapping = try container.decodeIfPresent(PredictionMapping.self, forKey: .mapping) ?? PredictionMapping()
+        descMap = try container.decodeIfPresent(DescriptionMap.self, forKey: .descMap) ?? DescriptionMap()
+        ui = try container.decodeIfPresent(UiPreferences.self, forKey: .ui) ?? UiPreferences()
+        descList = try container.decodeIfPresent([String].self, forKey: .descList) ?? []
+        notes = try container.decodeIfPresent([BudgetNote].self, forKey: .notes) ?? []
+    }
+
     static let empty = BudgetState()
 
     func ensured() -> BudgetState {
@@ -41,6 +80,29 @@ struct BudgetMonth: Codable {
     var transactions: [BudgetTransaction] = []
     var categories: [String: BudgetCategory] = [:]
 
+    private enum CodingKeys: String, CodingKey {
+        case incomes
+        case transactions
+        case categories
+    }
+
+    init(
+        incomes: [Income] = [],
+        transactions: [BudgetTransaction] = [],
+        categories: [String: BudgetCategory] = [:]
+    ) {
+        self.incomes = incomes
+        self.transactions = transactions
+        self.categories = categories
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        incomes = try container.decodeIfPresent([Income].self, forKey: .incomes) ?? []
+        transactions = try container.decodeIfPresent([BudgetTransaction].self, forKey: .transactions) ?? []
+        categories = try container.decodeIfPresent([String: BudgetCategory].self, forKey: .categories) ?? [:]
+    }
+
     func ensured() -> BudgetMonth {
         BudgetMonth(
             incomes: incomes.map { $0.ensured() },
@@ -55,6 +117,25 @@ struct Income: Identifiable, Codable {
     var name: String
     var amount: Double
 
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case amount
+    }
+
+    init(id: String, name: String, amount: Double) {
+        self.id = id
+        self.name = name
+        self.amount = amount
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        amount = container.decodeLossyDouble(forKey: .amount) ?? 0
+    }
+
     func ensured() -> Income {
         Income(id: id, name: name.trimmingCharacters(in: .whitespacesAndNewlines), amount: amount.isFinite ? amount : 0)
     }
@@ -63,6 +144,22 @@ struct Income: Identifiable, Codable {
 struct BudgetCategory: Codable {
     var group: String = "Other"
     var budget: Double = 0
+
+    private enum CodingKeys: String, CodingKey {
+        case group
+        case budget
+    }
+
+    init(group: String = "Other", budget: Double = 0) {
+        self.group = group
+        self.budget = budget
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        group = try container.decodeIfPresent(String.self, forKey: .group) ?? "Other"
+        budget = container.decodeLossyDouble(forKey: .budget) ?? 0
+    }
 
     func ensured() -> BudgetCategory {
         BudgetCategory(group: group.isEmpty ? "Other" : group, budget: budget.isFinite ? budget : 0)
@@ -75,6 +172,31 @@ struct BudgetTransaction: Identifiable, Codable {
     var desc: String
     var amount: Double
     var category: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case date
+        case desc
+        case amount
+        case category
+    }
+
+    init(id: String, date: String, desc: String, amount: Double, category: String) {
+        self.id = id
+        self.date = date
+        self.desc = desc
+        self.amount = amount
+        self.category = category
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        date = try container.decodeIfPresent(String.self, forKey: .date) ?? ""
+        desc = try container.decodeIfPresent(String.self, forKey: .desc) ?? ""
+        amount = container.decodeLossyDouble(forKey: .amount) ?? 0
+        category = try container.decodeIfPresent(String.self, forKey: .category) ?? ""
+    }
 
     func ensured() -> BudgetTransaction {
         BudgetTransaction(
@@ -92,11 +214,55 @@ struct BudgetNote: Identifiable, Codable {
     var desc: String
     var data: String
     var time: TimeInterval
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case desc
+        case data
+        case time
+    }
+
+    init(id: Int64, desc: String, data: String, time: TimeInterval) {
+        self.id = id
+        self.desc = desc
+        self.data = data
+        self.time = time
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let value = try? container.decode(Int64.self, forKey: .id) {
+            id = value
+        } else if let stringValue = try? container.decode(String.self, forKey: .id), let parsed = Int64(stringValue) {
+            id = parsed
+        } else {
+            id = Int64(Date().timeIntervalSince1970 * 1000)
+        }
+        desc = try container.decodeIfPresent(String.self, forKey: .desc) ?? ""
+        data = try container.decodeIfPresent(String.self, forKey: .data) ?? ""
+        time = container.decodeLossyDouble(forKey: .time) ?? Date().timeIntervalSince1970
+    }
 }
 
 struct PredictionMapping: Codable {
     var exact: [String: String] = [:]
     var tokens: [String: [String: Int]] = [:]
+
+    private enum CodingKeys: String, CodingKey {
+        case exact
+        case tokens
+    }
+
+    init(exact: [String: String] = [:], tokens: [String: [String: Int]] = [:]) {
+        self.exact = exact
+        self.tokens = tokens
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        exact = try container.decodeIfPresent([String: String].self, forKey: .exact) ?? [:]
+        tokens = try container.decodeIfPresent([String: [String: Int]].self, forKey: .tokens) ?? [:]
+    }
 
     func ensured() -> PredictionMapping {
         let sanitizedExact = exact.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -111,6 +277,22 @@ struct DescriptionMap: Codable {
     var exact: [String: [String: Int]] = [:]
     var tokens: [String: [String: Int]] = [:]
 
+    private enum CodingKeys: String, CodingKey {
+        case exact
+        case tokens
+    }
+
+    init(exact: [String: [String: Int]] = [:], tokens: [String: [String: Int]] = [:]) {
+        self.exact = exact
+        self.tokens = tokens
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        exact = try container.decodeIfPresent([String: [String: Int]].self, forKey: .exact) ?? [:]
+        tokens = try container.decodeIfPresent([String: [String: Int]].self, forKey: .tokens) ?? [:]
+    }
+
     func ensured() -> DescriptionMap {
         DescriptionMap(
             exact: exact.mapValues { $0.filter { $0.value > 0 } },
@@ -122,11 +304,36 @@ struct DescriptionMap: Codable {
 struct UiPreferences: Codable {
     var collapsed: [String: [String: Bool]] = [:]
 
+    private enum CodingKeys: String, CodingKey {
+        case collapsed
+    }
+
+    init(collapsed: [String: [String: Bool]] = [:]) {
+        self.collapsed = collapsed
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        collapsed = try container.decodeIfPresent([String: [String: Bool]].self, forKey: .collapsed) ?? [:]
+    }
+
     func ensured() -> UiPreferences {
         UiPreferences(
             collapsed: collapsed.mapValues { groups in
                 groups.filter { $0.value }
             }
         )
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func decodeLossyDouble(forKey key: Key) -> Double? {
+        if let value = try? decode(Double.self, forKey: key) {
+            return value
+        }
+        if let stringValue = try? decode(String.self, forKey: key) {
+            return Double(stringValue)
+        }
+        return nil
     }
 }

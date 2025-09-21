@@ -39,6 +39,8 @@ cd android
 ./gradlew assembleDebug
 ```
 
+The **Budget** tab now exposes **Export Data** and **Import Data** actions. You can export transactions (JSON or CSV), categories, the prediction map, or a full backup, and import the same file types produced by the web app.
+
 ### iOS
 The iOS app is distributed as a Swift Package. Open `ios/Package.swift` in Xcode 15 or newer (Swift tools 5.9 or later) to generate the project. Select the **HomeBudgeting** scheme and target an iOS 16+ simulator or device.
 
@@ -48,6 +50,8 @@ The package can also be checked from the command line (macOS with Xcode toolchai
 cd ios
 swift build
 ```
+
+Open the **Budget** tab to access matching import/export options for transactions (JSON or CSV), categories, the prediction learning data, or a complete backup compatible with the web experience.
 
 ## Usage
 Open `web-app/index.html` in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace.
