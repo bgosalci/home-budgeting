@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UniformTypeIdentifiers
 
 @MainActor
 struct TransactionsUiState {
@@ -461,6 +462,124 @@ public final class BudgetViewModel: ObservableObject {
         }
     }
 
+    func exportData(kind: DataTransferKind, monthKey: String?, format: DataFormat) async throws -> ExportPayload {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let sanitized = baseState.ensured()
+        switch kind {
+        case .transactions:
+            guard let normalized = normalizeMonthKey(monthKey) else { throw DataTransferError.invalidMonth }
+            let transactions = sanitized.months[normalized]?.transactions.map { $0.ensured() } ?? []
+            if format == .csv {
+                let csv = makeCsv(for: transactions)
+                guard let data = csv.data(using: .utf8) else { throw DataTransferError.invalidCSV }
+                return ExportPayload(
+                    filename: kind.filename(monthKey: normalized, format: .csv),
+                    data: data,
+                    contentType: .commaSeparatedText
+                )
+            }
+            let data = try encoder.encode(transactions)
+            return ExportPayload(
+                filename: kind.filename(monthKey: normalized, format: .json),
+                data: data,
+                contentType: .json
+            )
+        case .categories:
+            guard let normalized = normalizeMonthKey(monthKey) else { throw DataTransferError.invalidMonth }
+            let categories = sanitized.months[normalized]?.categories.mapValues { $0.ensured() } ?? [:]
+            let export = CategoriesExport(categories: categories)
+            let data = try encoder.encode(export)
+            return ExportPayload(
+                filename: kind.filename(monthKey: normalized, format: .json),
+                data: data,
+                contentType: .json
+            )
+        case .prediction:
+            let export = PredictionExport(
+                mapping: sanitized.mapping.ensured(),
+                descMap: sanitized.descMap.ensured(),
+                descList: sanitized.descList
+            )
+            let data = try encoder.encode(export)
+            return ExportPayload(
+                filename: kind.filename(monthKey: nil, format: .json),
+                data: data,
+                contentType: .json
+            )
+        case .all:
+            let export = FullExport(
+                version: sanitized.version,
+                months: sanitized.months,
+                mapping: sanitized.mapping.ensured(),
+                descMap: sanitized.descMap.ensured(),
+                descList: sanitized.descList
+            )
+            let data = try encoder.encode(export)
+            return ExportPayload(
+                filename: kind.filename(monthKey: nil, format: .json),
+                data: data,
+                contentType: .json
+            )
+        }
+    }
+
+    func importData(kind: DataTransferKind, monthKey: String?, format: DataFormat, content: Data) async throws -> ImportSummary {
+        switch kind {
+        case .transactions:
+            guard let normalized = normalizeMonthKey(monthKey) else { throw DataTransferError.invalidMonth }
+            let drafts = try decodeTransactions(content: content, format: format)
+            let added = try await appendTransactions(drafts, monthKey: normalized)
+            return ImportSummary(message: "Imported \(added) transactions into \(normalized).")
+        case .categories:
+            guard let normalized = normalizeMonthKey(monthKey) else { throw DataTransferError.invalidMonth }
+            let decoder = JSONDecoder()
+            let categories: [String: BudgetCategory]
+            if let wrapped = try? decoder.decode(CategoriesExport.self, from: content) {
+                categories = wrapped.categories
+            } else if let map = try? decoder.decode([String: BudgetCategory].self, from: content) {
+                categories = map
+            } else {
+                throw DataTransferError.invalidJSON
+            }
+            let sanitized = categories.mapValues { $0.ensured() }
+            let state = await repository.upsertMonth(normalized) { month in
+                var month = month
+                sanitized.forEach { key, value in
+                    month.categories[key] = value
+                }
+                return month
+            }
+            applyState(state)
+            return ImportSummary(message: "Merged \(sanitized.count) categories into \(normalized).")
+        case .prediction:
+            let decoder = JSONDecoder()
+            guard let parsed = try? decoder.decode(PredictionExport.self, from: content) else {
+                throw DataTransferError.invalidJSON
+            }
+            let incoming = BudgetState(
+                version: max(baseState.version, 1),
+                months: [:],
+                mapping: parsed.mapping,
+                descMap: parsed.descMap,
+                ui: UiPreferences(),
+                descList: parsed.descList,
+                notes: []
+            )
+            let updated = await repository.importData(incoming)
+            applyState(updated)
+            return ImportSummary(message: "Imported prediction data.")
+        case .all:
+            let decoder = JSONDecoder()
+            guard let parsed = try? decoder.decode(BudgetState.self, from: content) else {
+                throw DataTransferError.invalidJSON
+            }
+            let updated = await repository.importData(parsed)
+            applyState(updated)
+            return ImportSummary(message: "Imported full backup.")
+        }
+    }
+
     private func validateMonthKey(_ raw: String) -> String? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count == 7 else { return nil }
@@ -475,4 +594,260 @@ public final class BudgetViewModel: ObservableObject {
         formatter.dateFormat = "yyyy-MM"
         return formatter.string(from: Date())
     }
+
+    private func normalizeMonthKey(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        return validateMonthKey(raw)
+    }
+
+    private func decodeTransactions(content: Data, format: DataFormat) throws -> [TransactionDraft] {
+        switch format {
+        case .json:
+            let decoder = JSONDecoder()
+            if let array = try? decoder.decode([BudgetTransaction].self, from: content) {
+                return array.map { TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category) }
+            }
+            if let wrapped = try? decoder.decode(TransactionsWrapper.self, from: content) {
+                return wrapped.transactions.map { TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category) }
+            }
+            throw DataTransferError.invalidJSON
+        case .csv:
+            guard let text = String(data: content, encoding: .utf8) else { throw DataTransferError.invalidCSV }
+            return try parseCsv(text)
+        }
+    }
+
+    private func appendTransactions(_ drafts: [TransactionDraft], monthKey: String) async throws -> Int {
+        guard !drafts.isEmpty else { return 0 }
+        let existingCategories = baseState.months[monthKey]?.categories.map { $0.key } ?? []
+        var categories = Set(existingCategories)
+        var prepared: [BudgetTransaction] = []
+        for draft in drafts {
+            var tx = BudgetTransaction(
+                id: UUID().uuidString,
+                date: draft.date,
+                desc: draft.desc,
+                amount: draft.amount,
+                category: draft.category
+            ).ensured()
+            if tx.category.isEmpty {
+                let predicted = await predictionEngine.predictCategory(
+                    desc: tx.desc,
+                    categories: Array(categories),
+                    amount: tx.amount
+                )
+                if !predicted.isEmpty {
+                    tx.category = predicted
+                }
+            }
+            prepared.append(tx)
+            if !tx.category.isEmpty {
+                categories.insert(tx.category)
+            }
+        }
+        guard !prepared.isEmpty else { return 0 }
+        let state = await repository.upsertMonth(monthKey) { month in
+            var month = month
+            month.transactions.append(contentsOf: prepared)
+            return month
+        }
+        for tx in prepared {
+            await predictionEngine.recordTransaction(tx)
+        }
+        applyState(state)
+        return prepared.count
+    }
+
+    private func makeCsv(for transactions: [BudgetTransaction]) -> String {
+        var lines = ["Date,Description,Category,Amount"]
+        for tx in transactions {
+            let parts = tx.date.split(separator: "-")
+            let date: String
+            if parts.count == 3 {
+                date = "\(parts[2])/\(parts[1])/\(parts[0])"
+            } else {
+                date = ""
+            }
+            let amount = String(format: "£%.2f", tx.amount)
+            lines.append([date, tx.desc, tx.category, amount].joined(separator: ","))
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func parseCsv(_ text: String) throws -> [TransactionDraft] {
+        let rows = text.components(separatedBy: CharacterSet.newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard let header = rows.first else { return [] }
+        let headerCols = splitCsvLine(header).map { $0.lowercased() }
+        guard headerCols.count >= 4,
+              headerCols[0] == "date",
+              headerCols[1] == "description",
+              headerCols[2] == "category",
+              headerCols[3] == "amount" else {
+            throw DataTransferError.invalidCSV
+        }
+        return try rows.dropFirst().map { line in
+            let cols = splitCsvLine(line)
+            guard cols.count >= 4 else { throw DataTransferError.invalidCSV }
+            let date = normalizeDate(cols[0])
+            let desc = cols[1]
+            let category = cols[2]
+            let amountString = cols[3...].joined(separator: ",")
+            let cleaned = amountString.replacingOccurrences(of: "[^0-9.-]", with: "", options: .regularExpression)
+            let amount = Double(cleaned) ?? 0
+            return TransactionDraft(date: date, desc: desc, amount: amount, category: category)
+        }
+    }
+
+    private func splitCsvLine(_ line: String) -> [String] {
+        var result: [String] = []
+        var current = ""
+        var inQuotes = false
+        let characters = Array(line)
+        var index = 0
+        while index < characters.count {
+            let ch = characters[index]
+            if ch == "\"" {
+                if inQuotes && index + 1 < characters.count && characters[index + 1] == "\"" {
+                    current.append("\"")
+                    index += 1
+                } else {
+                    inQuotes.toggle()
+                }
+            } else if ch == "," && !inQuotes {
+                result.append(current)
+                current = ""
+            } else {
+                current.append(ch)
+            }
+            index += 1
+        }
+        result.append(current)
+        return result.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+    }
+
+    private func normalizeDate(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(whereSeparator: { $0 == "/" || $0 == "-" })
+        if parts.count == 3 {
+            let day = parts[0]
+            let month = parts[1]
+            let year = parts[2]
+            if year.count == 4 {
+                return "\(year)-\(month)-\(day)"
+            }
+        }
+        return ""
+    }
+}
+
+extension BudgetViewModel {
+    enum DataTransferKind: String, CaseIterable, Identifiable {
+        case transactions
+        case categories
+        case prediction
+        case all
+
+        var id: String { rawValue }
+
+        var displayName: String {
+            switch self {
+            case .transactions: return "Transactions"
+            case .categories: return "Categories"
+            case .prediction: return "Prediction"
+            case .all: return "All Data"
+            }
+        }
+
+        var requiresMonth: Bool {
+            switch self {
+            case .transactions, .categories: return true
+            case .prediction, .all: return false
+            }
+        }
+
+        var supportsCSV: Bool { self == .transactions }
+
+        func filename(monthKey: String?, format: DataFormat) -> String {
+            switch self {
+            case .transactions:
+                let suffix = format == .csv ? "csv" : "json"
+                return "transactions-\(monthKey ?? "month").\(suffix)"
+            case .categories:
+                return "categories.json"
+            case .prediction:
+                return "prediction-map.json"
+            case .all:
+                return "budget-all.json"
+            }
+        }
+    }
+
+    enum DataFormat: String, CaseIterable, Identifiable {
+        case json
+        case csv
+
+        var id: String { rawValue }
+
+        var displayName: String {
+            rawValue.uppercased()
+        }
+    }
+
+    struct ExportPayload {
+        let filename: String
+        let data: Data
+        let contentType: UTType
+    }
+
+    struct ImportSummary {
+        let message: String
+    }
+
+    enum DataTransferError: LocalizedError {
+        case invalidMonth
+        case invalidJSON
+        case invalidCSV
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidMonth:
+                return "Enter a valid month in YYYY-MM format."
+            case .invalidJSON:
+                return "The selected file is not valid JSON."
+            case .invalidCSV:
+                return "The CSV file must include Date, Description, Category and Amount columns."
+            }
+        }
+    }
+}
+
+private struct CategoriesExport: Codable {
+    let categories: [String: BudgetCategory]
+}
+
+private struct PredictionExport: Codable {
+    let mapping: PredictionMapping
+    let descMap: DescriptionMap
+    let descList: [String]
+}
+
+private struct FullExport: Codable {
+    let version: Int
+    let months: [String: BudgetMonth]
+    let mapping: PredictionMapping
+    let descMap: DescriptionMap
+    let descList: [String]
+}
+
+private struct TransactionsWrapper: Codable {
+    let transactions: [BudgetTransaction]
+}
+
+private struct TransactionDraft {
+    let date: String
+    let desc: String
+    let amount: Double
+    let category: String
 }

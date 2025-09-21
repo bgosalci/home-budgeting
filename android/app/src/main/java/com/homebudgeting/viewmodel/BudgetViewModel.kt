@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.homebudgeting.data.BudgetRepository
 import com.homebudgeting.data.BudgetState
 import com.homebudgeting.data.BudgetTransaction
+import com.homebudgeting.data.BudgetMonth
 import com.homebudgeting.data.DescriptionMap
 import com.homebudgeting.data.Income
 import com.homebudgeting.data.Note
@@ -37,7 +38,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.YearMonth
 import java.util.Locale
@@ -85,6 +88,11 @@ class BudgetViewModel(
     private val predictionEngine: PredictionEngine,
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) : ViewModel() {
+
+    private val exportJson = Json {
+        prettyPrint = true
+        encodeDefaults = true
+    }
 
     private val _uiState = MutableStateFlow(BudgetUiState())
     val uiState: StateFlow<BudgetUiState> = _uiState.asStateFlow()
@@ -459,6 +467,121 @@ class BudgetViewModel(
         viewModelScope.launch { predictionEngine.pinMapping(desc, category) }
     }
 
+    suspend fun exportData(
+        kind: DataTransferKind,
+        monthKey: String?,
+        format: DataFormat
+    ): ExportPayload {
+        val state = repository.state.value.ensureIntegrity()
+        return when (kind) {
+            DataTransferKind.TRANSACTIONS -> {
+                val key = requireMonth(monthKey)
+                val transactions = state.months[key]?.transactions ?: emptyList()
+                if (format == DataFormat.CSV) {
+                    val csv = makeCsv(transactions)
+                    ExportPayload(
+                        fileName = kind.filename(key, format),
+                        mimeType = "text/csv",
+                        content = csv.toByteArray(Charsets.UTF_8)
+                    )
+                } else {
+                    val jsonContent = exportJson.encodeToString(transactions)
+                    ExportPayload(
+                        fileName = kind.filename(key, format),
+                        mimeType = "application/json",
+                        content = jsonContent.toByteArray(Charsets.UTF_8)
+                    )
+                }
+            }
+            DataTransferKind.CATEGORIES -> {
+                val key = requireMonth(monthKey)
+                val categories = state.months[key]?.categories ?: emptyMap()
+                val payload = CategoriesExport(categories = categories)
+                val jsonContent = exportJson.encodeToString(payload)
+                ExportPayload(
+                    fileName = kind.filename(key, format),
+                    mimeType = "application/json",
+                    content = jsonContent.toByteArray(Charsets.UTF_8)
+                )
+            }
+            DataTransferKind.PREDICTION -> {
+                val payload = PredictionExport(
+                    mapping = state.mapping.ensureIntegrity(),
+                    descMap = state.descMap.ensureIntegrity(),
+                    descList = state.descList
+                )
+                val jsonContent = exportJson.encodeToString(payload)
+                ExportPayload(
+                    fileName = kind.filename(null, format),
+                    mimeType = "application/json",
+                    content = jsonContent.toByteArray(Charsets.UTF_8)
+                )
+            }
+            DataTransferKind.ALL -> {
+                val payload = FullExport(
+                    version = state.version,
+                    months = state.months,
+                    mapping = state.mapping.ensureIntegrity(),
+                    descMap = state.descMap.ensureIntegrity(),
+                    descList = state.descList
+                )
+                val jsonContent = exportJson.encodeToString(payload)
+                ExportPayload(
+                    fileName = kind.filename(null, format),
+                    mimeType = "application/json",
+                    content = jsonContent.toByteArray(Charsets.UTF_8)
+                )
+            }
+        }
+    }
+
+    suspend fun importData(
+        kind: DataTransferKind,
+        monthKey: String?,
+        format: DataFormat,
+        content: ByteArray
+    ): ImportSummary {
+        return when (kind) {
+            DataTransferKind.TRANSACTIONS -> {
+                val key = requireMonth(monthKey)
+                val drafts = decodeTransactions(content, format)
+                val added = appendTransactions(key, drafts)
+                ImportSummary("Imported $added transactions into $key.")
+            }
+            DataTransferKind.CATEGORIES -> {
+                val key = requireMonth(monthKey)
+                val categories = decodeCategories(content)
+                val sanitized = categories.mapValues { it.value.ensureIntegrity() }
+                repository.upsertMonth(key) { month ->
+                    month.copy(categories = month.categories + sanitized)
+                }
+                ImportSummary("Merged ${sanitized.size} categories into $key.")
+            }
+            DataTransferKind.PREDICTION -> {
+                val text = content.toString(Charsets.UTF_8)
+                val payload = runCatching { json.decodeFromString<PredictionExport>(text) }
+                    .getOrElse { throw DataTransferException("The selected file is not valid JSON.") }
+                val incoming = BudgetState(
+                    version = repository.state.value.version,
+                    months = emptyMap(),
+                    mapping = payload.mapping,
+                    descMap = payload.descMap,
+                    descList = payload.descList,
+                    notes = emptyList()
+                )
+                repository.importData(incoming)
+                ImportSummary("Imported prediction data.")
+            }
+            DataTransferKind.ALL -> {
+                val text = content.toString(Charsets.UTF_8)
+                val state = runCatching { json.decodeFromString<BudgetState>(text) }
+                    .getOrElse { throw DataTransferException("The selected file is not valid JSON.") }
+                repository.importData(state)
+                ImportSummary("Imported full backup.")
+            }
+        }
+    }
+
     suspend fun exportAll(): String = repository.exportAll()
 
     suspend fun importJson(jsonContent: String) {
@@ -474,6 +597,151 @@ class BudgetViewModel(
     private fun validateMonthKey(raw: String): String? {
         val trimmed = raw.trim()
         return runCatching { YearMonth.parse(trimmed) }.map { it.toString() }.getOrNull()
+    }
+
+    private fun requireMonth(monthKey: String?): String {
+        val normalized = monthKey?.let { validateMonthKey(it) }
+        return normalized ?: throw DataTransferException("Enter a month in YYYY-MM format.")
+    }
+
+    private fun decodeTransactions(content: ByteArray, format: DataFormat): List<TransactionDraft> = when (format) {
+        DataFormat.JSON -> {
+            val text = content.toString(Charsets.UTF_8)
+            val direct = runCatching { json.decodeFromString<List<BudgetTransaction>>(text) }.getOrNull()
+            val transactions = direct ?: runCatching { json.decodeFromString<TransactionsWrapper>(text) }
+                .getOrNull()?.transactions
+                ?: throw DataTransferException("The selected file is not valid JSON.")
+            transactions.map { TransactionDraft(it.date, it.desc, it.amount, it.category) }
+        }
+        DataFormat.CSV -> parseCsv(content.toString(Charsets.UTF_8))
+    }
+
+    private fun decodeCategories(content: ByteArray): Map<String, com.homebudgeting.data.BudgetCategory> {
+        val text = content.toString(Charsets.UTF_8)
+        val wrapped = runCatching { json.decodeFromString<CategoriesExport>(text) }.getOrNull()
+        if (wrapped != null) return wrapped.categories
+        return runCatching { json.decodeFromString<Map<String, com.homebudgeting.data.BudgetCategory>>(text) }
+            .getOrElse { throw DataTransferException("The selected file is not valid JSON.") }
+    }
+
+    private suspend fun appendTransactions(monthKey: String, drafts: List<TransactionDraft>): Int {
+        if (drafts.isEmpty()) return 0
+        val base = repository.state.value
+        val categories = base.months[monthKey]?.categories?.keys?.toMutableSet() ?: mutableSetOf()
+        val prepared = drafts.map { draft ->
+            var tx = BudgetTransaction(
+                id = generateId(),
+                date = draft.date,
+                desc = draft.desc,
+                amount = draft.amount,
+                category = draft.category
+            ).ensureIntegrity()
+            if (tx.category.isBlank()) {
+                val predicted = predictionEngine.predictCategory(tx.desc, categories.toList(), tx.amount)
+                if (predicted.isNotBlank()) {
+                    tx = tx.copy(category = predicted)
+                }
+            }
+            if (tx.category.isNotBlank()) {
+                categories += tx.category
+            }
+            tx
+        }
+        repository.upsertMonth(monthKey) { month ->
+            month.copy(transactions = month.transactions + prepared)
+        }
+        prepared.forEach { predictionEngine.recordTransaction(it) }
+        return prepared.size
+    }
+
+    private fun makeCsv(transactions: List<BudgetTransaction>): String {
+        val builder = StringBuilder()
+        builder.appendLine("Date,Description,Category,Amount")
+        transactions.forEach { tx ->
+            val parts = tx.date.split('-')
+            val date = if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else ""
+            val amount = String.format(Locale.UK, "£%.2f", tx.amount)
+            builder.append(date)
+                .append(',')
+                .append(tx.desc)
+                .append(',')
+                .append(tx.category)
+                .append(',')
+                .append(amount)
+                .append('\n')
+        }
+        return builder.toString().trimEnd('\n')
+    }
+
+    private fun parseCsv(text: String): List<TransactionDraft> {
+        val lines = text.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toList()
+        if (lines.isEmpty()) return emptyList()
+        val header = splitCsvLine(lines.first()).map { it.lowercase(Locale.UK) }
+        if (header.size < 4 ||
+            header[0] != "date" ||
+            header[1] != "description" ||
+            header[2] != "category" ||
+            header[3] != "amount"
+        ) {
+            throw DataTransferException("The CSV file must include Date, Description, Category and Amount columns.")
+        }
+        return lines.drop(1).map { line ->
+            val columns = splitCsvLine(line)
+            if (columns.size < 4) {
+                throw DataTransferException("The CSV file must include Date, Description, Category and Amount columns.")
+            }
+            val date = normalizeCsvDate(columns[0])
+            val desc = columns[1]
+            val category = columns[2]
+            val amountRaw = columns.drop(3).joinToString(",")
+            val amount = cleanAmount(amountRaw)
+            TransactionDraft(date = date, desc = desc, amount = amount, category = category)
+        }
+    }
+
+    private fun splitCsvLine(line: String): List<String> {
+        val result = mutableListOf<String>()
+        val current = StringBuilder()
+        var inQuotes = false
+        var index = 0
+        while (index < line.length) {
+            val ch = line[index]
+            when {
+                ch == '"' -> {
+                    if (inQuotes && index + 1 < line.length && line[index + 1] == '"') {
+                        current.append('"')
+                        index++
+                    } else {
+                        inQuotes = !inQuotes
+                    }
+                }
+                ch == ',' && !inQuotes -> {
+                    result += current.toString().trim()
+                    current.clear()
+                }
+                else -> current.append(ch)
+            }
+            index++
+        }
+        result += current.toString().trim()
+        return result
+    }
+
+    private fun normalizeCsvDate(raw: String): String {
+        val parts = raw.trim().split('/', '-', ignoreCase = false).filter { it.isNotBlank() }
+        return if (parts.size == 3 && parts[2].length == 4) {
+            "${parts[2]}-${parts[1]}-${parts[0]}"
+        } else {
+            ""
+        }
+    }
+
+    private fun cleanAmount(raw: String): Double {
+        val cleaned = raw.replace(Regex("[^0-9.-]"), "")
+        return cleaned.toDoubleOrNull() ?: 0.0
     }
 
     private fun generateId(): String = UUID.randomUUID().toString()
@@ -493,3 +761,68 @@ class BudgetViewModel(
         }
     }
 }
+
+enum class DataTransferKind(
+    val displayName: String,
+    val requiresMonth: Boolean,
+    val supportsCsv: Boolean
+) {
+    TRANSACTIONS("Transactions", true, true),
+    CATEGORIES("Categories", true, false),
+    PREDICTION("Prediction", false, false),
+    ALL("All Data", false, false);
+
+    fun filename(monthKey: String?, format: DataFormat): String = when (this) {
+        TRANSACTIONS -> {
+            val suffix = if (format == DataFormat.CSV) "csv" else "json"
+            "transactions-${monthKey ?: "month"}.$suffix"
+        }
+        CATEGORIES -> "categories.json"
+        PREDICTION -> "prediction-map.json"
+        ALL -> "budget-all.json"
+    }
+}
+
+enum class DataFormat(val displayName: String) {
+    JSON("JSON"),
+    CSV("CSV")
+}
+
+data class ExportPayload(
+    val fileName: String,
+    val mimeType: String,
+    val content: ByteArray
+)
+
+data class ImportSummary(val message: String)
+
+@Serializable
+private data class TransactionsWrapper(val transactions: List<BudgetTransaction> = emptyList())
+
+@Serializable
+private data class CategoriesExport(val categories: Map<String, com.homebudgeting.data.BudgetCategory> = emptyMap())
+
+@Serializable
+private data class PredictionExport(
+    val mapping: PredictionMapping = PredictionMapping(),
+    val descMap: DescriptionMap = DescriptionMap(),
+    val descList: List<String> = emptyList()
+)
+
+@Serializable
+private data class FullExport(
+    val version: Int = 1,
+    val months: Map<String, BudgetMonth> = emptyMap(),
+    val mapping: PredictionMapping = PredictionMapping(),
+    val descMap: DescriptionMap = DescriptionMap(),
+    val descList: List<String> = emptyList()
+)
+
+private data class TransactionDraft(
+    val date: String,
+    val desc: String,
+    val amount: Double,
+    val category: String
+)
+
+class DataTransferException(message: String) : Exception(message)
