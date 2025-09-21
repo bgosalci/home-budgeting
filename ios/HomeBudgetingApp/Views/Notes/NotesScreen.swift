@@ -6,6 +6,7 @@ struct NotesScreen: View {
     @State private var editingNote: BudgetNote?
     @State private var noteTitle: String = ""
     @State private var noteBody: String = ""
+    @State private var activeDialog: AppDialog?
 
     var body: some View {
         NavigationStack {
@@ -33,7 +34,15 @@ struct NotesScreen: View {
                         }
                         .tint(.primary)
                         .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { viewModel.deleteNote(id: note.id) } label: {
+                            Button(role: .destructive) {
+                                activeDialog = AppDialog.confirm(
+                                    title: "Delete Note",
+                                    message: "Are you sure you want to delete this note?",
+                                    confirmTitle: "Delete",
+                                    destructive: true,
+                                    onConfirm: { viewModel.deleteNote(id: note.id) }
+                                )
+                            } label: {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
@@ -81,6 +90,7 @@ struct NotesScreen: View {
                     }
                 }
             }
+            .appDialog($activeDialog)
         }
     }
 

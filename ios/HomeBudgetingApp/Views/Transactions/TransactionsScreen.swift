@@ -4,6 +4,7 @@ struct TransactionsScreen: View {
     @EnvironmentObject private var viewModel: BudgetViewModel
     @State private var showEditor = false
     @State private var editingTransaction: BudgetTransaction?
+    @State private var activeDialog: AppDialog?
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
@@ -18,7 +19,16 @@ struct TransactionsScreen: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if !transactionsState.groups.isEmpty {
-                        Button("Clear") { viewModel.deleteAllTransactions() }
+                        Button("Clear") {
+                            let monthName = viewModel.uiState.selectedMonthKey ?? "this month"
+                            activeDialog = AppDialog.confirm(
+                                title: "Clear Transactions",
+                                message: "Are you sure you want to delete all transactions for \(monthName)?",
+                                confirmTitle: "Clear",
+                                destructive: true,
+                                onConfirm: { viewModel.deleteAllTransactions() }
+                            )
+                        }
                             .tint(.red)
                     }
                 }
@@ -37,6 +47,7 @@ struct TransactionsScreen: View {
                     }
                 )
             }
+            .appDialog($activeDialog)
         }
     }
 
@@ -90,7 +101,15 @@ struct TransactionsScreen: View {
                     }
                     .tint(.primary)
                     .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) { viewModel.deleteTransaction(id: tx.id) } label: {
+                        Button(role: .destructive) {
+                            activeDialog = AppDialog.confirm(
+                                title: "Delete Transaction",
+                                message: "Delete \(tx.desc) for \(currency(tx.amount))?",
+                                confirmTitle: "Delete",
+                                destructive: true,
+                                onConfirm: { viewModel.deleteTransaction(id: tx.id) }
+                            )
+                        } label: {
                             Label("Delete", systemImage: "trash")
                         }
                     }
