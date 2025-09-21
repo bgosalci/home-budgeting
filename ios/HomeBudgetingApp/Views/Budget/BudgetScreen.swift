@@ -115,7 +115,7 @@ struct BudgetScreen: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Create Month").font(.subheadline).foregroundStyle(.secondary)
-                MonthPickerField(month: $newMonthKey, presentation: .wheel)
+                MonthPickerField(month: $newMonthKey)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button("Create") {
                     viewModel.createMonth(newMonthKey)
@@ -613,38 +613,30 @@ private struct ImportOptionsView: View {
 }
 
 private struct MonthPickerField: View {
-    enum Presentation {
-        case compact
-        case wheel
-        case graphical
-    }
-
     @Binding var month: String
     @State private var cachedDate: Date
-    private let presentation: Presentation
+    @State private var workingDate: Date
+    @State private var isPresentingPicker = false
+    @State private var yearRange: ClosedRange<Int>
 
     fileprivate static var calendar: Calendar = BudgetScreen.monthCalendar
     fileprivate static let formatter: DateFormatter = BudgetScreen.monthFormatter
+    private static let accessibilityFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        formatter.locale = Locale.current
+        return formatter
+    }()
 
-    private var binding: Binding<Date> {
-        Binding(
-            get: {
-                MonthPickerField.formatter.date(from: month) ?? cachedDate
-            },
-            set: { newValue in
-                let normalized = MonthPickerField.normalize(newValue)
-                cachedDate = normalized
-                month = MonthPickerField.formatter.string(from: normalized)
-            }
-        )
-    }
-
-    init(month: Binding<String>, presentation: Presentation = .graphical) {
+    init(month: Binding<String>) {
         _month = month
         let initialDate = MonthPickerField.formatter.date(from: month.wrappedValue)
             ?? MonthPickerField.normalize(Date())
         _cachedDate = State(initialValue: initialDate)
-        self.presentation = presentation
+        _workingDate = State(initialValue: initialDate)
+        _yearRange = State(initialValue: MonthPickerField.initialYearRange(for: initialDate))
         if month.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || MonthPickerField.formatter.date(from: month.wrappedValue) == nil {
             month.wrappedValue = MonthPickerField.formatter.string(from: initialDate)
@@ -652,42 +644,179 @@ private struct MonthPickerField: View {
     }
 
     var body: some View {
-        picker
-            .onChange(of: month) { newValue in
-                if let parsed = MonthPickerField.formatter.date(from: newValue) {
-                    cachedDate = parsed
-                }
+        Button {
+            workingDate = cachedDate
+            isPresentingPicker = true
+        } label: {
+            HStack {
+                Text(MonthPickerField.formatter.string(from: cachedDate))
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 8)
+                Image(systemName: "calendar")
+                    .foregroundStyle(.tint)
             }
-    }
-
-    @ViewBuilder
-    private var picker: some View {
-#if os(iOS)
-        switch presentation {
-        case .compact:
-            basePicker
-                .labelsHidden()
-                .datePickerStyle(.compact)
-        case .wheel:
-            basePicker
-                .labelsHidden()
-                .datePickerStyle(.wheel)
-        case .graphical:
-            basePicker
-                .datePickerStyle(.graphical)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-#else
-        basePicker.labelsHidden()
-#endif
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .padding(.vertical, 4)
+        .accessibilityLabel("Month")
+        .accessibilityValue(MonthPickerField.accessibilityFormatter.string(from: cachedDate))
+        .sheet(isPresented: $isPresentingPicker) {
+            MonthPickerSheet(
+                date: $workingDate,
+                calendar: MonthPickerField.calendar,
+                yearRange: $yearRange,
+                onCancel: { isPresentingPicker = false },
+                onConfirm: {
+                    commitSelection()
+                    isPresentingPicker = false
+                }
+            )
+            .presentationDetents([.height(320), .medium])
+            .presentationDragIndicator(.visible)
+        }
+        .onChange(of: month) { newValue in
+            guard let parsed = MonthPickerField.formatter.date(from: newValue) else { return }
+            cachedDate = parsed
+            expandYearRange(toInclude: parsed)
+        }
     }
 
-    private var basePicker: DatePicker<Text> {
-        DatePicker("Month", selection: binding, displayedComponents: [.date])
+    private func commitSelection() {
+        let normalized = MonthPickerField.normalize(workingDate)
+        cachedDate = normalized
+        month = MonthPickerField.formatter.string(from: normalized)
+        expandYearRange(toInclude: normalized)
     }
 
-    private static func normalize(_ date: Date) -> Date {
+    private func expandYearRange(toInclude date: Date) {
+        let year = MonthPickerField.calendar.component(.year, from: date)
+        yearRange = MonthPickerField.extendedRange(yearRange, toInclude: year)
+    }
+
+    private static func initialYearRange(for date: Date) -> ClosedRange<Int> {
+        let year = calendar.component(.year, from: date)
+        let lower = max(1, year - 20)
+        let upper = year + 50
+        return lower...upper
+    }
+
+    private static func extendedRange(_ range: ClosedRange<Int>, toInclude year: Int) -> ClosedRange<Int> {
+        var lower = range.lowerBound
+        var upper = range.upperBound
+        if year <= lower {
+            lower = max(1, year - 10)
+        }
+        if year >= upper {
+            upper = year + 10
+        }
+        return lower...upper
+    }
+
+    fileprivate static func normalize(_ date: Date) -> Date {
         let components = calendar.dateComponents([.year, .month], from: date)
         return calendar.date(from: components) ?? date
+    }
+}
+
+private struct MonthPickerSheet: View {
+    @Binding var date: Date
+    let calendar: Calendar
+    @Binding var yearRange: ClosedRange<Int>
+    var onCancel: () -> Void
+    var onConfirm: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack {
+                MonthYearPicker(
+                    date: $date,
+                    calendar: calendar,
+                    yearRange: yearRange,
+                    onYearChange: { newYear in
+                        yearRange = MonthPickerField.extendedRange(yearRange, toInclude: newYear)
+                    }
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.top, 16)
+            .navigationTitle("Select Month")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: onConfirm)
+                }
+            }
+        }
+    }
+}
+
+private struct MonthYearPicker: View {
+    @Binding var date: Date
+    let calendar: Calendar
+    let yearRange: ClosedRange<Int>
+    var onYearChange: (Int) -> Void
+
+    private var monthNames: [String] {
+        calendar.monthSymbols
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Picker("Month", selection: monthBinding) {
+                ForEach(Array(monthNames.enumerated()), id: \.offset) { index, name in
+                    Text(name).tag(index + 1)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
+
+            Picker("Year", selection: yearBinding) {
+                ForEach(Array(yearRange), id: \.self) { year in
+                    Text(String(year)).tag(year)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
+        }
+        .frame(height: 216)
+        .clipped()
+    }
+
+    private var monthBinding: Binding<Int> {
+        Binding(
+            get: { calendar.component(.month, from: date) },
+            set: { newMonth in updateDate(month: newMonth, year: nil) }
+        )
+    }
+
+    private var yearBinding: Binding<Int> {
+        Binding(
+            get: { calendar.component(.year, from: date) },
+            set: { newYear in
+                updateDate(month: nil, year: newYear)
+                onYearChange(newYear)
+            }
+        )
+    }
+
+    private func updateDate(month: Int?, year: Int?) {
+        var components = calendar.dateComponents([.year, .month], from: date)
+        if let month {
+            components.month = month
+        }
+        if let year {
+            components.year = year
+        }
+        components.day = 1
+        if let updated = calendar.date(from: components) {
+            date = updated
+        }
     }
 }
 
