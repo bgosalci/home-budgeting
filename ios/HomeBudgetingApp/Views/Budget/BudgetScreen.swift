@@ -51,10 +51,6 @@ struct BudgetScreen: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Budget")
             .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    Button("Collapse") { viewModel.setAllGroupsCollapsed(true) }
-                    Button("Expand") { viewModel.setAllGroupsCollapsed(false) }
-                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { focusedField = nil }
