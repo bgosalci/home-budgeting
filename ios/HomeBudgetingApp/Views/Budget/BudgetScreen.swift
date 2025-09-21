@@ -328,7 +328,17 @@ struct BudgetScreen: View {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
-            guard let data = try? Data(contentsOf: url), let request = pendingImport else {
+            guard let request = pendingImport else {
+                dataAlert = DataAlert(title: "Import Failed", message: "Unable to read the selected file.")
+                return
+            }
+            let accessGranted = url.startAccessingSecurityScopedResource()
+            defer {
+                if accessGranted {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            guard let data = try? Data(contentsOf: url) else {
                 dataAlert = DataAlert(title: "Import Failed", message: "Unable to read the selected file.")
                 return
             }
