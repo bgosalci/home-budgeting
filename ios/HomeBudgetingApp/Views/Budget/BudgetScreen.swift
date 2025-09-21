@@ -24,6 +24,8 @@ struct BudgetScreen: View {
     @State private var isImportingFile = false
     @State private var pendingImport: PendingImport?
     @State private var dataAlert: DataAlert?
+    @State private var editingIncomeId: String?
+    @State private var editingCategoryOriginalName: String?
     @FocusState private var focusedField: Field?
 
     private var totals: MonthTotals { viewModel.uiState.totals }
@@ -163,9 +165,18 @@ struct BudgetScreen: View {
                     Text(currency(income.amount))
                 }
                 .swipeActions(edge: .trailing) {
+                    Button {
+                        editingIncomeId = income.id
+                        incomeName = income.name
+                        incomeAmount = String(format: "%.2f", income.amount)
+                        focusedField = .incomeName
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
                     Button(role: .destructive) { viewModel.deleteIncome(id: income.id) } label: {
                         Label("Delete", systemImage: "trash")
                     }
+                    .tint(.red)
                 }
             }
             VStack {
@@ -174,15 +185,29 @@ struct BudgetScreen: View {
                 TextField("Amount", text: $incomeAmount)
                     .keyboardType(.decimalPad)
                     .focused($focusedField, equals: .incomeAmount)
-                Button("Add Income") {
+                Button(editingIncomeId == nil ? "Add Income" : "Save Income") {
                     if let amount = Double(incomeAmount) {
-                        viewModel.addIncome(name: incomeName, amount: amount)
+                        if let editingIncomeId {
+                            viewModel.updateIncome(id: editingIncomeId, name: incomeName, amount: amount)
+                        } else {
+                            viewModel.addIncome(name: incomeName, amount: amount)
+                        }
                         incomeName = ""
                         incomeAmount = ""
+                        editingIncomeId = nil
                         focusedField = nil
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                if editingIncomeId != nil {
+                    Button("Cancel") {
+                        incomeName = ""
+                        incomeAmount = ""
+                        editingIncomeId = nil
+                        focusedField = nil
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
         }
     }
@@ -215,9 +240,19 @@ struct BudgetScreen: View {
                                 }.font(.caption)
                             }
                             .swipeActions(edge: .trailing) {
+                                Button {
+                                    editingCategoryOriginalName = category.name
+                                    categoryName = category.name
+                                    categoryGroup = category.group
+                                    categoryBudget = String(format: "%.2f", category.budget)
+                                    focusedField = .categoryName
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
                                 Button(role: .destructive) { viewModel.deleteCategory(name: category.name) } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
+                                .tint(.red)
                             }
                         }
                     },
@@ -240,16 +275,36 @@ struct BudgetScreen: View {
                 TextField("Budget", text: $categoryBudget)
                     .keyboardType(.decimalPad)
                     .focused($focusedField, equals: .categoryBudget)
-                Button("Save Category") {
+                Button(editingCategoryOriginalName == nil ? "Add Category" : "Save Category") {
                     if let budget = Double(categoryBudget) {
-                        viewModel.addOrUpdateCategory(name: categoryName, group: categoryGroup, budget: budget)
+                        if let editingCategoryOriginalName {
+                            viewModel.updateCategory(
+                                originalName: editingCategoryOriginalName,
+                                name: categoryName,
+                                group: categoryGroup,
+                                budget: budget
+                            )
+                        } else {
+                            viewModel.addOrUpdateCategory(name: categoryName, group: categoryGroup, budget: budget)
+                        }
                         categoryName = ""
                         categoryGroup = ""
                         categoryBudget = ""
+                        editingCategoryOriginalName = nil
                         focusedField = nil
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
+                if editingCategoryOriginalName != nil {
+                    Button("Cancel") {
+                        categoryName = ""
+                        categoryGroup = ""
+                        categoryBudget = ""
+                        editingCategoryOriginalName = nil
+                        focusedField = nil
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
         }
     }
