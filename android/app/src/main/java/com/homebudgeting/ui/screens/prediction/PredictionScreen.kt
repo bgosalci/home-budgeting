@@ -42,7 +42,7 @@ fun PredictionScreen(state: BudgetUiState, viewModel: BudgetViewModel) {
     ) {
         Text("Pin Description → Category", style = MaterialTheme.typography.titleLarge)
         OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
-        Column(alignment = Alignment.Start) {
+        Column(horizontalAlignment = Alignment.Start) {
             Button(onClick = { expanded = true }) { Text(if (category.isBlank()) "Select Category" else category) }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 categories.forEach { option ->

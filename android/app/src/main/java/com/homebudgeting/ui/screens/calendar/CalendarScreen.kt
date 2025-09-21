@@ -29,17 +29,17 @@ fun CalendarScreen(state: BudgetUiState, viewModel: BudgetViewModel) {
         Text(calendar.title, style = MaterialTheme.typography.titleLarge)
         calendar.weeks.forEach { week ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                week.forEach { day -> CalendarCell(day) }
+                week.forEach { day -> CalendarCell(day, Modifier.weight(1f)) }
             }
         }
     }
 }
 
 @Composable
-private fun CalendarCell(day: CalendarDay) {
+private fun CalendarCell(day: CalendarDay, modifier: Modifier = Modifier) {
     val background = if (day.isToday) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
     Card(
-        modifier = Modifier.weight(1f),
+        modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = background),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shape = RoundedCornerShape(8.dp)

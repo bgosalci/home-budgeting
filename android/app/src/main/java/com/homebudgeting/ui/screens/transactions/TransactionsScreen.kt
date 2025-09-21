@@ -107,7 +107,7 @@ fun TransactionsScreen(state: BudgetUiState, viewModel: BudgetViewModel) {
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth()
         )
-        Column(alignment = Alignment.End) {
+        Column(horizontalAlignment = Alignment.End) {
             Button(onClick = { showCategoryMenu = true }) {
                 Text(if (txCategory.isBlank()) "Select Category" else txCategory)
             }
@@ -176,7 +176,7 @@ private fun SearchBar(
 @Composable
 private fun CategoryFilter(categories: List<String>, selected: String, onFilterChange: (String) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    Column(alignment = Alignment.Start) {
+    Column(horizontalAlignment = Alignment.Start) {
         Button(onClick = { expanded = true }) {
             Text(selected)
         }

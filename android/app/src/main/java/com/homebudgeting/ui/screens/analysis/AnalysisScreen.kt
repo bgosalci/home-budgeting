@@ -112,7 +112,7 @@ private fun ChartStyleSelector(mode: AnalysisMode, style: ChartStyle, onSelect: 
 @Composable
 private fun MonthSelector(months: List<String>, selected: String?, onSelect: (String) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    Column(alignment = Alignment.Start) {
+    Column(horizontalAlignment = Alignment.Start) {
         Button(onClick = { expanded = true }) { Text(selected ?: "Select Month") }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             months.forEach { month ->
@@ -168,7 +168,7 @@ private fun SpendSelectors(
 @Composable
 private fun Dropdown(label: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    Column(alignment = Alignment.Start) {
+    Column(horizontalAlignment = Alignment.Start) {
         Text(label, style = MaterialTheme.typography.labelSmall)
         Button(onClick = { expanded = true }) { Text(selected) }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
