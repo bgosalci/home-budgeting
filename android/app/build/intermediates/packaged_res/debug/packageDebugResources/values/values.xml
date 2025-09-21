@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:ns1="http://schemas.android.com/tools">
+    <color name="md_theme_dark_background">#FF121115</color>
+    <color name="md_theme_dark_onPrimary">#FF1C0600</color>
+    <color name="md_theme_dark_primary">#FFB88A</color>
+    <color name="md_theme_dark_surface">#FF1C1B1F</color>
+    <color name="md_theme_light_background">#FFF9F5</color>
+    <color name="md_theme_light_onPrimary">#FFFFFFFF</color>
+    <color name="md_theme_light_primary">#FF7A2D</color>
+    <color name="md_theme_light_surface">#FFFBF7</color>
+    <string name="app_name">Home Budgeting</string>
+    <style name="Theme.HomeBudgeting" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor" ns1:targetApi="l">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

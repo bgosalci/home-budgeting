@@ -1,0 +1,76 @@
+com.homebudgeting.app-material-release-0 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/07671eb376e6846935b9dd576e4ceccb/transformed/material-release/res
+com.homebudgeting.app-appcompat-resources-1.6.1-1 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/0df4e1825cf8727b7ac5faf3d2c07162/transformed/appcompat-resources-1.6.1/res
+com.homebudgeting.app-datastore-release-2 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/0f3832af6f2a2bb084ac15b6d684560e/transformed/datastore-release/res
+com.homebudgeting.app-ui-geometry-release-3 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/11e4f9aa7c8cf5897979428df8ae3806/transformed/ui-geometry-release/res
+com.homebudgeting.app-lifecycle-runtime-release-4 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/13427bc33acdf203cbb56ecdabf578eb/transformed/lifecycle-runtime-release/res
+com.homebudgeting.app-lifecycle-viewmodel-ktx-2.8.7-5 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/161378198ee4d8cda33a1bc64136ff99/transformed/lifecycle-viewmodel-ktx-2.8.7/res
+com.homebudgeting.app-savedstate-1.2.1-6 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/17385beacc9bea8ddd9bb36621853cf5/transformed/savedstate-1.2.1/res
+com.homebudgeting.app-material-1.12.0-7 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/1a1c9422a8dc039c007d409027cd8ec4/transformed/material-1.12.0/res
+com.homebudgeting.app-drawerlayout-1.1.1-8 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/1a8c4dad41331512cb0fda683282aa3b/transformed/drawerlayout-1.1.1/res
+com.homebudgeting.app-animation-core-release-9 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/1b040e300f5b288e5fa8d0aea6729ea8/transformed/animation-core-release/res
+com.homebudgeting.app-foundation-release-10 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/1bb71a56d6d57cb4d4779948a96fde5f/transformed/foundation-release/res
+com.homebudgeting.app-navigation-compose-2.8.4-11 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/22d1a74cfbfaf648265ad8c84e959d0c/transformed/navigation-compose-2.8.4/res
+com.homebudgeting.app-savedstate-ktx-1.2.1-12 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/2397c623c043d20283d8bf51bdff6c8f/transformed/savedstate-ktx-1.2.1/res
+com.homebudgeting.app-lifecycle-livedata-2.8.7-13 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/244a02fa585bf1f01ed2655541baad95/transformed/lifecycle-livedata-2.8.7/res
+com.homebudgeting.app-ui-release-14 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/246779c1e2e2cbac974b06e1c2d20d29/transformed/ui-release/res
+com.homebudgeting.app-constraintlayout-2.0.1-15 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/2605895da7ed27b90d258d7b5dbbc2da/transformed/constraintlayout-2.0.1/res
+com.homebudgeting.app-navigation-common-2.8.4-16 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/27686250f2fb4495d38b9ca4ef2393c7/transformed/navigation-common-2.8.4/res
+com.homebudgeting.app-fragment-1.3.6-17 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/2806543fc0dd8f07d6bd3b101d63223a/transformed/fragment-1.3.6/res
+com.homebudgeting.app-material3-release-18 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/2e5f115f68ae884ed39d00e253618d96/transformed/material3-release/res
+com.homebudgeting.app-activity-compose-1.9.2-19 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/3b3fbbca1996f0c050f9ba6c5a39d41c/transformed/activity-compose-1.9.2/res
+com.homebudgeting.app-startup-runtime-1.1.1-20 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/43c54618efafc0c807a597fa1dca270f/transformed/startup-runtime-1.1.1/res
+com.homebudgeting.app-activity-ktx-1.9.2-21 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/4649e4423e0cd151663462fcef22faab/transformed/activity-ktx-1.9.2/res
+com.homebudgeting.app-datastore-core-release-22 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/4b833d093696fb89bb005a6bff355c75/transformed/datastore-core-release/res
+com.homebudgeting.app-activity-1.9.2-23 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/4d3367e83b1afa77262c2e3ab1e03fb7/transformed/activity-1.9.2/res
+com.homebudgeting.app-lifecycle-runtime-ktx-release-24 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/4d701150a377a8a2fb6c7f3d9f160a82/transformed/lifecycle-runtime-ktx-release/res
+com.homebudgeting.app-lifecycle-livedata-core-2.8.7-25 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/70be588d515c723cf3952d48f7fda3d2/transformed/lifecycle-livedata-core-2.8.7/res
+com.homebudgeting.app-core-1.13.1-26 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/725b92e39c78f0b43048097b829b5873/transformed/core-1.13.1/res
+com.homebudgeting.app-emoji2-views-helper-1.3.0-27 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/766be60814e8f6a27894609e5e718c2a/transformed/emoji2-views-helper-1.3.0/res
+com.homebudgeting.app-navigation-common-ktx-2.8.4-28 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/7831ef6a60ba915c0d646fdd5d83b7f2/transformed/navigation-common-ktx-2.8.4/res
+com.homebudgeting.app-annotation-experimental-1.4.1-29 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/805c98b48e75a3a9e3c97a19f991a81c/transformed/annotation-experimental-1.4.1/res
+com.homebudgeting.app-ui-tooling-release-30 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/8a933dac0fb98ae390ba82878cb9339a/transformed/ui-tooling-release/res
+com.homebudgeting.app-ui-graphics-release-31 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/8c3ee3790fbfd9bda80897774a8a4e51/transformed/ui-graphics-release/res
+com.homebudgeting.app-cardview-1.0.0-32 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/8c6935cb4dd3095b525a44a70a9faeb2/transformed/cardview-1.0.0/res
+com.homebudgeting.app-lifecycle-viewmodel-savedstate-2.8.7-33 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/9a7c82c3927a18991eddc46627906c87/transformed/lifecycle-viewmodel-savedstate-2.8.7/res
+com.homebudgeting.app-lifecycle-livedata-core-ktx-2.8.7-34 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/9f575e78d998e43148087ecf950155a1/transformed/lifecycle-livedata-core-ktx-2.8.7/res
+com.homebudgeting.app-foundation-layout-release-35 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/a50703d5c5c441cdbee288608ecde291/transformed/foundation-layout-release/res
+com.homebudgeting.app-datastore-preferences-release-36 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/a59d5dc437591083c804d12201ca48ae/transformed/datastore-preferences-release/res
+com.homebudgeting.app-material3-window-size-class-release-37 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/aa7c8b9e4118a509ba0cf1ebce0415c5/transformed/material3-window-size-class-release/res
+com.homebudgeting.app-core-runtime-2.2.0-38 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/b296661c8f09809af37b4a6f4b037391/transformed/core-runtime-2.2.0/res
+com.homebudgeting.app-animation-release-39 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/b747a1e46558696dd7a0f2c33e4120bb/transformed/animation-release/res
+com.homebudgeting.app-navigation-runtime-ktx-2.8.4-40 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/b7d803518f6481387621064758b84d87/transformed/navigation-runtime-ktx-2.8.4/res
+com.homebudgeting.app-emoji2-1.3.0-41 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/bc571fd6d63a46cf1b16910b32857f69/transformed/emoji2-1.3.0/res
+com.homebudgeting.app-ui-tooling-data-release-42 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/bdee04c40a486985815d5183aff8e1c9/transformed/ui-tooling-data-release/res
+com.homebudgeting.app-viewpager2-1.0.0-43 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/bfb8bbfa3c02027b86c6288204b2dbd8/transformed/viewpager2-1.0.0/res
+com.homebudgeting.app-ui-text-release-44 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/c213cd87ebc32a10df73afbeb39c004f/transformed/ui-text-release/res
+com.homebudgeting.app-window-1.0.0-45 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/ca44d5b37c353e3add9652583bd4d052/transformed/window-1.0.0/res
+com.homebudgeting.app-core-ktx-1.13.1-46 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/ce765f96fa9d2ec88347aab08da25286/transformed/core-ktx-1.13.1/res
+com.homebudgeting.app-recyclerview-1.1.0-47 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/d3315303c5d1591699be44988ac630d3/transformed/recyclerview-1.1.0/res
+com.homebudgeting.app-navigation-runtime-2.8.4-48 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/d49b327cca40b27876fd27ee691717b8/transformed/navigation-runtime-2.8.4/res
+com.homebudgeting.app-material-icons-extended-release-49 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/d8ab45899322d8a9f0e881b29efe9004/transformed/material-icons-extended-release/res
+com.homebudgeting.app-appcompat-1.6.1-50 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/ddaa10a75ffe8326a927bcc67b10c647/transformed/appcompat-1.6.1/res
+com.homebudgeting.app-lifecycle-process-2.8.7-51 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/e090ba4a7c2a1f540b2155f26ee6d1a5/transformed/lifecycle-process-2.8.7/res
+com.homebudgeting.app-ui-unit-release-52 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/e5b7ae425d8a1572ec8d36c3cfb78155/transformed/ui-unit-release/res
+com.homebudgeting.app-material-icons-core-release-53 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/e89a1cf840f9b4a041ce8aba2da0e20b/transformed/material-icons-core-release/res
+com.homebudgeting.app-ui-util-release-54 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/e9e42d83752328c7c87f572f1b395484/transformed/ui-util-release/res
+com.homebudgeting.app-lifecycle-runtime-compose-release-55 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/eb5e4c58daed732d45dbc3e2e63ea432/transformed/lifecycle-runtime-compose-release/res
+com.homebudgeting.app-transition-1.5.0-56 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/ec0c1ac35efbcfd86522f6d3473c74a5/transformed/transition-1.5.0/res
+com.homebudgeting.app-runtime-saveable-release-57 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/ec37b21f7ac9af37e4b74a632a183001/transformed/runtime-saveable-release/res
+com.homebudgeting.app-runtime-release-58 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/ec5b046b22296bc38ecbc1e99b78df9f/transformed/runtime-release/res
+com.homebudgeting.app-ui-test-manifest-1.7.2-59 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/efc96148d3cf0c173ae9eceaae68c298/transformed/ui-test-manifest-1.7.2/res
+com.homebudgeting.app-ui-tooling-preview-release-60 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/f04a1a299ba5207b120665b53fd7a7e8/transformed/ui-tooling-preview-release/res
+com.homebudgeting.app-coordinatorlayout-1.1.0-61 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/f1561434b964e146422a9e8da776c51f/transformed/coordinatorlayout-1.1.0/res
+com.homebudgeting.app-lifecycle-viewmodel-release-62 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/f195223aa0355e9f10bce63066bed012/transformed/lifecycle-viewmodel-release/res
+com.homebudgeting.app-customview-poolingcontainer-1.0.0-63 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/f4a605c9ebf757948f91298fa767294b/transformed/customview-poolingcontainer-1.0.0/res
+com.homebudgeting.app-lifecycle-viewmodel-compose-release-64 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/f75fc31335839bbe34d5176eae30463b/transformed/lifecycle-viewmodel-compose-release/res
+com.homebudgeting.app-material-ripple-release-65 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/f896e8a0fdf30264213d8aa82444322a/transformed/material-ripple-release/res
+com.homebudgeting.app-profileinstaller-1.3.1-66 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/f8fb8f8b4b650dd27b149f4dc91ac992/transformed/profileinstaller-1.3.1/res
+com.homebudgeting.app-graphics-path-1.0.1-67 /Users/burim.gosalci/.gradle/caches/9.0-milestone-1/transforms/fce09eaca953441a3593baa8bf1cf2a2/transformed/graphics-path-1.0.1/res
+com.homebudgeting.app-res-68 /Users/burim.gosalci/Documents/Senet e Burimit/workspaces/personal-finance-dashboard/home-budgeting/android/app/build/generated/res/appIcon
+com.homebudgeting.app-pngs-69 /Users/burim.gosalci/Documents/Senet e Burimit/workspaces/personal-finance-dashboard/home-budgeting/android/app/build/generated/res/pngs/debug
+com.homebudgeting.app-resValues-70 /Users/burim.gosalci/Documents/Senet e Burimit/workspaces/personal-finance-dashboard/home-budgeting/android/app/build/generated/res/resValues/debug
+com.homebudgeting.app-packageDebugResources-71 /Users/burim.gosalci/Documents/Senet e Burimit/workspaces/personal-finance-dashboard/home-budgeting/android/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.homebudgeting.app-packageDebugResources-72 /Users/burim.gosalci/Documents/Senet e Burimit/workspaces/personal-finance-dashboard/home-budgeting/android/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.homebudgeting.app-debug-73 /Users/burim.gosalci/Documents/Senet e Burimit/workspaces/personal-finance-dashboard/home-budgeting/android/app/build/intermediates/merged_res/debug/mergeDebugResources
+com.homebudgeting.app-debug-74 /Users/burim.gosalci/Documents/Senet e Burimit/workspaces/personal-finance-dashboard/home-budgeting/android/app/src/debug/res
+com.homebudgeting.app-main-75 /Users/burim.gosalci/Documents/Senet e Burimit/workspaces/personal-finance-dashboard/home-budgeting/android/app/src/main/res
