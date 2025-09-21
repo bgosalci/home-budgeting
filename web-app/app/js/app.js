@@ -456,6 +456,8 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
       catGroup: document.getElementById('cat-group'),
       catBudget: document.getElementById('cat-budget'),
       addCategory: document.getElementById('add-category'),
+      collapseAll: document.getElementById('collapse-all'),
+      expandAll: document.getElementById('expand-all'),
       catTable: document.getElementById('category-table').querySelector('tbody'),
       totBud: document.getElementById('tot-bud'),
       totAct: document.getElementById('tot-act'),
@@ -821,6 +823,18 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
       Model.setCat(m,name,group,bud);
       Store.setMonth(currentMonthKey,m);
       els.catName.value=''; els.catGroup.value=''; els.catBudget.value=''; loadMonth(currentMonthKey);
+    };
+
+    // Collapse/Expand all groups
+    els.collapseAll.onclick = ()=>{
+      const m = Store.getMonth(currentMonthKey);
+      const groups = [...new Set(Object.values(Store.categories(currentMonthKey)).map(x=>x.group||'Other'))];
+      Store.setAllCollapsed(currentMonthKey, groups, true); renderCategories(m);
+    };
+    els.expandAll.onclick = ()=>{
+      const m = Store.getMonth(currentMonthKey);
+      const groups = [...new Set(Object.values(Store.categories(currentMonthKey)).map(x=>x.group||'Other'))];
+      Store.setAllCollapsed(currentMonthKey, groups, false); renderCategories(m);
     };
 
     // Transaction prediction
