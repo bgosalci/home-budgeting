@@ -1,0 +1,184 @@
+import SwiftUI
+
+struct TransactionsScreen: View {
+    @EnvironmentObject private var viewModel: BudgetViewModel
+    @State private var showEditor = false
+    @State private var editingTransaction: BudgetTransaction?
+
+    private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                filterSection
+                transactionSections
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Transactions")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !transactionsState.groups.isEmpty {
+                        Button("Clear") { viewModel.deleteAllTransactions() }
+                            .tint(.red)
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { editingTransaction = nil; showEditor = true }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $showEditor) {
+                TransactionEditor(
+                    categories: transactionsState.availableCategories,
+                    transaction: editingTransaction,
+                    onSave: { date, desc, amount, category, id in
+                        viewModel.addOrUpdateTransaction(date: date, desc: desc, amount: amount, category: category, editingId: id)
+                    }
+                )
+            }
+        }
+    }
+
+    private var filterSection: some View {
+        Section(header: Text("Filters")) {
+            TextField("Search description", text: Binding(
+                get: { transactionsState.search },
+                set: { viewModel.updateTransactionSearch($0) }
+            ))
+            Picker("Category", selection: Binding(
+                get: { transactionsState.category ?? "" },
+                set: { viewModel.updateTransactionFilter($0.isEmpty ? nil : $0) }
+            )) {
+                Text("All").tag("")
+                ForEach(transactionsState.availableCategories, id: \.self) { category in
+                    Text(category).tag(category)
+                }
+            }
+            .pickerStyle(.menu)
+            HStack {
+                Text("Total")
+                Spacer()
+                Text(currency(transactionsState.total)).bold()
+            }
+        }
+    }
+
+    private var transactionSections: some View {
+        ForEach(transactionsState.groups) { group in
+            Section(header: Text("\(group.label)")) {
+                ForEach(group.transactions) { tx in
+                    Button(action: {
+                        editingTransaction = tx
+                        showEditor = true
+                    }) {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(tx.desc).font(.headline)
+                                Text(tx.category.isEmpty ? "Uncategorised" : tx.category)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text(currency(tx.amount)).bold()
+                                Text("#\(group.startIndex + (group.transactions.firstIndex(where: { $0.id == tx.id }) ?? 0))")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.primary)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) { viewModel.deleteTransaction(id: tx.id) } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+                HStack {
+                    Text("Day total")
+                    Spacer()
+                    Text(currency(group.dayTotal))
+                }.font(.caption)
+                HStack {
+                    Text("Running total")
+                    Spacer()
+                    Text(currency(group.runningTotal))
+                }.font(.caption)
+            }
+        }
+    }
+
+    private func currency(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = Locale.current.currency?.identifier ?? "USD"
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+}
+
+private struct TransactionEditor: View {
+    var categories: [String]
+    var transaction: BudgetTransaction?
+    var onSave: (String, String, Double, String?, String?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var date: String = ""
+    @State private var desc: String = ""
+    @State private var amount: String = ""
+    @State private var category: String = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("Transaction")) {
+                    TextField("Date (yyyy-MM-dd)", text: $date)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                    TextField("Description", text: $desc)
+                    TextField("Amount", text: $amount)
+                        .keyboardType(.decimalPad)
+                    Picker("Category", selection: $category) {
+                        Text("Uncategorised").tag("")
+                        ForEach(categories, id: \.self) { value in
+                            Text(value).tag(value)
+                        }
+                    }
+                }
+            }
+            .navigationTitle(transaction == nil ? "New Transaction" : "Edit Transaction")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: dismiss.callAsFunction)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        guard let value = Double(amount) else { return }
+                        onSave(date, desc, value, category.isEmpty ? nil : category, transaction?.id)
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                if let tx = transaction {
+                    date = tx.date
+                    desc = tx.desc
+                    amount = String(tx.amount)
+                    category = tx.category
+                } else if date.isEmpty {
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy-MM-dd"
+                    date = formatter.string(from: Date())
+                }
+            }
+        }
+    }
+}
+
+struct TransactionsScreen_Previews: PreviewProvider {
+    static var previews: some View {
+        TransactionsScreen()
+            .environmentObject(BudgetViewModel())
+    }
+}

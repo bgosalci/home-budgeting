@@ -1,20 +1,63 @@
 # Home Budgeting
 
-This repository contains a simple monthly home budgeting app.
+This repository contains a multi-platform monthly home budgeting app.
 
-The web page title is now "Home Budgeting".
+The web page title is now "Home Budgeting" and the same icon is shared across the native targets.
 
-A favicon has been added using `hb-pie_bottom-left-1024x1024.png`.
+## Repository Layout
+- `web-app/` – the existing web implementation (HTML, CSS and JavaScript bundle output).
+- `android/` – Jetpack Compose Material 3 implementation that mirrors the web features using MVVM.
+- `ios/` – SwiftUI MVVM application with native persistence and the same feature set.
+- `assets/` – shared icon assets used by every platform.
+- `docs/` – design notes such as the data schema shared by all apps.
+
+Run the helper below after cloning to recreate the native app icon PNG files from their base64 manifest:
+
+```bash
+npm run icons:restore
+```
+
+## Running the Apps
+
+### Web
+Open `web-app/index.html` in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace.
+
+Install dependencies and run tests with:
+
+```bash
+npm install
+npm test
+```
+
+### Android
+Open the `android/` folder in Android Studio (Giraffe or newer) and let Gradle finish syncing. The entry point is `MainActivity`, which launches the Compose navigation stack.
+
+You can build a debug APK from the command line:
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+### iOS
+The iOS app is distributed as a Swift Package. Open `ios/Package.swift` in Xcode 15 or newer to generate the project. Select the **HomeBudgeting** scheme and target an iOS 16+ simulator or device.
+
+The package can also be checked from the command line (macOS with Xcode toolchain):
+
+```bash
+cd ios
+swift build
+```
 
 ## Usage
-Open `index.html` in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace.
+Open `web-app/index.html` in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace.
 
 The interface automatically switches between light and dark themes based on your system appearance.
 
 In dark mode, calendar elements, the transaction date picker, and primary buttons now use an orange accent for better contrast.
 
 ### JavaScript bundle
-The browser loads `app/js/dist/app.bundle.js`, which is generated from the ES module sources in `app/js/` using [esbuild](https://esbuild.github.io/). The compiled bundle is committed to the repository so the app keeps working when you open `index.html` directly from disk. After changing any JavaScript modules run `npm run build` to regenerate the bundle before reloading the page.
+The browser loads `web-app/app/js/dist/app.bundle.js`, which is generated from the ES module sources in `web-app/app/js/` using [esbuild](https://esbuild.github.io/). The compiled bundle is committed to the repository so the app keeps working when you open `web-app/index.html` directly from disk. After changing any JavaScript modules run `npm run build` to regenerate the bundle before reloading the page.
 
 ### Predicted Balance
 The header's **Left Over** pill now shows a predicted end-of-month balance beside the current figure. The estimate learns from your historical monthly spending patterns, updating as you record new transactions. Hovering the prediction reveals how many past months informed the forecast.
@@ -22,11 +65,11 @@ The header's **Left Over** pill now shows a predicted end-of-month balance besid
 The app now starts with no pre-filled categories or incomes. Previously seeded "Salary" and "Vala" income examples have been removed, so you can build your budget entirely from scratch. The previous *Clear* button has been removed; delete categories individually or start a new month if you need a blank slate. Categories can be collapsed or expanded using the secondary-styled controls above the table.
 
 ## File Structure
-JavaScript files are located in `app/js` and stylesheets in `app/css`.
+JavaScript files are located in `web-app/app/js` and stylesheets in `web-app/app/css`.
 
-- app/js/app.js – legacy entry containing UI wiring
-- app/js/main.js – ES module entry that imports app.js
-- app/js/modules/ – modularized core logic
+- web-app/app/js/app.js – legacy entry containing UI wiring
+- web-app/app/js/main.js – ES module entry that imports app.js
+- web-app/app/js/modules/ – modularized core logic
   - utils.js, dialog.js, store.js, charts.js, predictor.js, descPredictor.js, model.js
 
 ### Month Controls
