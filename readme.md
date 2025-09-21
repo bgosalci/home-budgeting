@@ -40,7 +40,7 @@ cd android
 ```
 
 ### iOS
-The iOS app is distributed as a Swift Package. Open `ios/Package.swift` in Xcode 15 or newer to generate the project. Select the **HomeBudgeting** scheme and target an iOS 16+ simulator or device.
+The iOS app is distributed as a Swift Package. Open `ios/Package.swift` in Xcode 15 or newer (Swift tools 5.9 or later) to generate the project. Select the **HomeBudgeting** scheme and target an iOS 16+ simulator or device.
 
 The package can also be checked from the command line (macOS with Xcode toolchain):
 

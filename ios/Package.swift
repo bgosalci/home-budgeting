@@ -1,4 +1,4 @@
-// swift-tools-version: 5.8
+// swift-tools-version: 5.9
 import PackageDescription
 
 let package = Package(
@@ -11,7 +11,7 @@ let package = Package(
             name: "HomeBudgeting",
             targets: ["HomeBudgetingApp"],
             bundleIdentifier: "com.homebudgeting.app",
-            teamIdentifier: "TEAMID0000",
+            teamIdentifier: nil,
             displayVersion: "1.0",
             bundleVersion: "1",
             iconAssetName: "AppIcon",
