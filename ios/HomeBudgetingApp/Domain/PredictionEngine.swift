@@ -37,18 +37,18 @@ actor PredictionEngine {
         let base = desc.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         var state = await repository.currentState()
         var exact = state.mapping.exact
-        var tokens = state.mapping.tokens
+        var tokenMap = state.mapping.tokens
         if let amount, amount.isFinite {
             exact[amountKey(base: base, amount: amount)] = category
         } else {
             exact[base] = category
         }
         tokens(of: base).forEach { token in
-            var bag = tokens[token] ?? [:]
+            var bag = tokenMap[token] ?? [:]
             bag[category, default: 0] += 1
-            tokens[token] = bag
+            tokenMap[token] = bag
         }
-        let updatedMapping = PredictionMapping(exact: exact, tokens: tokens)
+        let updatedMapping = PredictionMapping(exact: exact, tokens: tokenMap)
         _ = await repository.setMapping(updatedMapping)
         await updateDescriptionMap(desc: desc, category: category)
     }
