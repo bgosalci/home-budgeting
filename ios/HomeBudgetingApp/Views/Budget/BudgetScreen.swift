@@ -210,6 +210,9 @@ struct BudgetScreen: View {
             if viewModel.uiState.categories.isEmpty {
                 Text("No categories configured").foregroundColor(.secondary)
             }
+            if !viewModel.uiState.categories.isEmpty {
+                categoryTotalsSummary
+            }
             let groups = Dictionary(grouping: viewModel.uiState.categories, by: { $0.group })
             ForEach(groups.keys.sorted(), id: \.self) { key in
                 let items = groups[key] ?? []
@@ -250,13 +253,18 @@ struct BudgetScreen: View {
                         }
                     },
                     label: {
-                        HStack {
+                        VStack(alignment: .leading, spacing: 6) {
                             Text(key)
-                            Spacer()
+                                .font(.headline)
                             if let summary = viewModel.uiState.totals.groups.first(where: { $0.name == key }) {
-                                Text(currency(summary.actual)).font(.footnote)
+                                HStack(spacing: 12) {
+                                    categorySummaryValue(title: "Budgeted", value: summary.budget, valueFont: .footnote)
+                                    categorySummaryValue(title: "Actual", value: summary.actual, valueFont: .footnote)
+                                    categorySummaryValue(title: "Diff", value: summary.difference, highlightDelta: true, valueFont: .footnote)
+                                }
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 )
             }
@@ -300,6 +308,33 @@ struct BudgetScreen: View {
                 }
             }
         }
+    }
+
+    private var categoryTotalsSummary: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Totals")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                categorySummaryValue(title: "Budgeted", value: totals.budgetTotal)
+                categorySummaryValue(title: "Actual", value: totals.actualTotal)
+                categorySummaryValue(title: "Diff", value: totals.budgetTotal - totals.actualTotal, highlightDelta: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 4)
+    }
+
+    private func categorySummaryValue(title: String, value: Double, highlightDelta: Bool = false, valueFont: Font = .subheadline) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(currency(value))
+                .font(valueFont)
+                .foregroundColor(highlightDelta ? (value >= 0 ? .green : .red) : .primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var dataSection: some View {
