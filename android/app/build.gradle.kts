@@ -1,4 +1,6 @@
-import java.time.YearMonth
+import groovy.json.JsonSlurper
+import java.io.File
+import java.util.Base64
 
 plugins {
     id("com.android.application")
@@ -54,18 +56,27 @@ android {
     sourceSets["main"].res.srcDir(generatedResDir)
 }
 
-val iconOutputDir = layout.buildDirectory.dir("generated/res/appIcon/drawable-nodpi")
+val repoRoot = rootProject.projectDir.parentFile!!
+val manifestFile = File(repoRoot, "tools/app-icon-manifest.json")
+val iconOutput = layout.buildDirectory.file("generated/res/appIcon/drawable-nodpi/ic_launcher_foreground.png")
 
-val copyAppIcon by tasks.registering(Copy::class) {
-    val assetFile = rootProject.layout.projectDirectory.dir("../assets").file("hb-pie_bottom-left-1024x1024.png")
-    from(assetFile)
-    into(iconOutputDir)
-    rename { "ic_launcher_foreground.png" }
-    doFirst { iconOutputDir.get().asFile.mkdirs() }
+val restoreAppIcon by tasks.registering {
+    inputs.file(manifestFile)
+    outputs.file(iconOutput)
+
+    doLast {
+        val manifest = JsonSlurper().parse(manifestFile) as Map<*, *>
+        val base64 = manifest["assets/hb-pie_bottom-left-1024x1024.png"] as? String
+            ?: error("App icon base64 entry missing from tools/app-icon-manifest.json")
+
+        val outputFile = iconOutput.get().asFile
+        outputFile.parentFile.mkdirs()
+        outputFile.writeBytes(Base64.getDecoder().decode(base64))
+    }
 }
 
 tasks.named("preBuild").configure {
-    dependsOn(copyAppIcon)
+    dependsOn(restoreAppIcon)
 }
 
 dependencies {
