@@ -24,8 +24,18 @@ struct BudgetScreen: View {
     @State private var isImportingFile = false
     @State private var pendingImport: PendingImport?
     @State private var dataAlert: DataAlert?
+    @FocusState private var focusedField: Field?
 
     private var totals: MonthTotals { viewModel.uiState.totals }
+
+    private enum Field: Hashable {
+        case newMonthKey
+        case incomeName
+        case incomeAmount
+        case categoryName
+        case categoryGroup
+        case categoryBudget
+    }
 
     var body: some View {
         NavigationStack {
@@ -42,6 +52,10 @@ struct BudgetScreen: View {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button("Collapse") { viewModel.setAllGroupsCollapsed(true) }
                     Button("Expand") { viewModel.setAllGroupsCollapsed(false) }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focusedField = nil }
                 }
             }
             .sheet(isPresented: $showExportSheet) {
@@ -102,9 +116,11 @@ struct BudgetScreen: View {
                 TextField("YYYY-MM", text: $newMonthKey)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
+                    .focused($focusedField, equals: .newMonthKey)
                 Button("Create") {
                     viewModel.createMonth(newMonthKey)
                     newMonthKey = ""
+                    focusedField = nil
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -142,7 +158,6 @@ struct BudgetScreen: View {
                 HStack {
                     VStack(alignment: .leading) {
                         Text(income.name).font(.headline)
-                        Text("ID: \(income.id)").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                     Text(currency(income.amount))
@@ -155,13 +170,16 @@ struct BudgetScreen: View {
             }
             VStack {
                 TextField("Name", text: $incomeName)
+                    .focused($focusedField, equals: .incomeName)
                 TextField("Amount", text: $incomeAmount)
                     .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .incomeAmount)
                 Button("Add Income") {
                     if let amount = Double(incomeAmount) {
                         viewModel.addIncome(name: incomeName, amount: amount)
                         incomeName = ""
                         incomeAmount = ""
+                        focusedField = nil
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -216,15 +234,19 @@ struct BudgetScreen: View {
             }
             VStack {
                 TextField("Category name", text: $categoryName)
+                    .focused($focusedField, equals: .categoryName)
                 TextField("Group", text: $categoryGroup)
+                    .focused($focusedField, equals: .categoryGroup)
                 TextField("Budget", text: $categoryBudget)
                     .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .categoryBudget)
                 Button("Save Category") {
                     if let budget = Double(categoryBudget) {
                         viewModel.addOrUpdateCategory(name: categoryName, group: categoryGroup, budget: budget)
                         categoryName = ""
                         categoryGroup = ""
                         categoryBudget = ""
+                        focusedField = nil
                     }
                 }
                 .buttonStyle(.bordered)
