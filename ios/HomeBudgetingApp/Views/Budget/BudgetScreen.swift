@@ -359,7 +359,7 @@ struct BudgetScreen: View {
 
     private func handleExportConfirm() {
         guard !exportKind.requiresMonth || normalizeMonth(exportMonth) != nil else {
-            dataAlert = DataAlert(title: "Invalid Month", message: "Enter a month in YYYY-MM format.")
+            dataAlert = DataAlert(title: "Invalid Month", message: "Select a valid month before continuing.")
             return
         }
         showExportSheet = false
@@ -379,7 +379,7 @@ struct BudgetScreen: View {
 
     private func handleImportConfirm() {
         guard !importKind.requiresMonth || normalizeMonth(importMonth) != nil else {
-            dataAlert = DataAlert(title: "Invalid Month", message: "Enter a month in YYYY-MM format.")
+            dataAlert = DataAlert(title: "Invalid Month", message: "Select a valid month before continuing.")
             return
         }
         let normalized = importKind.requiresMonth ? normalizeMonth(importMonth) : nil
@@ -481,9 +481,7 @@ private struct ExportOptionsView: View {
                 }
                 if kind.requiresMonth {
                     Section("Month") {
-                        TextField("YYYY-MM", text: $month)
-                            .textInputAutocapitalization(.never)
-                            .keyboardType(.numbersAndPunctuation)
+                        MonthPickerField(month: $month)
                         if !monthKeys.isEmpty {
                             Menu("Use existing month") {
                                 ForEach(monthKeys, id: \.self) { key in
@@ -546,9 +544,7 @@ private struct ImportOptionsView: View {
                 }
                 if kind.requiresMonth {
                     Section("Month") {
-                        TextField("YYYY-MM", text: $month)
-                            .textInputAutocapitalization(.never)
-                            .keyboardType(.numbersAndPunctuation)
+                        MonthPickerField(month: $month)
                         if !monthKeys.isEmpty {
                             Menu("Use existing month") {
                                 ForEach(monthKeys, id: \.self) { key in
@@ -588,6 +584,73 @@ private struct ImportOptionsView: View {
                 }
             }
         }
+    }
+}
+
+private struct MonthPickerField: View {
+    @Binding var month: String
+    @State private var cachedDate: Date
+
+    private static var calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        if let gmt = TimeZone(secondsFromGMT: 0) {
+            calendar.timeZone = gmt
+        }
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        return calendar
+    }()
+    private static let formatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.dateFormat = "yyyy-MM"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
+
+    private var binding: Binding<Date> {
+        Binding(
+            get: {
+                MonthPickerField.formatter.date(from: month) ?? cachedDate
+            },
+            set: { newValue in
+                let normalized = MonthPickerField.normalize(newValue)
+                cachedDate = normalized
+                month = MonthPickerField.formatter.string(from: normalized)
+            }
+        )
+    }
+
+    init(month: Binding<String>) {
+        _month = month
+        if let parsed = MonthPickerField.formatter.date(from: month.wrappedValue) {
+            _cachedDate = State(initialValue: parsed)
+        } else {
+            _cachedDate = State(initialValue: MonthPickerField.normalize(Date()))
+        }
+    }
+
+    var body: some View {
+        DatePicker("Month", selection: binding, displayedComponents: [.date])
+            .labelsHidden()
+#if os(iOS)
+            .datePickerStyle(.compact)
+#endif
+            .onAppear {
+                if month.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    month = MonthPickerField.formatter.string(from: cachedDate)
+                }
+            }
+            .onChange(of: month) { newValue in
+                if let parsed = MonthPickerField.formatter.date(from: newValue) {
+                    cachedDate = parsed
+                }
+            }
+    }
+
+    private static func normalize(_ date: Date) -> Date {
+        let components = calendar.dateComponents([.year, .month], from: date)
+        return calendar.date(from: components) ?? date
     }
 }
 
