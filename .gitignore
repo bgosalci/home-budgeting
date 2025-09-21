@@ -150,3 +150,7 @@ README.md
 !app/js/dist/
 !app/js/dist/*
 
+
+# Generated native app icons
+assets/hb-pie_bottom-left-1024x1024.png
+ios/HomeBudgetingApp/Resources/Assets.xcassets/AppIcon.appiconset/*.png
