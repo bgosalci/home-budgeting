@@ -48,6 +48,10 @@ public final class BudgetViewModel: ObservableObject {
             }
         }
     }
+    public convenience init() {
+        self.init(repository: BudgetRepository())
+    }
+
 
     private func applyState(_ state: BudgetState) {
         baseState = state
