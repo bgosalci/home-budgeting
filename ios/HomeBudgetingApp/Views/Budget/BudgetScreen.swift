@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 struct BudgetScreen: View {
     @EnvironmentObject private var viewModel: BudgetViewModel
-    @State private var newMonthKey: String = ""
+    @State private var newMonthKey: String = BudgetScreen.defaultMonthKey()
     @State private var incomeName: String = ""
     @State private var incomeAmount: String = ""
     @State private var categoryName: String = ""
@@ -31,7 +31,6 @@ struct BudgetScreen: View {
     private var totals: MonthTotals { viewModel.uiState.totals }
 
     private enum Field: Hashable {
-        case newMonthKey
         case incomeName
         case incomeAmount
         case categoryName
@@ -114,15 +113,13 @@ struct BudgetScreen: View {
             }
             .pickerStyle(.menu)
 
-            HStack {
-                TextField("YYYY-MM", text: $newMonthKey)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .focused($focusedField, equals: .newMonthKey)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Create Month").font(.subheadline).foregroundStyle(.secondary)
+                MonthPickerField(month: $newMonthKey, presentation: .wheel)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Button("Create") {
                     viewModel.createMonth(newMonthKey)
-                    newMonthKey = ""
-                    focusedField = nil
+                    advanceNewMonthKey()
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -314,7 +311,7 @@ struct BudgetScreen: View {
             Button {
                 exportKind = .transactions
                 exportFormat = .json
-                exportMonth = exportMonth.isEmpty ? defaultMonthKey() : exportMonth
+                exportMonth = exportMonth.isEmpty ? Self.defaultMonthKey() : exportMonth
                 showExportSheet = true
             } label: {
                 Label("Export Data", systemImage: "square.and.arrow.up")
@@ -322,7 +319,7 @@ struct BudgetScreen: View {
             Button {
                 importKind = .transactions
                 importFormat = .json
-                importMonth = importMonth.isEmpty ? defaultMonthKey() : importMonth
+                importMonth = importMonth.isEmpty ? Self.defaultMonthKey() : importMonth
                 showImportSheet = true
             } label: {
                 Label("Import Data", systemImage: "square.and.arrow.down")
@@ -348,12 +345,15 @@ struct BudgetScreen: View {
     private func syncMonthInputs() {
         let defaultKey = viewModel.uiState.selectedMonthKey
             ?? viewModel.uiState.monthKeys.last
-            ?? defaultMonthKey()
+            ?? Self.defaultMonthKey()
         if exportMonth.isEmpty || !viewModel.uiState.monthKeys.contains(exportMonth) {
             exportMonth = defaultKey
         }
         if importMonth.isEmpty || !viewModel.uiState.monthKeys.contains(importMonth) {
             importMonth = defaultKey
+        }
+        if newMonthKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            newMonthKey = nextMonthKey(after: defaultKey) ?? Self.defaultMonthKey()
         }
     }
 
@@ -439,18 +439,43 @@ struct BudgetScreen: View {
         }
     }
 
-    private func defaultMonthKey() -> String {
+    fileprivate static var monthCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        if let gmt = TimeZone(secondsFromGMT: 0) {
+            calendar.timeZone = gmt
+        }
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        return calendar
+    }()
+
+    fileprivate static let monthFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.calendar = monthCalendar
         formatter.dateFormat = "yyyy-MM"
-        return formatter.string(from: Date())
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
+
+    private static func defaultMonthKey() -> String {
+        Self.monthFormatter.string(from: Date())
     }
 
     private func normalizeMonth(_ input: String) -> String? {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count == 7 else { return nil }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        return formatter.date(from: trimmed) != nil ? trimmed : nil
+        return Self.monthFormatter.date(from: trimmed) != nil ? trimmed : nil
+    }
+
+    private func advanceNewMonthKey() {
+        guard let next = nextMonthKey(after: newMonthKey) else { return }
+        newMonthKey = next
+    }
+
+    private func nextMonthKey(after month: String) -> String? {
+        guard let date = Self.monthFormatter.date(from: month) else { return nil }
+        guard let next = Self.monthCalendar.date(byAdding: DateComponents(month: 1), to: date) else { return nil }
+        return Self.monthFormatter.string(from: next)
     }
 }
 
@@ -588,25 +613,18 @@ private struct ImportOptionsView: View {
 }
 
 private struct MonthPickerField: View {
+    enum Presentation {
+        case compact
+        case wheel
+        case graphical
+    }
+
     @Binding var month: String
     @State private var cachedDate: Date
+    private let presentation: Presentation
 
-    private static var calendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        if let gmt = TimeZone(secondsFromGMT: 0) {
-            calendar.timeZone = gmt
-        }
-        calendar.locale = Locale(identifier: "en_US_POSIX")
-        return calendar
-    }()
-    private static let formatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = calendar
-        formatter.dateFormat = "yyyy-MM"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter
-    }()
+    fileprivate static var calendar: Calendar = BudgetScreen.monthCalendar
+    fileprivate static let formatter: DateFormatter = BudgetScreen.monthFormatter
 
     private var binding: Binding<Date> {
         Binding(
@@ -621,31 +639,50 @@ private struct MonthPickerField: View {
         )
     }
 
-    init(month: Binding<String>) {
+    init(month: Binding<String>, presentation: Presentation = .graphical) {
         _month = month
-        if let parsed = MonthPickerField.formatter.date(from: month.wrappedValue) {
-            _cachedDate = State(initialValue: parsed)
-        } else {
-            _cachedDate = State(initialValue: MonthPickerField.normalize(Date()))
+        let initialDate = MonthPickerField.formatter.date(from: month.wrappedValue)
+            ?? MonthPickerField.normalize(Date())
+        _cachedDate = State(initialValue: initialDate)
+        self.presentation = presentation
+        if month.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || MonthPickerField.formatter.date(from: month.wrappedValue) == nil {
+            month.wrappedValue = MonthPickerField.formatter.string(from: initialDate)
         }
     }
 
     var body: some View {
-        DatePicker("Month", selection: binding, displayedComponents: [.date])
-            .labelsHidden()
-#if os(iOS)
-            .datePickerStyle(.compact)
-#endif
-            .onAppear {
-                if month.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    month = MonthPickerField.formatter.string(from: cachedDate)
-                }
-            }
+        picker
             .onChange(of: month) { newValue in
                 if let parsed = MonthPickerField.formatter.date(from: newValue) {
                     cachedDate = parsed
                 }
             }
+    }
+
+    @ViewBuilder
+    private var picker: some View {
+#if os(iOS)
+        switch presentation {
+        case .compact:
+            basePicker
+                .labelsHidden()
+                .datePickerStyle(.compact)
+        case .wheel:
+            basePicker
+                .labelsHidden()
+                .datePickerStyle(.wheel)
+        case .graphical:
+            basePicker
+                .datePickerStyle(.graphical)
+        }
+#else
+        basePicker.labelsHidden()
+#endif
+    }
+
+    private var basePicker: DatePicker<Text> {
+        DatePicker("Month", selection: binding, displayedComponents: [.date])
     }
 
     private static func normalize(_ date: Date) -> Date {
