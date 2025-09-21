@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 struct BudgetScreen: View {
     @EnvironmentObject private var viewModel: BudgetViewModel
-    @State private var newMonthKey: String = ""
+    @State private var newMonthKey: String = BudgetScreen.defaultMonthKey()
     @State private var incomeName: String = ""
     @State private var incomeAmount: String = ""
     @State private var categoryName: String = ""
@@ -31,7 +31,6 @@ struct BudgetScreen: View {
     private var totals: MonthTotals { viewModel.uiState.totals }
 
     private enum Field: Hashable {
-        case newMonthKey
         case incomeName
         case incomeAmount
         case categoryName
@@ -110,15 +109,13 @@ struct BudgetScreen: View {
             }
             .pickerStyle(.menu)
 
-            HStack {
-                TextField("YYYY-MM", text: $newMonthKey)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .focused($focusedField, equals: .newMonthKey)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Create Month").font(.subheadline).foregroundStyle(.secondary)
+                MonthPickerField(month: $newMonthKey)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Button("Create") {
                     viewModel.createMonth(newMonthKey)
-                    newMonthKey = ""
-                    focusedField = nil
+                    advanceNewMonthKey()
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -310,7 +307,7 @@ struct BudgetScreen: View {
             Button {
                 exportKind = .transactions
                 exportFormat = .json
-                exportMonth = exportMonth.isEmpty ? defaultMonthKey() : exportMonth
+                exportMonth = exportMonth.isEmpty ? Self.defaultMonthKey() : exportMonth
                 showExportSheet = true
             } label: {
                 Label("Export Data", systemImage: "square.and.arrow.up")
@@ -318,7 +315,7 @@ struct BudgetScreen: View {
             Button {
                 importKind = .transactions
                 importFormat = .json
-                importMonth = importMonth.isEmpty ? defaultMonthKey() : importMonth
+                importMonth = importMonth.isEmpty ? Self.defaultMonthKey() : importMonth
                 showImportSheet = true
             } label: {
                 Label("Import Data", systemImage: "square.and.arrow.down")
@@ -344,18 +341,21 @@ struct BudgetScreen: View {
     private func syncMonthInputs() {
         let defaultKey = viewModel.uiState.selectedMonthKey
             ?? viewModel.uiState.monthKeys.last
-            ?? defaultMonthKey()
+            ?? Self.defaultMonthKey()
         if exportMonth.isEmpty || !viewModel.uiState.monthKeys.contains(exportMonth) {
             exportMonth = defaultKey
         }
         if importMonth.isEmpty || !viewModel.uiState.monthKeys.contains(importMonth) {
             importMonth = defaultKey
         }
+        if newMonthKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            newMonthKey = nextMonthKey(after: defaultKey) ?? Self.defaultMonthKey()
+        }
     }
 
     private func handleExportConfirm() {
         guard !exportKind.requiresMonth || normalizeMonth(exportMonth) != nil else {
-            dataAlert = DataAlert(title: "Invalid Month", message: "Enter a month in YYYY-MM format.")
+            dataAlert = DataAlert(title: "Invalid Month", message: "Select a valid month before continuing.")
             return
         }
         showExportSheet = false
@@ -375,7 +375,7 @@ struct BudgetScreen: View {
 
     private func handleImportConfirm() {
         guard !importKind.requiresMonth || normalizeMonth(importMonth) != nil else {
-            dataAlert = DataAlert(title: "Invalid Month", message: "Enter a month in YYYY-MM format.")
+            dataAlert = DataAlert(title: "Invalid Month", message: "Select a valid month before continuing.")
             return
         }
         let normalized = importKind.requiresMonth ? normalizeMonth(importMonth) : nil
@@ -435,18 +435,43 @@ struct BudgetScreen: View {
         }
     }
 
-    private func defaultMonthKey() -> String {
+    fileprivate static var monthCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        if let gmt = TimeZone(secondsFromGMT: 0) {
+            calendar.timeZone = gmt
+        }
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        return calendar
+    }()
+
+    fileprivate static let monthFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.calendar = monthCalendar
         formatter.dateFormat = "yyyy-MM"
-        return formatter.string(from: Date())
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
+
+    private static func defaultMonthKey() -> String {
+        Self.monthFormatter.string(from: Date())
     }
 
     private func normalizeMonth(_ input: String) -> String? {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count == 7 else { return nil }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        return formatter.date(from: trimmed) != nil ? trimmed : nil
+        return Self.monthFormatter.date(from: trimmed) != nil ? trimmed : nil
+    }
+
+    private func advanceNewMonthKey() {
+        guard let next = nextMonthKey(after: newMonthKey) else { return }
+        newMonthKey = next
+    }
+
+    private func nextMonthKey(after month: String) -> String? {
+        guard let date = Self.monthFormatter.date(from: month) else { return nil }
+        guard let next = Self.monthCalendar.date(byAdding: DateComponents(month: 1), to: date) else { return nil }
+        return Self.monthFormatter.string(from: next)
     }
 }
 
@@ -477,9 +502,7 @@ private struct ExportOptionsView: View {
                 }
                 if kind.requiresMonth {
                     Section("Month") {
-                        TextField("YYYY-MM", text: $month)
-                            .textInputAutocapitalization(.never)
-                            .keyboardType(.numbersAndPunctuation)
+                        MonthPickerField(month: $month)
                         if !monthKeys.isEmpty {
                             Menu("Use existing month") {
                                 ForEach(monthKeys, id: \.self) { key in
@@ -542,9 +565,7 @@ private struct ImportOptionsView: View {
                 }
                 if kind.requiresMonth {
                     Section("Month") {
-                        TextField("YYYY-MM", text: $month)
-                            .textInputAutocapitalization(.never)
-                            .keyboardType(.numbersAndPunctuation)
+                        MonthPickerField(month: $month)
                         if !monthKeys.isEmpty {
                             Menu("Use existing month") {
                                 ForEach(monthKeys, id: \.self) { key in
@@ -583,6 +604,214 @@ private struct ImportOptionsView: View {
                     format = .json
                 }
             }
+        }
+    }
+}
+
+private struct MonthPickerField: View {
+    @Binding var month: String
+    @State private var cachedDate: Date
+    @State private var workingDate: Date
+    @State private var isPresentingPicker = false
+    @State private var yearRange: ClosedRange<Int>
+
+    fileprivate static var calendar: Calendar = BudgetScreen.monthCalendar
+    fileprivate static let formatter: DateFormatter = BudgetScreen.monthFormatter
+    private static let accessibilityFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        formatter.locale = Locale.current
+        return formatter
+    }()
+
+    init(month: Binding<String>) {
+        _month = month
+        let initialDate = MonthPickerField.formatter.date(from: month.wrappedValue)
+            ?? MonthPickerField.normalize(Date())
+        _cachedDate = State(initialValue: initialDate)
+        _workingDate = State(initialValue: initialDate)
+        _yearRange = State(initialValue: MonthPickerField.initialYearRange(for: initialDate))
+        if month.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || MonthPickerField.formatter.date(from: month.wrappedValue) == nil {
+            month.wrappedValue = MonthPickerField.formatter.string(from: initialDate)
+        }
+    }
+
+    var body: some View {
+        Button {
+            workingDate = cachedDate
+            isPresentingPicker = true
+        } label: {
+            HStack {
+                Text(MonthPickerField.formatter.string(from: cachedDate))
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 8)
+                Image(systemName: "calendar")
+                    .foregroundStyle(.tint)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .padding(.vertical, 4)
+        .accessibilityLabel("Month")
+        .accessibilityValue(MonthPickerField.accessibilityFormatter.string(from: cachedDate))
+        .sheet(isPresented: $isPresentingPicker) {
+            MonthPickerSheet(
+                date: $workingDate,
+                calendar: MonthPickerField.calendar,
+                yearRange: $yearRange,
+                onCancel: { isPresentingPicker = false },
+                onConfirm: {
+                    commitSelection()
+                    isPresentingPicker = false
+                }
+            )
+            .presentationDetents([.height(320), .medium])
+            .presentationDragIndicator(.visible)
+        }
+        .onChange(of: month) { newValue in
+            guard let parsed = MonthPickerField.formatter.date(from: newValue) else { return }
+            cachedDate = parsed
+            expandYearRange(toInclude: parsed)
+        }
+    }
+
+    private func commitSelection() {
+        let normalized = MonthPickerField.normalize(workingDate)
+        cachedDate = normalized
+        month = MonthPickerField.formatter.string(from: normalized)
+        expandYearRange(toInclude: normalized)
+    }
+
+    private func expandYearRange(toInclude date: Date) {
+        let year = MonthPickerField.calendar.component(.year, from: date)
+        yearRange = MonthPickerField.extendedRange(yearRange, toInclude: year)
+    }
+
+    private static func initialYearRange(for date: Date) -> ClosedRange<Int> {
+        let year = calendar.component(.year, from: date)
+        let lower = max(1, year - 20)
+        let upper = year + 50
+        return lower...upper
+    }
+
+    fileprivate static func extendedRange(_ range: ClosedRange<Int>, toInclude year: Int) -> ClosedRange<Int> {
+        var lower = range.lowerBound
+        var upper = range.upperBound
+        if year <= lower {
+            lower = max(1, year - 10)
+        }
+        if year >= upper {
+            upper = year + 10
+        }
+        return lower...upper
+    }
+
+    fileprivate static func normalize(_ date: Date) -> Date {
+        let components = calendar.dateComponents([.year, .month], from: date)
+        return calendar.date(from: components) ?? date
+    }
+}
+
+private struct MonthPickerSheet: View {
+    @Binding var date: Date
+    let calendar: Calendar
+    @Binding var yearRange: ClosedRange<Int>
+    var onCancel: () -> Void
+    var onConfirm: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack {
+                MonthYearPicker(
+                    date: $date,
+                    calendar: calendar,
+                    yearRange: yearRange,
+                    onYearChange: { newYear in
+                        yearRange = MonthPickerField.extendedRange(yearRange, toInclude: newYear)
+                    }
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.top, 16)
+            .navigationTitle("Select Month")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: onConfirm)
+                }
+            }
+        }
+    }
+}
+
+private struct MonthYearPicker: View {
+    @Binding var date: Date
+    let calendar: Calendar
+    let yearRange: ClosedRange<Int>
+    var onYearChange: (Int) -> Void
+
+    private var monthNames: [String] {
+        calendar.monthSymbols
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Picker("Month", selection: monthBinding) {
+                ForEach(Array(monthNames.enumerated()), id: \.offset) { index, name in
+                    Text(name).tag(index + 1)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
+
+            Picker("Year", selection: yearBinding) {
+                ForEach(Array(yearRange), id: \.self) { year in
+                    Text(String(year)).tag(year)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
+        }
+        .frame(height: 216)
+        .clipped()
+    }
+
+    private var monthBinding: Binding<Int> {
+        Binding(
+            get: { calendar.component(.month, from: date) },
+            set: { newMonth in updateDate(month: newMonth, year: nil) }
+        )
+    }
+
+    private var yearBinding: Binding<Int> {
+        Binding(
+            get: { calendar.component(.year, from: date) },
+            set: { newYear in
+                updateDate(month: nil, year: newYear)
+                onYearChange(newYear)
+            }
+        )
+    }
+
+    private func updateDate(month: Int?, year: Int?) {
+        var components = calendar.dateComponents([.year, .month], from: date)
+        if let month {
+            components.month = month
+        }
+        if let year {
+            components.year = year
+        }
+        components.day = 1
+        if let updated = calendar.date(from: components) {
+            date = updated
         }
     }
 }
