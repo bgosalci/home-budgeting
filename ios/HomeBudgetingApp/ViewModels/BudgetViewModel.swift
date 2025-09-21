@@ -619,7 +619,8 @@ public final class BudgetViewModel: ObservableObject {
 
     private func appendTransactions(_ drafts: [TransactionDraft], monthKey: String) async throws -> Int {
         guard !drafts.isEmpty else { return 0 }
-        var categories = Set(baseState.months[monthKey]?.categories.keys ?? [])
+        let existingCategories = baseState.months[monthKey]?.categories.map { $0.key } ?? []
+        var categories = Set(existingCategories)
         var prepared: [BudgetTransaction] = []
         for draft in drafts {
             var tx = BudgetTransaction(
