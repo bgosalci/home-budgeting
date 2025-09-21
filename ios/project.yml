@@ -17,6 +17,8 @@ targets:
     deploymentTarget: "16.0"
     sources:
       - path: AppHost
+      - path: HomeBudgetingApp/Resources/Assets.xcassets
+        buildPhase: resources
     dependencies:
       - package: HomeBudgetingKit
     settings:

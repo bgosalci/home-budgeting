@@ -9,12 +9,14 @@
 /* Begin PBXBuildFile section */
 		09BB3CEC106BEFE8EE37BFEC /* HomeBudgetingKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2A91036B7B90BDE27B8B830B /* HomeBudgetingKit */; };
 		8B2F357C46CB175A45301A1C /* AppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 744E3DA38D49E687D43AC6D4 /* AppMain.swift */; };
+		F3F2EB3B4D7634AD4DBDAB59 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1C1A7D9F2FB5CA7F00D3A839 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2526382D4075C9A2DEF4C187 /* HomeBudgeting.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HomeBudgeting.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4163D2F2F58C5D46832327B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		744E3DA38D49E687D43AC6D4 /* AppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMain.swift; sourceTree = "<group>"; };
+		1C1A7D9F2FB5CA7F00D3A839 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = ../HomeBudgetingApp/Resources/Assets.xcassets; sourceTree = "<group>"; };
 		C23C91E0A87D2A798D6F67ED /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = .; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -43,6 +45,7 @@
 			children = (
 				744E3DA38D49E687D43AC6D4 /* AppMain.swift */,
 				4163D2F2F58C5D46832327B5 /* Info.plist */,
+				1C1A7D9F2FB5CA7F00D3A839 /* Assets.xcassets */,
 			);
 			path = AppHost;
 			sourceTree = "<group>";
@@ -73,6 +76,7 @@
 			buildPhases = (
 				4AD14D1785029341F85D67EF /* Sources */,
 				746B302FCA1BE38060FE18FE /* Frameworks */,
+				E558684B2F8A87459A91B12D /* Resources */,
 			);
 			buildRules = (
 			);
@@ -117,6 +121,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E558684B2F8A87459A91B12D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F3F2EB3B4D7634AD4DBDAB59 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4AD14D1785029341F85D67EF /* Sources */ = {
