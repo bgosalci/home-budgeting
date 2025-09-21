@@ -23,7 +23,7 @@ struct BudgetScreen: View {
     @State private var isExportingFile = false
     @State private var isImportingFile = false
     @State private var pendingImport: PendingImport?
-    @State private var dataAlert: DataAlert?
+    @State private var activeDialog: AppDialog?
     @State private var editingIncomeId: String?
     @State private var editingCategoryOriginalName: String?
     @FocusState private var focusedField: Field?
@@ -88,9 +88,7 @@ struct BudgetScreen: View {
                 allowsMultipleSelection: false,
                 onCompletion: handleImportResult
             )
-            .alert(item: $dataAlert) { alert in
-                Alert(title: Text(alert.title), message: Text(alert.message), dismissButton: .default(Text("OK")))
-            }
+            .appDialog($activeDialog)
         }
         .onAppear { syncMonthInputs() }
         .onChange(of: viewModel.uiState.selectedMonthKey) { _ in syncMonthInputs() }
@@ -121,7 +119,19 @@ struct BudgetScreen: View {
             }
             if let selected = viewModel.uiState.selectedMonthKey {
                 Button(role: .destructive) {
-                    viewModel.deleteNextMonth()
+                    let months = viewModel.uiState.monthKeys
+                    if let selected = viewModel.uiState.selectedMonthKey,
+                       let index = months.firstIndex(of: selected),
+                       index + 1 < months.count {
+                        let nextKey = months[index + 1]
+                        activeDialog = AppDialog.confirm(
+                            title: "Delete \(nextKey)?",
+                            message: "Are you sure you want to delete the future month \(nextKey)? This action cannot be undone.",
+                            confirmTitle: "Delete",
+                            destructive: true,
+                            onConfirm: { viewModel.deleteNextMonth() }
+                        )
+                    }
                 } label: {
                     Label("Delete next future month", systemImage: "trash")
                 }
@@ -166,7 +176,15 @@ struct BudgetScreen: View {
                     } label: {
                         Label("Edit", systemImage: "pencil")
                     }
-                    Button(role: .destructive) { viewModel.deleteIncome(id: income.id) } label: {
+                    Button(role: .destructive) {
+                        activeDialog = AppDialog.confirm(
+                            title: "Delete Income",
+                            message: "Are you sure you want to delete \(income.name)?",
+                            confirmTitle: "Delete",
+                            destructive: true,
+                            onConfirm: { viewModel.deleteIncome(id: income.id) }
+                        )
+                    } label: {
                         Label("Delete", systemImage: "trash")
                     }
                     .tint(.red)
@@ -242,7 +260,15 @@ struct BudgetScreen: View {
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
                                 }
-                                Button(role: .destructive) { viewModel.deleteCategory(name: category.name) } label: {
+                                Button(role: .destructive) {
+                                    activeDialog = AppDialog.confirm(
+                                        title: "Delete Category",
+                                        message: "Are you sure you want to delete \(category.name)?",
+                                        confirmTitle: "Delete",
+                                        destructive: true,
+                                        onConfirm: { viewModel.deleteCategory(name: category.name) }
+                                    )
+                                } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
                                 .tint(.red)
@@ -355,7 +381,7 @@ struct BudgetScreen: View {
 
     private func handleExportConfirm() {
         guard !exportKind.requiresMonth || normalizeMonth(exportMonth) != nil else {
-            dataAlert = DataAlert(title: "Invalid Month", message: "Select a valid month before continuing.")
+            activeDialog = AppDialog.info(title: "Invalid Month", message: "Select a valid month before continuing.")
             return
         }
         showExportSheet = false
@@ -368,14 +394,14 @@ struct BudgetScreen: View {
                 exportFileName = payload.filename
                 isExportingFile = true
             } catch {
-                dataAlert = DataAlert(title: "Export Failed", message: error.localizedDescription)
+                activeDialog = AppDialog.error(title: "Export Failed", message: error.localizedDescription)
             }
         }
     }
 
     private func handleImportConfirm() {
         guard !importKind.requiresMonth || normalizeMonth(importMonth) != nil else {
-            dataAlert = DataAlert(title: "Invalid Month", message: "Select a valid month before continuing.")
+            activeDialog = AppDialog.info(title: "Invalid Month", message: "Select a valid month before continuing.")
             return
         }
         let normalized = importKind.requiresMonth ? normalizeMonth(importMonth) : nil
@@ -387,10 +413,10 @@ struct BudgetScreen: View {
     private func handleExportResult(_ result: Result<URL, Error>) {
         switch result {
         case .success:
-            dataAlert = DataAlert(title: "Export Complete", message: "Saved \(exportFileName)")
+            activeDialog = AppDialog.info(title: "Export Complete", message: "Saved \(exportFileName)")
         case .failure(let error):
             if (error as NSError).code != NSUserCancelledError {
-                dataAlert = DataAlert(title: "Export Failed", message: error.localizedDescription)
+                activeDialog = AppDialog.error(title: "Export Failed", message: error.localizedDescription)
             }
         }
         exportDocument = nil
@@ -402,7 +428,7 @@ struct BudgetScreen: View {
         case .success(let urls):
             guard let url = urls.first else { return }
             guard let request = pendingImport else {
-                dataAlert = DataAlert(title: "Import Failed", message: "Unable to read the selected file.")
+                activeDialog = AppDialog.error(title: "Import Failed", message: "Unable to read the selected file.")
                 return
             }
             let accessGranted = url.startAccessingSecurityScopedResource()
@@ -412,7 +438,7 @@ struct BudgetScreen: View {
                 }
             }
             guard let data = try? Data(contentsOf: url) else {
-                dataAlert = DataAlert(title: "Import Failed", message: "Unable to read the selected file.")
+                activeDialog = AppDialog.error(title: "Import Failed", message: "Unable to read the selected file.")
                 return
             }
             Task {
@@ -423,14 +449,14 @@ struct BudgetScreen: View {
                         format: request.format,
                         content: data
                     )
-                    dataAlert = DataAlert(title: "Import Complete", message: summary.message)
+                    activeDialog = AppDialog.info(title: "Import Complete", message: summary.message)
                 } catch {
-                    dataAlert = DataAlert(title: "Import Failed", message: error.localizedDescription)
+                    activeDialog = AppDialog.error(title: "Import Failed", message: error.localizedDescription)
                 }
             }
         case .failure(let error):
             if (error as NSError).code != NSUserCancelledError {
-                dataAlert = DataAlert(title: "Import Failed", message: error.localizedDescription)
+                activeDialog = AppDialog.error(title: "Import Failed", message: error.localizedDescription)
             }
         }
     }
@@ -849,8 +875,3 @@ private struct PendingImport {
     }
 }
 
-private struct DataAlert: Identifiable {
-    let id = UUID()
-    let title: String
-    let message: String
-}
