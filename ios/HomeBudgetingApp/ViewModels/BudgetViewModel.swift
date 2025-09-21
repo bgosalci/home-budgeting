@@ -31,7 +31,7 @@ struct BudgetUiState {
 }
 
 @MainActor
-final class BudgetViewModel: ObservableObject {
+public final class BudgetViewModel: ObservableObject {
     @Published private(set) var uiState = BudgetUiState()
 
     private let repository: BudgetRepository

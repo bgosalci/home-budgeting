@@ -1,0 +1,45 @@
+name: HomeBudgeting
+options:
+  minimumXcodeGenVersion: 2.37.0
+attributes:
+  ORGANIZATIONNAME: HomeBudgeting
+packages:
+  HomeBudgetingKit:
+    path: .
+settings:
+  base:
+    IPHONEOS_DEPLOYMENT_TARGET: 16.0
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  HomeBudgeting:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: AppHost
+    dependencies:
+      - package: HomeBudgetingKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.homebudgeting.app
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.0
+    info:
+      path: AppHost/Info.plist
+      properties:
+        CFBundleDisplayName: HomeBudgeting
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchStoryboardName: LaunchScreen
+        UIUserInterfaceStyle: Light
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false

@@ -1,9 +1,11 @@
 import SwiftUI
 
-struct HomeBudgetingRootView: View {
+public struct HomeBudgetingRootView: View {
     @EnvironmentObject private var viewModel: BudgetViewModel
 
-    var body: some View {
+    public init() {}
+
+    public var body: some View {
         TabView {
             BudgetScreen()
                 .tabItem { Label("Budget", systemImage: "chart.pie") }
