@@ -205,3 +205,4 @@ fastlane/test_output
 
 # General
 .DS_Store
+ios/HomeBudgeting.xcodeproj/project.xcworkspace/xcuserdata/burim.gosalci.xcuserdatad/UserInterfaceState.xcuserstate
