@@ -212,7 +212,7 @@ struct BudgetScreen: View {
                 TextField("Name", text: $incomeName)
                     .focused($focusedField, equals: .incomeName)
                 TextField("Amount", text: $incomeAmount)
-                    .keyboardType(.decimalPad)
+                    .signedDecimalKeyboard(text: $incomeAmount)
                     .focused($focusedField, equals: .incomeAmount)
                 Button(editingIncomeId == nil ? "Add Income" : "Save Income") {
                     if let amount = Double(incomeAmount) {
@@ -318,7 +318,7 @@ struct BudgetScreen: View {
                 TextField("Group", text: $categoryGroup)
                     .focused($focusedField, equals: .categoryGroup)
                 TextField("Budget", text: $categoryBudget)
-                    .keyboardType(.decimalPad)
+                    .signedDecimalKeyboard(text: $categoryBudget)
                     .focused($focusedField, equals: .categoryBudget)
                 Button(editingCategoryOriginalName == nil ? "Add Category" : "Save Category") {
                     if let budget = Double(categoryBudget) {

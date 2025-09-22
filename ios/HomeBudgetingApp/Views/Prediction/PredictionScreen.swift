@@ -17,7 +17,7 @@ struct PredictionScreen: View {
                             predictedCategory = ""
                         }
                     TextField("Amount", text: $amountInput)
-                        .keyboardType(.decimalPad)
+                        .signedDecimalKeyboard(text: $amountInput)
                     if !predictedCategory.isEmpty {
                         Text("Prediction: \(predictedCategory)")
                             .font(.headline)
