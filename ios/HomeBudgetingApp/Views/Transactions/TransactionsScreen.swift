@@ -44,8 +44,8 @@ struct TransactionsScreen: View {
                     }
                 }
             }
-            .navigationTitle("Transactions")
-            .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     if isScrolled {
@@ -59,6 +59,10 @@ struct TransactionsScreen: View {
                         }
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
+                    } else {
+                        Text("Transactions")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
                     }
                 }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
