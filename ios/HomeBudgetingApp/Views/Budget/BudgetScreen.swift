@@ -56,10 +56,24 @@ struct BudgetScreen: View {
                 dataSection
             }
             .listStyle(.insetGrouped)
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Budget")
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    BudgetToolbarTitle(info: toolbarMonthInfo)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Picker(
+                        selection: Binding(
+                            get: { viewModel.uiState.selectedMonthKey ?? "" },
+                            set: { viewModel.selectMonth($0) }
+                        ),
+                        label: BudgetToolbarMonthPickerLabel(info: toolbarMonthInfo)
+                    ) {
+                        ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
+                            Text(key).tag(key)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityLabel("Selected Month")
+                    .accessibilityValue(toolbarMonthInfo?.accessibilityLabel ?? (viewModel.uiState.selectedMonthKey ?? "None"))
+                    .disabled(viewModel.uiState.monthKeys.isEmpty)
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -108,18 +122,6 @@ struct BudgetScreen: View {
 
     private var monthSection: some View {
         Section(header: Text("Month")) {
-            Picker("", selection: Binding(
-                get: { viewModel.uiState.selectedMonthKey ?? "" },
-                set: { viewModel.selectMonth($0) }
-            )) {
-                ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
-                    Text(key).tag(key)
-                }
-            }
-            .labelsHidden()
-            .accessibilityLabel("Selected Month")
-            .pickerStyle(.menu)
-
             VStack(alignment: .leading, spacing: 12) {
                 Text("Create Month").font(.subheadline).foregroundStyle(.secondary)
                 MonthPickerField(month: $newMonthKey)
@@ -616,41 +618,37 @@ struct BudgetScreen_Previews: PreviewProvider {
     }
 }
 
-private struct BudgetToolbarTitle: View {
-    let info: BudgetToolbarMonthInfo?
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Text("Budget")
-                .font(.headline)
-            if let info {
-                VStack(spacing: 0) {
-                    Text(info.month)
-                        .font(.title3)
-                        .bold()
-                    Text(info.year)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .multilineTextAlignment(.center)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityDescription)
-    }
-
-    private var accessibilityDescription: String {
-        if let info {
-            return "Budget, \(info.accessibilityLabel)"
-        }
-        return "Budget"
-    }
-}
-
 private struct BudgetToolbarMonthInfo {
     let month: String
     let year: String
     let accessibilityLabel: String
+}
+
+private struct BudgetToolbarMonthPickerLabel: View {
+    let info: BudgetToolbarMonthInfo?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            VStack(spacing: 0) {
+                Text(monthText)
+                    .font(.subheadline)
+                    .bold()
+                Text(yearText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Image(systemName: "chevron.down")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .contentShape(Rectangle())
+        .accessibilityHidden(true)
+    }
+
+    private var monthText: String { info?.month ?? "Select" }
+    private var yearText: String { info?.year ?? "Month" }
 }
 
 private struct ExportOptionsView: View {
