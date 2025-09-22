@@ -29,6 +29,14 @@ struct BudgetScreen: View {
     @FocusState private var focusedField: Field?
 
     private var totals: MonthTotals { viewModel.uiState.totals }
+    private var toolbarMonthInfo: BudgetToolbarMonthInfo? {
+        guard let key = viewModel.uiState.selectedMonthKey,
+              let date = Self.monthFormatter.date(from: key) else { return nil }
+        let month = Self.toolbarMonthFormatter.string(from: date)
+        let year = Self.toolbarYearFormatter.string(from: date)
+        let accessibility = Self.toolbarAccessibilityFormatter.string(from: date)
+        return BudgetToolbarMonthInfo(month: month, year: year, accessibilityLabel: accessibility)
+    }
 
     private enum Field: Hashable {
         case incomeName
@@ -48,8 +56,11 @@ struct BudgetScreen: View {
                 dataSection
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Budget")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    BudgetToolbarTitle(info: toolbarMonthInfo)
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { focusedField = nil }
@@ -97,7 +108,7 @@ struct BudgetScreen: View {
 
     private var monthSection: some View {
         Section(header: Text("Month")) {
-            Picker("Selected Month", selection: Binding(
+            Picker("", selection: Binding(
                 get: { viewModel.uiState.selectedMonthKey ?? "" },
                 set: { viewModel.selectMonth($0) }
             )) {
@@ -105,6 +116,8 @@ struct BudgetScreen: View {
                     Text(key).tag(key)
                 }
             }
+            .labelsHidden()
+            .accessibilityLabel("Selected Month")
             .pickerStyle(.menu)
 
             VStack(alignment: .leading, spacing: 12) {
@@ -546,6 +559,34 @@ struct BudgetScreen: View {
         return formatter
     }()
 
+    fileprivate static let toolbarMonthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.setLocalizedDateFormatFromTemplate("MMM")
+        return formatter
+    }()
+
+    fileprivate static let toolbarYearFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.setLocalizedDateFormatFromTemplate("yyyy")
+        return formatter
+    }()
+
+    fileprivate static let toolbarAccessibilityFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
     private static func defaultMonthKey() -> String {
         Self.monthFormatter.string(from: Date())
     }
@@ -573,6 +614,43 @@ struct BudgetScreen_Previews: PreviewProvider {
         BudgetScreen()
             .environmentObject(BudgetViewModel())
     }
+}
+
+private struct BudgetToolbarTitle: View {
+    let info: BudgetToolbarMonthInfo?
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("Budget")
+                .font(.headline)
+            if let info {
+                VStack(spacing: 0) {
+                    Text(info.month)
+                        .font(.title3)
+                        .bold()
+                    Text(info.year)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .multilineTextAlignment(.center)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityDescription)
+    }
+
+    private var accessibilityDescription: String {
+        if let info {
+            return "Budget, \(info.accessibilityLabel)"
+        }
+        return "Budget"
+    }
+}
+
+private struct BudgetToolbarMonthInfo {
+    let month: String
+    let year: String
+    let accessibilityLabel: String
 }
 
 private struct ExportOptionsView: View {
