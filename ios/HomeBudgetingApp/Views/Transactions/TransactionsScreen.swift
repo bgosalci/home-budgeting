@@ -5,36 +5,37 @@ struct TransactionsScreen: View {
     @State private var showEditor = false
     @State private var editingTransaction: BudgetTransaction?
     @State private var activeDialog: AppDialog?
-    @State private var isSearchPresented = false
+    @State private var scrollPosition = ScrollPosition()
+    @State private var isScrolled = false
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
     var body: some View {
         NavigationStack {
-            List {
-                transactionSections
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    transactionSections
+                }
             }
-            .listStyle(.insetGrouped)
-            .searchable(
-                text: searchBinding,
-                isPresented: $isSearchPresented,
-                placement: .toolbar,
-                prompt: "Search description"
-            )
+            .scrollPosition($scrollPosition)
             .navigationTitle("Transactions")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    titleContent
+                    if isScrolled {
+                        compactTitleContent
+                    } else {
+                        largeTitleContent
+                    }
                 }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     categoryFilter
-                    Button(action: { isSearchPresented = true }) {
-                        Image(systemName: "magnifyingglass")
-                    }
-                    Button(action: { editingTransaction = nil; showEditor = true }) {
-                        Image(systemName: "plus")
-                    }
+                    addButton
+                }
+            }
+            .onChange(of: scrollPosition) { _, newValue in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isScrolled = (newValue.point?.y ?? 0) > 50
                 }
             }
             .sheet(isPresented: $showEditor) {
@@ -64,20 +65,36 @@ struct TransactionsScreen: View {
         )
     }
 
-    private var titleContent: some View {
+    private var largeTitleContent: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Transactions")
-                .font(.headline)
+                .font(.largeTitle)
+                .fontWeight(.bold)
             Text("Total \(currency(transactionsState.total))")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
+    }
+    
+    private var compactTitleContent: some View {
+        VStack(alignment: .center, spacing: 1) {
+            Text("Transactions")
+                .font(.headline)
+                .fontWeight(.semibold)
+            Text("Total \(currency(transactionsState.total))")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
     }
 
     private var categoryFilter: some View {
         Picker(
             selection: categoryBinding,
-            label: Label("Filter category", systemImage: "line.3.horizontal.decrease.circle")
+            label: Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                 .labelStyle(.iconOnly)
         ) {
             Text("All").tag("")
@@ -86,12 +103,26 @@ struct TransactionsScreen: View {
             }
         }
         .pickerStyle(.menu)
+        .controlSize(.small)
+        .frame(maxWidth: 80)
+    }
+    
+    private var addButton: some View {
+        Button(action: { editingTransaction = nil; showEditor = true }) {
+            Image(systemName: "plus")
+        }
+        .controlSize(.small)
     }
 
     @ViewBuilder
     private var transactionSections: some View {
         ForEach(transactionsState.groups) { group in
-            Section(header: sectionHeader(for: group)) {
+            VStack(spacing: 0) {
+                sectionHeader(for: group)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color(.secondarySystemGroupedBackground))
+                
                 ForEach(group.transactions) { tx in
                     Button(action: {
                         editingTransaction = tx
@@ -112,6 +143,9 @@ struct TransactionsScreen: View {
                                     .foregroundColor(.secondary)
                             }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color(.systemGroupedBackground))
                     }
                     .tint(.primary)
                     .swipeActions(edge: .trailing) {
@@ -127,26 +161,49 @@ struct TransactionsScreen: View {
                             Label("Delete", systemImage: "trash")
                         }
                     }
+                    
+                    if tx.id != group.transactions.last?.id {
+                        Divider()
+                            .padding(.leading, 16)
+                    }
                 }
-                HStack {
-                    Text("Day total")
-                    Spacer()
-                    Text(currency(group.dayTotal))
-                }.font(.caption)
-                HStack {
-                    Text("Running total")
-                    Spacer()
-                    Text(currency(group.runningTotal))
-                }.font(.caption)
+                
+                VStack(spacing: 4) {
+                    HStack {
+                        Text("Day total")
+                        Spacer()
+                        Text(currency(group.dayTotal))
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    
+                    HStack {
+                        Text("Running total")
+                        Spacer()
+                        Text(currency(group.runningTotal))
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(.secondarySystemGroupedBackground))
             }
+            .background(Color(.systemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
         }
+        
         if !transactionsState.groups.isEmpty {
             clearTransactionsSection
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
         }
     }
 
     private var clearTransactionsSection: some View {
-        Section {
+        VStack {
             Button(role: .destructive) {
                 let monthName = viewModel.uiState.selectedMonthKey ?? "this month"
                 activeDialog = AppDialog.confirm(
@@ -159,12 +216,18 @@ struct TransactionsScreen: View {
             } label: {
                 Text("Clear Transactions")
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(.systemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 
     private func sectionHeader(for group: TransactionGroup) -> some View {
         HStack {
             Text(group.label)
+                .font(.headline)
+                .fontWeight(.semibold)
             Spacer()
             Text(transactionCountDescription(for: group.transactionCount))
                 .font(.caption)
