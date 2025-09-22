@@ -14,28 +14,14 @@ struct TransactionsScreen: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
-                    Section {
-                        HStack {
-                            Text("Total")
-                                .font(.headline)
-                            Spacer()
-                            Text(currency(transactionsState.total))
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                        }
-                        .padding(.vertical, 8)
-                        .background(
-                            GeometryReader { geometry in
-                                Color.clear
-                                    .preference(
-                                        key: ScrollOffsetPreferenceKey.self,
-                                        value: geometry.frame(in: .named("scroll")).minY
-                                    )
-                            }
-                        )
-                    }
+                    headerTotalSection
 
                     transactionSections
+
+                    if !transactionsState.groups.isEmpty {
+                        footerTotalSection
+                        clearTransactionsSection
+                    }
                 }
                 .listStyle(.insetGrouped)
                 .coordinateSpace(name: "scroll")
@@ -180,10 +166,39 @@ struct TransactionsScreen: View {
                 }.font(.caption)
             }
         }
-        
-        if !transactionsState.groups.isEmpty {
-            clearTransactionsSection
+    }
+
+    private var headerTotalSection: some View {
+        Section {
+            totalSummaryContent
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(
+                                key: ScrollOffsetPreferenceKey.self,
+                                value: geometry.frame(in: .named("scroll")).minY
+                            )
+                    }
+                )
         }
+    }
+
+    private var footerTotalSection: some View {
+        Section {
+            totalSummaryContent
+        }
+    }
+
+    private var totalSummaryContent: some View {
+        HStack {
+            Text("Total")
+                .font(.headline)
+            Spacer()
+            Text(currency(transactionsState.total))
+                .font(.title2)
+                .fontWeight(.semibold)
+        }
+        .padding(.vertical, 8)
     }
 
     private var clearTransactionsSection: some View {
