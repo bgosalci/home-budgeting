@@ -261,7 +261,11 @@ struct PredictionMapping: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         exact = try container.decodeIfPresent([String: String].self, forKey: .exact) ?? [:]
-        tokens = try container.decodeIfPresent([String: [String: Int]].self, forKey: .tokens) ?? [:]
+        var decodedTokens = decodeCountBag(in: container, forKey: .tokens)
+        if let fallback = try? container.decode([String: String].self, forKey: .tokens) {
+            mergeCountBags(into: &decodedTokens, incoming: convertFlatStringMap(fallback))
+        }
+        tokens = decodedTokens
     }
 
     func ensured() -> PredictionMapping {
@@ -289,8 +293,16 @@ struct DescriptionMap: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        exact = try container.decodeIfPresent([String: [String: Int]].self, forKey: .exact) ?? [:]
-        tokens = try container.decodeIfPresent([String: [String: Int]].self, forKey: .tokens) ?? [:]
+        var decodedExact = decodeCountBag(in: container, forKey: .exact)
+        if let fallback = try? container.decode([String: String].self, forKey: .exact) {
+            mergeCountBags(into: &decodedExact, incoming: convertFlatStringMap(fallback))
+        }
+        var decodedTokens = decodeCountBag(in: container, forKey: .tokens)
+        if let fallbackTokens = try? container.decode([String: String].self, forKey: .tokens) {
+            mergeCountBags(into: &decodedTokens, incoming: convertFlatStringMap(fallbackTokens))
+        }
+        exact = decodedExact
+        tokens = decodedTokens
     }
 
     func ensured() -> DescriptionMap {
@@ -299,6 +311,91 @@ struct DescriptionMap: Codable {
             tokens: tokens.mapValues { $0.filter { $0.value > 0 } }
         )
     }
+}
+
+private let fallbackTrimCharacters = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'"))
+
+private func decodeCountBag<Key: CodingKey>(in container: KeyedDecodingContainer<Key>, forKey key: Key) -> [String: [String: Int]] {
+    if let direct = try? container.decode([String: [String: Int]].self, forKey: key) {
+        return direct
+    }
+    if let doubles = try? container.decode([String: [String: Double]].self, forKey: key) {
+        return convertDoubleCountBag(doubles)
+    }
+    if let strings = try? container.decode([String: [String: String]].self, forKey: key) {
+        return convertStringCountBag(strings)
+    }
+    return [:]
+}
+
+private func convertDoubleCountBag(_ raw: [String: [String: Double]]) -> [String: [String: Int]] {
+    raw.reduce(into: [:]) { result, entry in
+        let bag = entry.value.reduce(into: [String: Int]()) { inner, pair in
+            if let count = sanitizedCount(from: pair.value) {
+                inner[pair.key] = count
+            }
+        }
+        if !bag.isEmpty {
+            result[entry.key] = bag
+        }
+    }
+}
+
+private func convertStringCountBag(_ raw: [String: [String: String]]) -> [String: [String: Int]] {
+    raw.reduce(into: [:]) { result, entry in
+        let bag = entry.value.reduce(into: [String: Int]()) { inner, pair in
+            if let count = parseCount(from: pair.value) {
+                inner[pair.key] = count
+            }
+        }
+        if !bag.isEmpty {
+            result[entry.key] = bag
+        }
+    }
+}
+
+private func convertFlatStringMap(_ raw: [String: String]) -> [String: [String: Int]] {
+    raw.reduce(into: [:]) { result, entry in
+        let value = entry.value.trimmingCharacters(in: fallbackTrimCharacters)
+        guard !value.isEmpty else { return }
+        var bag = result[entry.key] ?? [:]
+        bag[value, default: 0] += 1
+        result[entry.key] = bag
+    }
+}
+
+private func mergeCountBags(into base: inout [String: [String: Int]], incoming: [String: [String: Int]]) {
+    guard !incoming.isEmpty else { return }
+    incoming.forEach { key, bag in
+        var existing = base[key] ?? [:]
+        bag.forEach { entry, count in
+            guard count > 0 else { return }
+            existing[entry, default: 0] += count
+        }
+        if existing.isEmpty {
+            base.removeValue(forKey: key)
+        } else {
+            base[key] = existing
+        }
+    }
+}
+
+private func sanitizedCount(from raw: Double) -> Int? {
+    guard raw.isFinite else { return nil }
+    let rounded = Int(raw.rounded())
+    return rounded > 0 ? rounded : nil
+}
+
+private func parseCount(from raw: String) -> Int? {
+    let trimmed = raw.trimmingCharacters(in: fallbackTrimCharacters)
+    if let intValue = Int(trimmed), intValue > 0 {
+        return intValue
+    }
+    if let doubleValue = Double(trimmed), doubleValue.isFinite {
+        let rounded = Int(doubleValue.rounded())
+        return rounded > 0 ? rounded : nil
+    }
+    return nil
 }
 
 struct UiPreferences: Codable {

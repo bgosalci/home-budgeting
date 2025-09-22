@@ -520,7 +520,8 @@ public final class BudgetViewModel: ObservableObject {
                 months: sanitized.months,
                 mapping: sanitized.mapping.ensured(),
                 descMap: sanitized.descMap.ensured(),
-                descList: sanitized.descList
+                descList: sanitized.descList,
+                notes: sanitized.notes
             )
             let data = try encoder.encode(export)
             return ExportPayload(
@@ -578,7 +579,20 @@ public final class BudgetViewModel: ObservableObject {
             return ImportSummary(message: "Imported prediction data.")
         case .all:
             let decoder = JSONDecoder()
-            guard let parsed = try? decoder.decode(BudgetState.self, from: content) else {
+            let parsed: BudgetState
+            if let wrapped = try? decoder.decode(FullExport.self, from: content) {
+                parsed = BudgetState(
+                    version: wrapped.version,
+                    months: wrapped.months,
+                    mapping: wrapped.mapping,
+                    descMap: wrapped.descMap,
+                    ui: UiPreferences(),
+                    descList: wrapped.descList,
+                    notes: wrapped.notes
+                )
+            } else if let state = try? decoder.decode(BudgetState.self, from: content) {
+                parsed = state
+            } else {
                 throw DataTransferError.invalidJSON
             }
             let updated = await repository.importData(parsed)
@@ -846,6 +860,42 @@ private struct FullExport: Codable {
     let mapping: PredictionMapping
     let descMap: DescriptionMap
     let descList: [String]
+    let notes: [BudgetNote]
+
+    private enum CodingKeys: String, CodingKey {
+        case version
+        case months
+        case mapping
+        case descMap
+        case descList
+        case notes
+    }
+
+    init(
+        version: Int,
+        months: [String: BudgetMonth],
+        mapping: PredictionMapping,
+        descMap: DescriptionMap,
+        descList: [String],
+        notes: [BudgetNote]
+    ) {
+        self.version = version
+        self.months = months
+        self.mapping = mapping
+        self.descMap = descMap
+        self.descList = descList
+        self.notes = notes
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        months = try container.decodeIfPresent([String: BudgetMonth].self, forKey: .months) ?? [:]
+        mapping = try container.decodeIfPresent(PredictionMapping.self, forKey: .mapping) ?? PredictionMapping()
+        descMap = try container.decodeIfPresent(DescriptionMap.self, forKey: .descMap) ?? DescriptionMap()
+        descList = try container.decodeIfPresent([String].self, forKey: .descList) ?? []
+        notes = try container.decodeIfPresent([BudgetNote].self, forKey: .notes) ?? []
+    }
 }
 
 private struct TransactionsWrapper: Codable {
