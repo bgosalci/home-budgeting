@@ -153,3 +153,20 @@ README.md
 
 # Generated native app icons
 ios/HomeBudgetingApp/Resources/Assets.xcassets/AppIcon.appiconset/*.png
+
+# Android build and project files
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+android/*.iml
+
+# iOS build and project files
+ios/build/
+ios/DerivedData/
+ios/Pods/
+ios/*.xcworkspace
+ios/**/*.xcuserdata/
+ios/**/*.xcuserstate
