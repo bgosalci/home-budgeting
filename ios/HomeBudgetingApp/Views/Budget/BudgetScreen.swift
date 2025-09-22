@@ -29,6 +29,14 @@ struct BudgetScreen: View {
     @FocusState private var focusedField: Field?
 
     private var totals: MonthTotals { viewModel.uiState.totals }
+    private var toolbarMonthInfo: BudgetToolbarMonthInfo? {
+        guard let key = viewModel.uiState.selectedMonthKey,
+              let date = Self.monthFormatter.date(from: key) else { return nil }
+        let month = Self.toolbarMonthFormatter.string(from: date)
+        let year = Self.toolbarYearFormatter.string(from: date)
+        let accessibility = Self.toolbarAccessibilityFormatter.string(from: date)
+        return BudgetToolbarMonthInfo(month: month, year: year, accessibilityLabel: accessibility)
+    }
 
     private enum Field: Hashable {
         case incomeName
@@ -50,6 +58,23 @@ struct BudgetScreen: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Budget")
             .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Picker(
+                        selection: Binding(
+                            get: { viewModel.uiState.selectedMonthKey ?? "" },
+                            set: { viewModel.selectMonth($0) }
+                        ),
+                        label: BudgetToolbarMonthPickerLabel(info: toolbarMonthInfo)
+                    ) {
+                        ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
+                            Text(key).tag(key)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityLabel("Selected Month")
+                    .accessibilityValue(toolbarMonthInfo?.accessibilityLabel ?? (viewModel.uiState.selectedMonthKey ?? "None"))
+                    .disabled(viewModel.uiState.monthKeys.isEmpty)
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { focusedField = nil }
@@ -97,16 +122,6 @@ struct BudgetScreen: View {
 
     private var monthSection: some View {
         Section(header: Text("Month")) {
-            Picker("Selected Month", selection: Binding(
-                get: { viewModel.uiState.selectedMonthKey ?? "" },
-                set: { viewModel.selectMonth($0) }
-            )) {
-                ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
-                    Text(key).tag(key)
-                }
-            }
-            .pickerStyle(.menu)
-
             VStack(alignment: .leading, spacing: 12) {
                 Text("Create Month").font(.subheadline).foregroundStyle(.secondary)
                 MonthPickerField(month: $newMonthKey)
@@ -546,6 +561,34 @@ struct BudgetScreen: View {
         return formatter
     }()
 
+    fileprivate static let toolbarMonthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.setLocalizedDateFormatFromTemplate("MMM")
+        return formatter
+    }()
+
+    fileprivate static let toolbarYearFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.setLocalizedDateFormatFromTemplate("yyyy")
+        return formatter
+    }()
+
+    fileprivate static let toolbarAccessibilityFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
     private static func defaultMonthKey() -> String {
         Self.monthFormatter.string(from: Date())
     }
@@ -573,6 +616,39 @@ struct BudgetScreen_Previews: PreviewProvider {
         BudgetScreen()
             .environmentObject(BudgetViewModel())
     }
+}
+
+private struct BudgetToolbarMonthInfo {
+    let month: String
+    let year: String
+    let accessibilityLabel: String
+}
+
+private struct BudgetToolbarMonthPickerLabel: View {
+    let info: BudgetToolbarMonthInfo?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            VStack(spacing: 0) {
+                Text(monthText)
+                    .font(.subheadline)
+                    .bold()
+                Text(yearText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Image(systemName: "chevron.down")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .contentShape(Rectangle())
+        .accessibilityHidden(true)
+    }
+
+    private var monthText: String { info?.month ?? "Select" }
+    private var yearText: String { info?.year ?? "Month" }
 }
 
 private struct ExportOptionsView: View {
