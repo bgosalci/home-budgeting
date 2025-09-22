@@ -520,7 +520,8 @@ public final class BudgetViewModel: ObservableObject {
                 months: sanitized.months,
                 mapping: sanitized.mapping.ensured(),
                 descMap: sanitized.descMap.ensured(),
-                descList: sanitized.descList
+                descList: sanitized.descList,
+                notes: sanitized.notes
             )
             let data = try encoder.encode(export)
             return ExportPayload(
@@ -846,6 +847,7 @@ private struct FullExport: Codable {
     let mapping: PredictionMapping
     let descMap: DescriptionMap
     let descList: [String]
+    let notes: [BudgetNote]
 }
 
 private struct TransactionsWrapper: Codable {
