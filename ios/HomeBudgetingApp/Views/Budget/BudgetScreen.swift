@@ -147,9 +147,12 @@ struct BudgetScreen: View {
                 summaryTile(title: "Budget", value: totals.budgetTotal)
                 summaryTile(title: "Actual", value: totals.actualTotal)
             }
-            HStack {
-                summaryTile(title: "Left (actual)", value: totals.leftoverActual)
-                summaryTile(title: "Left (budget)", value: totals.leftoverBudget)
+            HStack(alignment: .top) {
+                summaryTile(title: "Left (actual)", value: totals.leftoverActual, highlightNegative: true)
+                summaryTile(title: "Left (budget)", value: totals.leftoverBudget, highlightNegative: true)
+                if let prediction = viewModel.uiState.prediction {
+                    predictionTile(prediction)
+                }
             }
         }
     }
@@ -384,12 +387,41 @@ struct BudgetScreen: View {
         }
     }
 
-    private func summaryTile(title: String, value: Double) -> some View {
+    private func summaryTile(title: String, value: Double, highlightNegative: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(currency(value)).font(.headline)
+            Text(currency(value))
+                .font(.headline)
+                .foregroundColor(highlightNegative && value < 0 ? .red : .primary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func predictionTile(_ prediction: BalancePrediction) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Predicted left").font(.caption).foregroundStyle(.secondary)
+            Text(currency(prediction.predictedLeftover))
+                .font(.headline)
+                .foregroundColor(prediction.predictedLeftover < 0 ? .red : .primary)
+            if let summary = predictionSummary(for: prediction) {
+                Text(summary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func predictionSummary(for prediction: BalancePrediction) -> String? {
+        guard prediction.sampleSize > 0 else { return nil }
+        let plural = prediction.sampleSize == 1 ? "" : "s"
+        let dayLabel: String
+        if let day = prediction.remainderUsedDay {
+            dayLabel = "day \(day)"
+        } else {
+            dayLabel = "historical data"
+        }
+        return "Based on \(prediction.sampleSize) historical month\(plural) (\(dayLabel))."
     }
 
     private func currency(_ value: Double) -> String {
