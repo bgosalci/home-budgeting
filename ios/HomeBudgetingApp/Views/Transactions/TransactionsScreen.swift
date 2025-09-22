@@ -15,7 +15,12 @@ struct TransactionsScreen: View {
                 transactionSections
             }
             .listStyle(.insetGrouped)
-            .searchable(text: searchBinding, isPresented: $isSearchPresented, prompt: "Search description")
+            .searchable(
+                text: searchBinding,
+                isPresented: $isSearchPresented,
+                placement: .toolbar,
+                prompt: "Search description"
+            )
             .navigationTitle("Transactions")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
