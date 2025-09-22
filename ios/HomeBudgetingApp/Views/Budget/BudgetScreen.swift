@@ -58,22 +58,50 @@ struct BudgetScreen: View {
         )
     }
 
-    private var monthPickerToolbar: some View {
-        Picker(selection: selectedMonthBinding) {
-            ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
-                Text(key).tag(key)
+    private var floatingMonthSelector: some View {
+        GeometryReader { proxy in
+            HStack {
+                Spacer(minLength: 0)
+                Picker(selection: selectedMonthBinding) {
+                    ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
+                        Text(key).tag(key)
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "calendar")
+                            .font(.headline)
+                            .foregroundStyle(.tint)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Month")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(selectedMonthLabel)
+                                .font(.callout)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+                        }
+                        Spacer(minLength: 4)
+                        Image(systemName: "chevron.down")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 14)
+                    .frame(width: max(proxy.size.width / 2, 0), alignment: .leading)
+                    .background(.thinMaterial, in: Capsule())
+                    .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 4)
+                }
+                .pickerStyle(.menu)
+                .disabled(viewModel.uiState.monthKeys.isEmpty)
+                .accessibilityLabel("Month")
+                .accessibilityValue(Text(selectedMonthLabel))
             }
-        } label: {
-            Image(systemName: "calendar")
-                .font(.headline)
-                .foregroundStyle(.tint)
-                .frame(width: 36, height: 36)
-                .contentShape(Rectangle())
+            .padding(.horizontal)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
         }
-        .pickerStyle(.menu)
-        .disabled(viewModel.uiState.monthKeys.isEmpty)
-        .accessibilityLabel("Selected Month")
-        .accessibilityValue(Text(selectedMonthLabel))
+        .frame(height: 76)
     }
 
     private enum Field: Hashable {
@@ -95,10 +123,10 @@ struct BudgetScreen: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Budget")
+            .safeAreaInset(edge: .top) {
+                floatingMonthSelector
+            }
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    monthPickerToolbar
-                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { focusedField = nil }
