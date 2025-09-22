@@ -46,6 +46,11 @@ struct TransactionsScreen: View {
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .searchable(
+                text: searchBinding,
+                placement: .toolbar,
+                prompt: "Search description"
+            )
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     if isScrolled {
@@ -74,11 +79,6 @@ struct TransactionsScreen: View {
                     addButton
                 }
             }
-            .searchable(
-                text: searchBinding,
-                placement: .toolbar,
-                prompt: "Search description"
-            )
             .sheet(isPresented: $showEditor) {
                 TransactionEditor(
                     categories: transactionsState.availableCategories,
