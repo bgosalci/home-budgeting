@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import UniformTypeIdentifiers
+import Dispatch
 
 @MainActor
 struct TransactionsUiState {
@@ -38,6 +39,8 @@ public final class BudgetViewModel: ObservableObject {
     private let repository: BudgetRepository
     private let predictionEngine: PredictionEngine
     private var baseState: BudgetState = .empty
+    private var transactionSearchWorkItem: DispatchWorkItem?
+    private var transactionSearchRequestID: UInt64 = 0
 
     init(repository: BudgetRepository = BudgetRepository()) {
         self.repository = repository
@@ -55,6 +58,7 @@ public final class BudgetViewModel: ObservableObject {
 
 
     private func applyState(_ state: BudgetState) {
+        cancelPendingTransactionSearch()
         baseState = state
         uiState = composeUiState(baseState: state, current: uiState)
     }
@@ -186,6 +190,7 @@ public final class BudgetViewModel: ObservableObject {
     }
 
     private func refreshDerivedState() {
+        cancelPendingTransactionSearch()
         uiState = composeUiState(baseState: baseState, current: uiState)
     }
 
@@ -364,12 +369,58 @@ public final class BudgetViewModel: ObservableObject {
 
     func updateTransactionSearch(_ value: String) {
         uiState.transactions.search = value
-        refreshDerivedState()
+        scheduleTransactionsRefresh()
     }
 
     func updateTransactionFilter(_ category: String?) {
         uiState.transactions.category = category
-        refreshDerivedState()
+        scheduleTransactionsRefresh()
+    }
+
+    private func cancelPendingTransactionSearch() {
+        transactionSearchWorkItem?.cancel()
+        transactionSearchWorkItem = nil
+        transactionSearchRequestID &+= 1
+    }
+
+    private func scheduleTransactionsRefresh() {
+        let search = uiState.transactions.search
+        let category = uiState.transactions.category
+        let selectedMonthKey = uiState.selectedMonthKey
+        let baseState = self.baseState
+
+        transactionSearchWorkItem?.cancel()
+        transactionSearchRequestID &+= 1
+        var workItem: DispatchWorkItem?
+        let requestId = transactionSearchRequestID
+        workItem = DispatchWorkItem { [baseState, selectedMonthKey, category, search, requestId] in
+            guard workItem?.isCancelled == false else { return }
+            let month: BudgetMonth?
+            if let selectedMonthKey, let monthData = baseState.months[selectedMonthKey] {
+                month = monthData
+            } else {
+                month = nil
+            }
+            guard workItem?.isCancelled == false else { return }
+            let filter = TransactionFilter(search: search, category: category)
+            let (groups, total) = groupTransactions(month: month, filter: filter)
+            guard workItem?.isCancelled == false else { return }
+            DispatchQueue.main.async { [weak self, groups, total, requestId, search, category, selectedMonthKey] in
+                guard let self else { return }
+                guard self.transactionSearchRequestID == requestId else { return }
+                guard self.uiState.transactions.search == search,
+                      self.uiState.transactions.category == category,
+                      self.uiState.selectedMonthKey == selectedMonthKey else {
+                    return
+                }
+                self.transactionSearchWorkItem = nil
+                self.uiState.transactions.groups = groups
+                self.uiState.transactions.total = total
+            }
+        }
+        guard let workItem else { return }
+        transactionSearchWorkItem = workItem
+        DispatchQueue.global(qos: .userInitiated).async(execute: workItem)
     }
 
     func addNote(desc: String, body: String) {
