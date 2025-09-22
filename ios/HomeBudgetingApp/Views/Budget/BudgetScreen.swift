@@ -118,8 +118,8 @@ struct BudgetScreen: View {
             .appDialog($activeDialog)
         }
         .onAppear { syncMonthInputs() }
-        .onChange(of: viewModel.uiState.selectedMonthKey) { _ in syncMonthInputs() }
-        .onChange(of: viewModel.uiState.monthKeys) { _ in syncMonthInputs() }
+        .onChange(of: viewModel.uiState.selectedMonthKey) { syncMonthInputs() }
+        .onChange(of: viewModel.uiState.monthKeys) { syncMonthInputs() }
     }
 
     private var monthSection: some View {
@@ -709,7 +709,7 @@ private struct ExportOptionsView: View {
                         .disabled(kind.requiresMonth && month.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .onChange(of: kind) { newKind in
+            .onChange(of: kind) { _, newKind in
                 if !newKind.supportsCSV {
                     format = .json
                 }
@@ -772,7 +772,7 @@ private struct ImportOptionsView: View {
                         .disabled(kind.requiresMonth && month.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .onChange(of: kind) { newKind in
+            .onChange(of: kind) { _, newKind in
                 if !newKind.supportsCSV {
                     format = .json
                 }
@@ -845,7 +845,7 @@ private struct MonthPickerField: View {
             .presentationDetents([.height(320), .medium])
             .presentationDragIndicator(.visible)
         }
-        .onChange(of: month) { newValue in
+        .onChange(of: month) { _, newValue in
             guard let parsed = MonthPickerField.formatter.date(from: newValue) else { return }
             cachedDate = parsed
             expandYearRange(toInclude: parsed)

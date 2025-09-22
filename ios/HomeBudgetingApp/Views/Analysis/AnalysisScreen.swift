@@ -171,7 +171,7 @@ private struct BudgetSpreadView: View {
         }
         .padding()
         .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
-        .onChange(of: style) { newStyle in
+        .onChange(of: style) { _, newStyle in
             highlightedCategory = nil
             if newStyle != .donut {
                 selectedSeries = .planned
@@ -280,7 +280,7 @@ private struct BudgetSpreadView: View {
                 currencyFormatter: currency
             )
         }
-        .onChange(of: selectedSeries) { _ in
+        .onChange(of: selectedSeries) {
             highlightedCategory = nil
         }
     }

@@ -313,8 +313,8 @@ private struct TransactionEditor: View {
                 }
                 refreshPrediction()
             }
-            .onChange(of: desc) { _ in refreshPrediction() }
-            .onChange(of: amount) { _ in refreshPrediction() }
+            .onChange(of: desc) { refreshPrediction() }
+            .onChange(of: amount) { refreshPrediction() }
             .onDisappear {
                 predictionTask?.cancel()
                 predictionTask = nil

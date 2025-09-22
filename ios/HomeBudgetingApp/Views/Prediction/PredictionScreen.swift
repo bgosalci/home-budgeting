@@ -12,7 +12,7 @@ struct PredictionScreen: View {
             Form {
                 Section(header: Text("Predict Category")) {
                     TextField("Description", text: $descriptionInput)
-                        .onChange(of: descriptionInput) { newValue in
+                        .onChange(of: descriptionInput) { _, newValue in
                             viewModel.updateDescriptionInput(newValue)
                             predictedCategory = ""
                         }
