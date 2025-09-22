@@ -35,7 +35,7 @@ actor PredictionEngine {
     func learnCategory(desc: String, category: String?, amount: Double?) async {
         guard !desc.isEmpty, let category, !category.isEmpty else { return }
         let base = desc.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        var state = await repository.currentState()
+        let state = await repository.currentState()
         var exact = state.mapping.exact
         var tokenMap = state.mapping.tokens
         if let amount, amount.isFinite {
@@ -88,7 +88,7 @@ actor PredictionEngine {
     private func updateDescriptionMap(desc: String, category: String) async {
         let normalized = desc.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else { return }
-        var state = await repository.currentState()
+        let state = await repository.currentState()
         var tokens = state.descMap.tokens
         var catBag = tokens[category] ?? [:]
         catBag[normalized, default: 0] += 1
