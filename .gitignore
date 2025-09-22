@@ -153,6 +153,7 @@ README.md
 
 # Generated native app icons
 ios/HomeBudgetingApp/Resources/Assets.xcassets/AppIcon.appiconset/*.png
+ios/HomeBudgeting.xcodeproj/project.xcworkspace/xcuserdata/burim.gosalci.xcuserdatad/UserInterfaceState.xcuserstate
 
 # Android build and project files
 android/.gradle/
@@ -204,3 +205,4 @@ fastlane/test_output
 
 # General
 .DS_Store
+ios/HomeBudgeting.xcodeproj/project.xcworkspace/xcuserdata/burim.gosalci.xcuserdatad/UserInterfaceState.xcuserstate
