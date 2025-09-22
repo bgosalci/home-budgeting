@@ -71,6 +71,8 @@ struct BudgetScreen: View {
                         }
                     }
                     .pickerStyle(.menu)
+                    .controlSize(.small)
+                    .frame(maxWidth: 140, alignment: .trailing)
                     .accessibilityLabel("Selected Month")
                     .accessibilityValue(toolbarMonthInfo?.accessibilityLabel ?? (viewModel.uiState.selectedMonthKey ?? "None"))
                     .disabled(viewModel.uiState.monthKeys.isEmpty)
@@ -628,21 +630,23 @@ private struct BudgetToolbarMonthPickerLabel: View {
     let info: BudgetToolbarMonthInfo?
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             VStack(spacing: 0) {
                 Text(monthText)
                     .font(.subheadline)
                     .bold()
+                    .lineLimit(1)
                 Text(yearText)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             Image(systemName: "chevron.down")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 6)
         .contentShape(Rectangle())
         .accessibilityHidden(true)
     }
