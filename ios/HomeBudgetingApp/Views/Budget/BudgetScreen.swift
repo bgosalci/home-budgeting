@@ -118,8 +118,8 @@ struct BudgetScreen: View {
             .appDialog($activeDialog)
         }
         .onAppear { syncMonthInputs() }
-        .onChange(of: viewModel.uiState.selectedMonthKey) { _ in syncMonthInputs() }
-        .onChange(of: viewModel.uiState.monthKeys) { _ in syncMonthInputs() }
+        .onChange(of: viewModel.uiState.selectedMonthKey) { _, _ in syncMonthInputs() }
+        .onChange(of: viewModel.uiState.monthKeys) { _, _ in syncMonthInputs() }
     }
 
     private var monthSection: some View {
