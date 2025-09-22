@@ -263,6 +263,24 @@ private struct TransactionEditor: View {
     @State private var predictedCategory: String = ""
     @State private var predictionTask: Task<Void, Never>? = nil
 
+    private var trimmedDescription: String {
+        desc.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var normalizedCategory: String {
+        category.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var parsedAmount: Double? {
+        let trimmedAmount = amount.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value = Double(trimmedAmount), value.isFinite else { return nil }
+        return value
+    }
+
+    private var canSave: Bool {
+        parsedAmount != nil && !trimmedDescription.isEmpty && !normalizedCategory.isEmpty
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -309,11 +327,15 @@ private struct TransactionEditor: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        guard let value = Double(amount) else { return }
+                        guard let value = parsedAmount else { return }
+                        let trimmedDesc = trimmedDescription
+                        let categoryToSave = normalizedCategory
+                        guard !trimmedDesc.isEmpty, !categoryToSave.isEmpty else { return }
                         let formattedDate = formattedDate(from: selectedDate)
-                        onSave(formattedDate, desc, value, category.isEmpty ? nil : category, transaction?.id)
+                        onSave(formattedDate, trimmedDesc, value, categoryToSave, transaction?.id)
                         dismiss()
                     }
+                    .disabled(!canSave)
                 }
             }
             .onAppear {
