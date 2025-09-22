@@ -61,7 +61,6 @@ struct BudgetScreen: View {
     private var floatingMonthSelector: some View {
         GeometryReader { proxy in
             HStack {
-                Spacer(minLength: 0)
                 Picker(selection: selectedMonthBinding) {
                     ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
                         Text(key).tag(key)
@@ -96,12 +95,23 @@ struct BudgetScreen: View {
                 .disabled(viewModel.uiState.monthKeys.isEmpty)
                 .accessibilityLabel("Month")
                 .accessibilityValue(Text(selectedMonthLabel))
+                Spacer(minLength: 0)
             }
             .padding(.horizontal)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
+            .padding(.vertical, 6)
         }
         .frame(height: 76)
+    }
+
+    @ViewBuilder
+    private var monthSectionHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            floatingMonthSelector
+            Text("Months")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .textCase(nil)
     }
 
     private enum Field: Hashable {
@@ -123,9 +133,6 @@ struct BudgetScreen: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Budget")
-            .safeAreaInset(edge: .top) {
-                floatingMonthSelector
-            }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -198,10 +205,7 @@ struct BudgetScreen: View {
             }
             .disabled(deletableFutureMonthKey == nil)
         } header: {
-            Text("Months")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .textCase(nil)
+            monthSectionHeader
         }
     }
 
