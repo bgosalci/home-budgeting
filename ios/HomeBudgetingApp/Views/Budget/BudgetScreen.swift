@@ -516,17 +516,14 @@ struct BudgetScreen: View {
                 return
             }
             let accessGranted = url.startAccessingSecurityScopedResource()
-            defer {
-                if accessGranted {
-                    url.stopAccessingSecurityScopedResource()
-                }
-            }
-            guard let data = try? Data(contentsOf: url) else {
-                activeDialog = AppDialog.error(title: "Import Failed", message: "Unable to read the selected file.")
-                return
-            }
             Task {
+                defer {
+                    if accessGranted {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
                 do {
+                    let data = try await BudgetScreen.loadFileData(from: url)
                     let summary = try await viewModel.importData(
                         kind: request.kind,
                         monthKey: request.month,
@@ -543,6 +540,12 @@ struct BudgetScreen: View {
                 activeDialog = AppDialog.error(title: "Import Failed", message: error.localizedDescription)
             }
         }
+    }
+
+    private static func loadFileData(from url: URL) async throws -> Data {
+        try await Task.detached(priority: .userInitiated) {
+            try Data(contentsOf: url)
+        }.value
     }
 
     fileprivate static var monthCalendar: Calendar = {

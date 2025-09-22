@@ -1,7 +1,7 @@
 import Foundation
 
 func buildBudgetSpread(monthKey: String?, month: BudgetMonth?) -> AnalysisResult? {
-    guard monthKey != nil, let month else { return nil }
+    guard let month else { return nil }
     let totals = computeMonthTotals(month)
     guard !totals.groups.isEmpty else { return nil }
     let labels = totals.groups.map { $0.name }

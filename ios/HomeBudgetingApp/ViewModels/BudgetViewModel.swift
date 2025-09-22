@@ -468,11 +468,9 @@ public final class BudgetViewModel: ObservableObject {
     func importJson(_ content: String) {
         guard let data = content.data(using: .utf8) else { return }
         Task {
-            let decoder = JSONDecoder()
-            if let state = try? decoder.decode(BudgetState.self, from: data) {
-                let updated = await repository.importData(state)
-                await MainActor.run { self.applyState(updated) }
-            }
+            guard let state = try? await decodeJSON(BudgetState.self, from: data) else { return }
+            let updated = await repository.importData(state)
+            await MainActor.run { self.applyState(updated) }
         }
     }
 
@@ -543,16 +541,15 @@ public final class BudgetViewModel: ObservableObject {
         switch kind {
         case .transactions:
             guard let normalized = normalizeMonthKey(monthKey) else { throw DataTransferError.invalidMonth }
-            let drafts = try decodeTransactions(content: content, format: format)
+            let drafts = try await decodeTransactions(content: content, format: format)
             let added = try await appendTransactions(drafts, monthKey: normalized)
             return ImportSummary(message: "Imported \(added) transactions into \(normalized).")
         case .categories:
             guard let normalized = normalizeMonthKey(monthKey) else { throw DataTransferError.invalidMonth }
-            let decoder = JSONDecoder()
             let categories: [String: BudgetCategory]
-            if let wrapped = try? decoder.decode(CategoriesExport.self, from: content) {
+            if let wrapped = try? await decodeJSON(CategoriesExport.self, from: content) {
                 categories = wrapped.categories
-            } else if let map = try? decoder.decode([String: BudgetCategory].self, from: content) {
+            } else if let map = try? await decodeJSON([String: BudgetCategory].self, from: content) {
                 categories = map
             } else {
                 throw DataTransferError.invalidJSON
@@ -568,8 +565,7 @@ public final class BudgetViewModel: ObservableObject {
             applyState(state)
             return ImportSummary(message: "Merged \(sanitized.count) categories into \(normalized).")
         case .prediction:
-            let decoder = JSONDecoder()
-            guard let parsed = try? decoder.decode(PredictionExport.self, from: content) else {
+            guard let parsed = try? await decodeJSON(PredictionExport.self, from: content) else {
                 throw DataTransferError.invalidJSON
             }
             let incoming = BudgetState(
@@ -585,9 +581,8 @@ public final class BudgetViewModel: ObservableObject {
             applyState(updated)
             return ImportSummary(message: "Imported prediction data.")
         case .all:
-            let decoder = JSONDecoder()
             let parsed: BudgetState
-            if let wrapped = try? decoder.decode(FullExport.self, from: content) {
+            if let wrapped = try? await decodeJSON(FullExport.self, from: content) {
                 parsed = BudgetState(
                     version: wrapped.version,
                     months: wrapped.months,
@@ -597,7 +592,7 @@ public final class BudgetViewModel: ObservableObject {
                     descList: wrapped.descList,
                     notes: wrapped.notes
                 )
-            } else if let state = try? decoder.decode(BudgetState.self, from: content) {
+            } else if let state = try? await decodeJSON(BudgetState.self, from: content) {
                 parsed = state
             } else {
                 throw DataTransferError.invalidJSON
@@ -628,21 +623,36 @@ public final class BudgetViewModel: ObservableObject {
         return validateMonthKey(raw)
     }
 
-    private func decodeTransactions(content: Data, format: DataFormat) throws -> [TransactionDraft] {
-        switch format {
-        case .json:
+    private func decodeJSON<T: Decodable>(_ type: T.Type, from data: Data) async throws -> T {
+        try await Task.detached(priority: .userInitiated) {
             let decoder = JSONDecoder()
-            if let array = try? decoder.decode([BudgetTransaction].self, from: content) {
-                return array.map { TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category) }
+            return try decoder.decode(T.self, from: data)
+        }.value
+    }
+
+    private func decodeTransactions(content: Data, format: DataFormat) async throws -> [TransactionDraft] {
+        try await Task.detached(priority: .userInitiated) {
+            switch format {
+            case .json:
+                let decoder = JSONDecoder()
+                if let array = try? decoder.decode([BudgetTransaction].self, from: content) {
+                    return array.map {
+                        TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category)
+                    }
+                }
+                if let wrapped = try? decoder.decode(TransactionsWrapper.self, from: content) {
+                    return wrapped.transactions.map {
+                        TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category)
+                    }
+                }
+                throw DataTransferError.invalidJSON
+            case .csv:
+                guard let text = String(data: content, encoding: .utf8) else {
+                    throw DataTransferError.invalidCSV
+                }
+                return try Self.parseCsv(text)
             }
-            if let wrapped = try? decoder.decode(TransactionsWrapper.self, from: content) {
-                return wrapped.transactions.map { TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category) }
-            }
-            throw DataTransferError.invalidJSON
-        case .csv:
-            guard let text = String(data: content, encoding: .utf8) else { throw DataTransferError.invalidCSV }
-            return try parseCsv(text)
-        }
+        }.value
     }
 
     private func appendTransactions(_ drafts: [TransactionDraft], monthKey: String) async throws -> Int {
@@ -705,7 +715,7 @@ public final class BudgetViewModel: ObservableObject {
         return lines.joined(separator: "\n")
     }
 
-    private func parseCsv(_ text: String) throws -> [TransactionDraft] {
+    private nonisolated static func parseCsv(_ text: String) throws -> [TransactionDraft] {
         let rows = text.components(separatedBy: CharacterSet.newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -731,7 +741,7 @@ public final class BudgetViewModel: ObservableObject {
         }
     }
 
-    private func splitCsvLine(_ line: String) -> [String] {
+    private nonisolated static func splitCsvLine(_ line: String) -> [String] {
         var result: [String] = []
         var current = ""
         var inQuotes = false
@@ -758,7 +768,7 @@ public final class BudgetViewModel: ObservableObject {
         return result.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
     }
 
-    private func normalizeDate(_ raw: String) -> String {
+    private nonisolated static func normalizeDate(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "" }
         let formatter = DateFormatter()

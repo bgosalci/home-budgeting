@@ -3,20 +3,23 @@ import Foundation
 actor BudgetRepository {
     private let storage: BudgetStorage
     private var state: BudgetState
+    private var hasLoadedState = false
 
     init(storage: BudgetStorage = .shared) {
         self.storage = storage
-        self.state = storage.load().ensured()
+        self.state = BudgetState.empty
     }
 
     func currentState() -> BudgetState {
-        state
+        ensureLoadedState()
+        return state
     }
 
     @discardableResult
     func refresh() -> BudgetState {
         let loaded = storage.load().ensured()
         state = loaded
+        hasLoadedState = true
         return state
     }
 
@@ -138,6 +141,7 @@ actor BudgetRepository {
     }
 
     private func updateState(_ block: (inout BudgetState) -> Void) -> BudgetState {
+        ensureLoadedState()
         var copy = state
         block(&copy)
         copy = copy.ensured()
@@ -146,6 +150,12 @@ actor BudgetRepository {
         state = copy
         storage.save(copy)
         return state
+    }
+
+    private func ensureLoadedState() {
+        guard !hasLoadedState else { return }
+        state = storage.load().ensured()
+        hasLoadedState = true
     }
 
     private func mergePredictionMapping(base: PredictionMapping, incoming: PredictionMapping) -> PredictionMapping {
