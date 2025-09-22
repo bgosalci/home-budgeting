@@ -5,47 +5,44 @@ struct TransactionsScreen: View {
     @State private var showEditor = false
     @State private var editingTransaction: BudgetTransaction?
     @State private var activeDialog: AppDialog?
-    @State private var isScrolled = false
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
     var body: some View {
         NavigationStack {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        GeometryReader { geometry in
-                            Color.clear
-                                .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
-                        }
-                        .frame(height: 0)
-                        .id("scrollDetector")
-                        
-                        transactionSections
+            List {
+                Section {
+                    HStack {
+                        Text("Total")
+                            .font(.headline)
+                        Spacer()
+                        Text(currency(transactionsState.total))
+                            .font(.title2)
+                            .fontWeight(.semibold)
                     }
+                    .padding(.vertical, 8)
                 }
-                .coordinateSpace(name: "scroll")
-                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isScrolled = value < -50
-                    }
-                }
+                
+                transactionSections
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("Transactions")
-            .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
+            .navigationBarTitleDisplayMode(.automatic)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    if isScrolled {
-                        compactTitleContent
-                    } else {
-                        largeTitleContent
-                    }
-                }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     categoryFilter
+                    Button(action: { viewModel.updateTransactionSearch("") }) {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .controlSize(.small)
                     addButton
                 }
             }
+            .searchable(
+                text: searchBinding,
+                placement: .toolbar,
+                prompt: "Search description"
+            )
             .sheet(isPresented: $showEditor) {
                 TransactionEditor(
                     categories: transactionsState.availableCategories,
@@ -73,31 +70,6 @@ struct TransactionsScreen: View {
         )
     }
 
-    private var largeTitleContent: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Transactions")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            Text("Total \(currency(transactionsState.total))")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
-    }
-    
-    private var compactTitleContent: some View {
-        VStack(alignment: .center, spacing: 1) {
-            Text("Transactions")
-                .font(.headline)
-                .fontWeight(.semibold)
-            Text("Total \(currency(transactionsState.total))")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
-    }
 
     private var categoryFilter: some View {
         Picker(
@@ -125,12 +97,7 @@ struct TransactionsScreen: View {
     @ViewBuilder
     private var transactionSections: some View {
         ForEach(transactionsState.groups) { group in
-            VStack(spacing: 0) {
-                sectionHeader(for: group)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color(.secondarySystemGroupedBackground))
-                
+            Section(header: sectionHeader(for: group)) {
                 ForEach(group.transactions) { tx in
                     Button(action: {
                         editingTransaction = tx
@@ -151,9 +118,6 @@ struct TransactionsScreen: View {
                                     .foregroundColor(.secondary)
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(Color(.systemGroupedBackground))
                     }
                     .tint(.primary)
                     .swipeActions(edge: .trailing) {
@@ -169,49 +133,27 @@ struct TransactionsScreen: View {
                             Label("Delete", systemImage: "trash")
                         }
                     }
-                    
-                    if tx.id != group.transactions.last?.id {
-                        Divider()
-                            .padding(.leading, 16)
-                    }
                 }
-                
-                VStack(spacing: 4) {
-                    HStack {
-                        Text("Day total")
-                        Spacer()
-                        Text(currency(group.dayTotal))
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    
-                    HStack {
-                        Text("Running total")
-                        Spacer()
-                        Text(currency(group.runningTotal))
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(.secondarySystemGroupedBackground))
+                HStack {
+                    Text("Day total")
+                    Spacer()
+                    Text(currency(group.dayTotal))
+                }.font(.caption)
+                HStack {
+                    Text("Running total")
+                    Spacer()
+                    Text(currency(group.runningTotal))
+                }.font(.caption)
             }
-            .background(Color(.systemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 4)
         }
         
         if !transactionsState.groups.isEmpty {
             clearTransactionsSection
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
         }
     }
 
     private var clearTransactionsSection: some View {
-        VStack {
+        Section {
             Button(role: .destructive) {
                 let monthName = viewModel.uiState.selectedMonthKey ?? "this month"
                 activeDialog = AppDialog.confirm(
@@ -224,18 +166,12 @@ struct TransactionsScreen: View {
             } label: {
                 Text("Clear Transactions")
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(.systemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 
     private func sectionHeader(for group: TransactionGroup) -> some View {
         HStack {
             Text(group.label)
-                .font(.headline)
-                .fontWeight(.semibold)
             Spacer()
             Text(transactionCountDescription(for: group.transactionCount))
                 .font(.caption)
@@ -255,12 +191,6 @@ struct TransactionsScreen: View {
     }
 }
 
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
 
 private struct TransactionEditor: View {
     var categories: [String]
