@@ -49,10 +49,10 @@ struct BudgetScreen: View {
     var body: some View {
         NavigationStack {
             List {
-                monthSection
                 summarySection
                 incomesSection
                 categoriesSection
+                monthSection
                 dataSection
             }
             .listStyle(.insetGrouped)
