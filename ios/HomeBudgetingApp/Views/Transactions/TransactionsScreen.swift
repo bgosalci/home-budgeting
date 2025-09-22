@@ -77,7 +77,7 @@ struct TransactionsScreen: View {
 
     private var transactionSections: some View {
         ForEach(transactionsState.groups) { group in
-            Section(header: Text("\(group.label)")) {
+            Section(header: sectionHeader(for: group)) {
                 ForEach(group.transactions) { tx in
                     Button(action: {
                         editingTransaction = tx
@@ -126,6 +126,20 @@ struct TransactionsScreen: View {
                 }.font(.caption)
             }
         }
+    }
+
+    private func sectionHeader(for group: TransactionGroup) -> some View {
+        HStack {
+            Text(group.label)
+            Spacer()
+            Text(transactionCountDescription(for: group.transactionCount))
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private func transactionCountDescription(for count: Int) -> String {
+        count == 1 ? "1 transaction" : "\(count) transactions"
     }
 
     private func currency(_ value: Double) -> String {
