@@ -715,7 +715,7 @@ public final class BudgetViewModel: ObservableObject {
         return lines.joined(separator: "\n")
     }
 
-    private static func parseCsv(_ text: String) throws -> [TransactionDraft] {
+    private nonisolated static func parseCsv(_ text: String) throws -> [TransactionDraft] {
         let rows = text.components(separatedBy: CharacterSet.newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -741,7 +741,7 @@ public final class BudgetViewModel: ObservableObject {
         }
     }
 
-    private static func splitCsvLine(_ line: String) -> [String] {
+    private nonisolated static func splitCsvLine(_ line: String) -> [String] {
         var result: [String] = []
         var current = ""
         var inQuotes = false
@@ -768,7 +768,7 @@ public final class BudgetViewModel: ObservableObject {
         return result.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
     }
 
-    private static func normalizeDate(_ raw: String) -> String {
+    private nonisolated static func normalizeDate(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "" }
         let formatter = DateFormatter()
