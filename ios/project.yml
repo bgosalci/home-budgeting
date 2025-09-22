@@ -8,13 +8,13 @@ packages:
     path: .
 settings:
   base:
-    IPHONEOS_DEPLOYMENT_TARGET: 16.0
+    IPHONEOS_DEPLOYMENT_TARGET: 17.0
     TARGETED_DEVICE_FAMILY: "1,2"
 targets:
   HomeBudgeting:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     sources:
       - path: AppHost
       - path: HomeBudgetingApp/Resources/Assets.xcassets
