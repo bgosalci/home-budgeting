@@ -81,15 +81,19 @@ final class AppSettings: ObservableObject {
         hasPin = !(storedPin ?? "").isEmpty
 
         let context = contextProvider()
-        biometricState = Self.computeBiometricState(context: context)
+        let computedBiometricState = Self.computeBiometricState(context: context)
 
         let storedBiometrics = defaults.object(forKey: allowBiometricsKey) as? Bool ?? true
-        if biometricState.available {
-            allowBiometrics = storedBiometrics
+        let allowBiometricsValue: Bool
+        if computedBiometricState.available {
+            allowBiometricsValue = storedBiometrics
         } else {
-            allowBiometrics = false
+            allowBiometricsValue = false
             defaults.set(false, forKey: allowBiometricsKey)
         }
+
+        biometricState = computedBiometricState
+        allowBiometrics = allowBiometricsValue
 
         isUnlocked = storedLock ? false : true
     }
