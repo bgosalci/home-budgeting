@@ -5,19 +5,32 @@ struct TransactionsScreen: View {
     @State private var showEditor = false
     @State private var editingTransaction: BudgetTransaction?
     @State private var activeDialog: AppDialog?
-    @State private var scrollPosition = ScrollPosition()
     @State private var isScrolled = false
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    transactionSections
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        GeometryReader { geometry in
+                            Color.clear
+                                .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
+                        }
+                        .frame(height: 0)
+                        .id("scrollDetector")
+                        
+                        transactionSections
+                    }
+                }
+                .coordinateSpace(name: "scroll")
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isScrolled = value < -50
+                    }
                 }
             }
-            .scrollPosition($scrollPosition)
             .navigationTitle("Transactions")
             .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
             .toolbar {
@@ -31,11 +44,6 @@ struct TransactionsScreen: View {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     categoryFilter
                     addButton
-                }
-            }
-            .onChange(of: scrollPosition) { _, newValue in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isScrolled = (newValue.point?.y ?? 0) > 50
                 }
             }
             .sheet(isPresented: $showEditor) {
@@ -244,6 +252,13 @@ struct TransactionsScreen: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = Locale.current.currency?.identifier ?? "USD"
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+}
+
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 
