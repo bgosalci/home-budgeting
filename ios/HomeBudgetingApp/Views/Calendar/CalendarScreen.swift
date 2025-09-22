@@ -1,3 +1,4 @@
+#if canImport(SwiftUI) && canImport(Combine)
 import SwiftUI
 
 struct CalendarScreen: View {
@@ -263,3 +264,4 @@ struct CalendarScreen_Previews: PreviewProvider {
             .environmentObject(BudgetViewModel())
     }
 }
+#endif

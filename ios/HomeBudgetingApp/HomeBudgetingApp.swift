@@ -1,3 +1,4 @@
+#if canImport(SwiftUI) && canImport(Combine)
 import SwiftUI
 
 struct HomeBudgetingAppEntry: App {
@@ -10,3 +11,4 @@ struct HomeBudgetingAppEntry: App {
         }
     }
 }
+#endif

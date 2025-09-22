@@ -1,3 +1,4 @@
+#if canImport(SwiftUI) && canImport(Combine)
 import SwiftUI
 
 struct TransactionsScreen: View {
@@ -246,6 +247,7 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
         value = nextValue()
     }
 }
+#endif
 
 
 private struct TransactionEditor: View {

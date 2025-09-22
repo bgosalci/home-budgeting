@@ -1,3 +1,4 @@
+#if canImport(SwiftUI) && canImport(Combine)
 import SwiftUI
 
 public struct HomeBudgetingRootView: View {
@@ -31,3 +32,4 @@ struct HomeBudgetingRootView_Previews: PreviewProvider {
             .environmentObject(BudgetViewModel())
     }
 }
+#endif

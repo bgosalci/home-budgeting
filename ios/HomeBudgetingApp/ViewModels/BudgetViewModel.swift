@@ -1,3 +1,4 @@
+#if canImport(Combine) && !os(Linux)
 import Foundation
 import Combine
 import UniformTypeIdentifiers
@@ -982,3 +983,4 @@ private struct TransactionDraft {
     let amount: Double
     let category: String
 }
+#endif

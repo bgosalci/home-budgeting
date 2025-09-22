@@ -1,3 +1,4 @@
+#if canImport(SwiftUI) && canImport(Combine)
 import SwiftUI
 
 struct PredictionScreen: View {
@@ -106,3 +107,4 @@ struct PredictionScreen_Previews: PreviewProvider {
             .environmentObject(BudgetViewModel())
     }
 }
+#endif

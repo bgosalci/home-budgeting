@@ -1,3 +1,4 @@
+#if canImport(SwiftUI) && canImport(Combine)
 import SwiftUI
 
 struct AppDialog: Identifiable {
@@ -79,3 +80,4 @@ extension View {
         }
     }
 }
+#endif

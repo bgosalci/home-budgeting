@@ -1,3 +1,4 @@
+#if canImport(SwiftUI) && canImport(Combine)
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -1024,4 +1025,5 @@ private struct PendingImport {
         }
     }
 }
+#endif
 
