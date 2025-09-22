@@ -47,6 +47,20 @@ struct TransactionsScreen: View {
             .navigationTitle("Transactions")
             .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    if isScrolled {
+                        VStack(alignment: .center, spacing: 1) {
+                            Text("Transactions")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            Text(currency(transactionsState.total))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
+                    }
+                }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     categoryFilter
                     Button(action: { viewModel.updateTransactionSearch("") }) {
