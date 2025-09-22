@@ -41,6 +41,41 @@ struct BudgetScreen: View {
         return candidate
     }
 
+    private var selectedMonthValue: String {
+        viewModel.uiState.selectedMonthKey
+            ?? viewModel.uiState.monthKeys.last
+            ?? ""
+    }
+
+    private var selectedMonthLabel: String {
+        selectedMonthValue.isEmpty ? "Select Month" : selectedMonthValue
+    }
+
+    private var selectedMonthBinding: Binding<String> {
+        Binding(
+            get: { selectedMonthValue },
+            set: { viewModel.selectMonth($0) }
+        )
+    }
+
+    private var monthPickerToolbar: some View {
+        Picker(selection: selectedMonthBinding) {
+            ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
+                Text(key).tag(key)
+            }
+        } label: {
+            Label {
+                Text(selectedMonthLabel)
+            } icon: {
+                Image(systemName: "calendar")
+            }
+        }
+        .pickerStyle(.menu)
+        .disabled(viewModel.uiState.monthKeys.isEmpty)
+        .accessibilityLabel("Selected Month")
+        .accessibilityValue(Text(selectedMonthLabel))
+    }
+
     private enum Field: Hashable {
         case incomeName
         case incomeAmount
@@ -61,6 +96,9 @@ struct BudgetScreen: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Budget")
             .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    monthPickerToolbar
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { focusedField = nil }
@@ -132,22 +170,10 @@ struct BudgetScreen: View {
             }
             .disabled(deletableFutureMonthKey == nil)
         } header: {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Selected Month")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Picker("Selected Month", selection: Binding(
-                    get: { viewModel.uiState.selectedMonthKey ?? "" },
-                    set: { viewModel.selectMonth($0) }
-                )) {
-                    ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
-                        Text(key).tag(key)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-            }
-            .textCase(nil)
+            Text("Months")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .textCase(nil)
         }
     }
 
