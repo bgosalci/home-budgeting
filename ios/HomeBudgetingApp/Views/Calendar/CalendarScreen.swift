@@ -5,13 +5,55 @@ struct CalendarScreen: View {
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
     private let weekdaySymbols = Calendar.current.shortWeekdaySymbols
+    private var monthKeys: [String] { viewModel.uiState.monthKeys }
+    private var selectedMonthKey: String? { viewModel.uiState.selectedMonthKey }
+    private var previousMonthKey: String? {
+        guard let selected = selectedMonthKey,
+              let index = monthKeys.firstIndex(of: selected),
+              index > 0 else { return nil }
+        return monthKeys[index - 1]
+    }
+    private var nextMonthKey: String? {
+        guard let selected = selectedMonthKey,
+              let index = monthKeys.firstIndex(of: selected),
+              index + 1 < monthKeys.count else { return nil }
+        return monthKeys[index + 1]
+    }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text(viewModel.uiState.calendar.title)
-                    .font(.title2)
-                    .bold()
+                HStack {
+                    Button {
+                        if let key = previousMonthKey {
+                            viewModel.selectMonth(key)
+                        }
+                    } label: {
+                        Image(systemName: "chevron.left")
+                    }
+                    .disabled(previousMonthKey == nil)
+                    .accessibilityLabel("Previous Month")
+
+                    Spacer()
+
+                    Text(viewModel.uiState.calendar.title)
+                        .font(.title2)
+                        .bold()
+
+                    Spacer()
+
+                    Button {
+                        if let key = nextMonthKey {
+                            viewModel.selectMonth(key)
+                        }
+                    } label: {
+                        Image(systemName: "chevron.right")
+                    }
+                    .disabled(nextMonthKey == nil)
+                    .accessibilityLabel("Next Month")
+                }
+                .font(.title3)
+
                 LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(weekdaySymbols, id: \.self) { symbol in
                         Text(symbol).font(.caption).foregroundColor(.secondary)
