@@ -5,29 +5,47 @@ struct TransactionsScreen: View {
     @State private var showEditor = false
     @State private var editingTransaction: BudgetTransaction?
     @State private var activeDialog: AppDialog?
+    @State private var isScrolled = false
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    HStack {
-                        Text("Total")
-                            .font(.headline)
-                        Spacer()
-                        Text(currency(transactionsState.total))
-                            .font(.title2)
-                            .fontWeight(.semibold)
+            ScrollViewReader { proxy in
+                List {
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
                     }
-                    .padding(.vertical, 8)
+                    .frame(height: 0)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+                    
+                    Section {
+                        HStack {
+                            Text("Total")
+                                .font(.headline)
+                            Spacer()
+                            Text(currency(transactionsState.total))
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    
+                    transactionSections
                 }
-                
-                transactionSections
+                .listStyle(.insetGrouped)
+                .coordinateSpace(name: "scroll")
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isScrolled = value < -50
+                    }
+                }
             }
-            .listStyle(.insetGrouped)
             .navigationTitle("Transactions")
-            .navigationBarTitleDisplayMode(.automatic)
+            .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     categoryFilter
@@ -188,6 +206,13 @@ struct TransactionsScreen: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = Locale.current.currency?.identifier ?? "USD"
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+}
+
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 
