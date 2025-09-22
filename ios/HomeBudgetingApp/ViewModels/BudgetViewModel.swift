@@ -108,9 +108,13 @@ public final class BudgetViewModel: ObservableObject {
         let groups = Array(Set(categoryMeta.values)).sorted { $0.lowercased() < $1.lowercased() }
         let incomeCategories = availableIncomeCategories(baseState)
         var options = current.options
+        let supportedStyles = ChartStyle.availableStyles(for: options.mode)
+        if !supportedStyles.contains(options.chartStyle),
+           let fallbackStyle = supportedStyles.first {
+            options.chartStyle = fallbackStyle
+        }
         switch options.mode {
         case .budgetSpread:
-            if options.chartStyle == .line { options.chartStyle = .bar }
             if let selected = options.selectedMonth, !months.contains(selected) {
                 options.selectedMonth = selectedMonth
             } else if options.selectedMonth == nil {
@@ -120,7 +124,6 @@ public final class BudgetViewModel: ObservableObject {
             options.selectedGroup = nil
             options.selectedCategory = nil
         case .moneyIn:
-            if options.chartStyle == .pie { options.chartStyle = .line }
             if let year = options.selectedYear, !year.isEmpty, !years.contains(year) {
                 options.selectedYear = ""
             }
@@ -130,7 +133,6 @@ public final class BudgetViewModel: ObservableObject {
             options.selectedMonth = nil
             options.selectedGroup = nil
         case .monthlySpend:
-            if options.chartStyle == .pie { options.chartStyle = .line }
             if let year = options.selectedYear, !year.isEmpty, !years.contains(year) {
                 options.selectedYear = ""
             }
@@ -406,6 +408,11 @@ public final class BudgetViewModel: ObservableObject {
 
     func updateAnalysisMode(_ mode: AnalysisMode) {
         uiState.analysis.options.mode = mode
+        let availableStyles = ChartStyle.availableStyles(for: mode)
+        if !availableStyles.contains(uiState.analysis.options.chartStyle),
+           let fallbackStyle = availableStyles.first {
+            uiState.analysis.options.chartStyle = fallbackStyle
+        }
         refreshDerivedState()
     }
 
