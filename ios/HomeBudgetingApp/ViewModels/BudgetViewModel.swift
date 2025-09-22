@@ -624,50 +624,35 @@ public final class BudgetViewModel: ObservableObject {
     }
 
     private func decodeJSON<T: Decodable>(_ type: T.Type, from data: Data) async throws -> T {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let decoder = JSONDecoder()
-                    let value = try decoder.decode(T.self, from: data)
-                    continuation.resume(returning: value)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
+        try await Task.detached(priority: .userInitiated) {
+            let decoder = JSONDecoder()
+            return try decoder.decode(T.self, from: data)
+        }.value
     }
 
     private func decodeTransactions(content: Data, format: DataFormat) async throws -> [TransactionDraft] {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let result: [Self.TransactionDraft]
-                    switch format {
-                    case .json:
-                        let decoder = JSONDecoder()
-                        if let array = try? decoder.decode([BudgetTransaction].self, from: content) {
-                            result = array.map {
-                                Self.TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category)
-                            }
-                        } else if let wrapped = try? decoder.decode(Self.TransactionsWrapper.self, from: content) {
-                            result = wrapped.transactions.map {
-                                Self.TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category)
-                            }
-                        } else {
-                            throw Self.DataTransferError.invalidJSON
-                        }
-                    case .csv:
-                        guard let text = String(data: content, encoding: .utf8) else {
-                            throw Self.DataTransferError.invalidCSV
-                        }
-                        result = try Self.parseCsv(text)
+        try await Task.detached(priority: .userInitiated) {
+            switch format {
+            case .json:
+                let decoder = JSONDecoder()
+                if let array = try? decoder.decode([BudgetTransaction].self, from: content) {
+                    return array.map {
+                        TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category)
                     }
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
                 }
+                if let wrapped = try? decoder.decode(TransactionsWrapper.self, from: content) {
+                    return wrapped.transactions.map {
+                        TransactionDraft(date: $0.date, desc: $0.desc, amount: $0.amount, category: $0.category)
+                    }
+                }
+                throw DataTransferError.invalidJSON
+            case .csv:
+                guard let text = String(data: content, encoding: .utf8) else {
+                    throw DataTransferError.invalidCSV
+                }
+                return try Self.parseCsv(text)
             }
-        }
+        }.value
     }
 
     private func appendTransactions(_ drafts: [TransactionDraft], monthKey: String) async throws -> Int {
@@ -741,18 +726,18 @@ public final class BudgetViewModel: ObservableObject {
               headerCols[1] == "description",
               headerCols[2] == "category",
               headerCols[3] == "amount" else {
-            throw Self.DataTransferError.invalidCSV
+            throw DataTransferError.invalidCSV
         }
         return try rows.dropFirst().map { line in
             let cols = splitCsvLine(line)
-            guard cols.count >= 4 else { throw Self.DataTransferError.invalidCSV }
+            guard cols.count >= 4 else { throw DataTransferError.invalidCSV }
             let date = normalizeDate(cols[0])
             let desc = cols[1]
             let category = cols[2]
             let amountString = cols[3...].joined(separator: ",")
             let cleaned = amountString.replacingOccurrences(of: "[^0-9.-]", with: "", options: .regularExpression)
             let amount = Double(cleaned) ?? 0
-            return Self.TransactionDraft(date: date, desc: desc, amount: amount, category: category)
+            return TransactionDraft(date: date, desc: desc, amount: amount, category: category)
         }
     }
 
