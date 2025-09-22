@@ -170,3 +170,37 @@ ios/Pods/
 ios/*.xcworkspace
 ios/**/*.xcuserdata/
 ios/**/*.xcuserstate
+
+# Xcode user settings
+*.xcuserstate
+xcuserdata/
+
+# Build products
+build/
+DerivedData/
+
+# Workspace settings
+*.xcworkspace
+
+# iOS / macOS specific
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# General
+.DS_Store
