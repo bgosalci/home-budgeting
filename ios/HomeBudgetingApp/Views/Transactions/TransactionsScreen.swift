@@ -5,6 +5,7 @@ struct TransactionsScreen: View {
     @State private var showEditor = false
     @State private var editingTransaction: BudgetTransaction?
     @State private var activeDialog: AppDialog?
+    @State private var isSearchPresented = false
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
@@ -14,30 +15,18 @@ struct TransactionsScreen: View {
                 transactionSections
             }
             .listStyle(.insetGrouped)
-            .searchable(text: searchBinding, prompt: "Search description")
+            .searchable(text: searchBinding, isPresented: $isSearchPresented, prompt: "Search description")
             .navigationTitle("Transactions")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     titleContent
                 }
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if !transactionsState.groups.isEmpty {
-                        Button("Clear") {
-                            let monthName = viewModel.uiState.selectedMonthKey ?? "this month"
-                            activeDialog = AppDialog.confirm(
-                                title: "Clear Transactions",
-                                message: "Are you sure you want to delete all transactions for \(monthName)?",
-                                confirmTitle: "Clear",
-                                destructive: true,
-                                onConfirm: { viewModel.deleteAllTransactions() }
-                            )
-                        }
-                            .tint(.red)
-                    }
-                }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     categoryFilter
+                    Button(action: { isSearchPresented = true }) {
+                        Image(systemName: "magnifyingglass")
+                    }
                     Button(action: { editingTransaction = nil; showEditor = true }) {
                         Image(systemName: "plus")
                     }
@@ -94,6 +83,7 @@ struct TransactionsScreen: View {
         .pickerStyle(.menu)
     }
 
+    @ViewBuilder
     private var transactionSections: some View {
         ForEach(transactionsState.groups) { group in
             Section(header: sectionHeader(for: group)) {
@@ -143,6 +133,26 @@ struct TransactionsScreen: View {
                     Spacer()
                     Text(currency(group.runningTotal))
                 }.font(.caption)
+            }
+        }
+        if !transactionsState.groups.isEmpty {
+            clearTransactionsSection
+        }
+    }
+
+    private var clearTransactionsSection: some View {
+        Section {
+            Button(role: .destructive) {
+                let monthName = viewModel.uiState.selectedMonthKey ?? "this month"
+                activeDialog = AppDialog.confirm(
+                    title: "Clear Transactions",
+                    message: "Are you sure you want to delete all transactions for \(monthName)?",
+                    confirmTitle: "Clear",
+                    destructive: true,
+                    onConfirm: { viewModel.deleteAllTransactions() }
+                )
+            } label: {
+                Text("Clear Transactions")
             }
         }
     }
