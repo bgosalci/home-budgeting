@@ -42,6 +42,7 @@ final class AppSettings: ObservableObject {
 
     @Published var isAppLockEnabled: Bool {
         didSet {
+            guard !isBootstrapping else { return }
             defaults.set(isAppLockEnabled, forKey: lockEnabledKey)
             if isAppLockEnabled {
                 lock()
@@ -58,6 +59,7 @@ final class AppSettings: ObservableObject {
 
     private let defaults: UserDefaults
     private let contextProvider: () -> LAContext
+    private var isBootstrapping = true
 
     private let themeKey = "app_theme"
     private let lockEnabledKey = "app_lock_enabled"
@@ -75,6 +77,7 @@ final class AppSettings: ObservableObject {
         selectedTheme = storedTheme
 
         let storedLock = defaults.bool(forKey: lockEnabledKey)
+        isUnlocked = storedLock ? false : true
         isAppLockEnabled = storedLock
 
         let storedPin = defaults.string(forKey: pinKey)
@@ -94,8 +97,7 @@ final class AppSettings: ObservableObject {
 
         biometricState = computedBiometricState
         allowBiometrics = allowBiometricsValue
-
-        isUnlocked = storedLock ? false : true
+        isBootstrapping = false
     }
 
     var canUseBiometrics: Bool {
