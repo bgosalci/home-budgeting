@@ -317,70 +317,346 @@ private struct SeriesChartView: View {
     let data: SeriesData
     let style: ChartStyle
 
+    private var points: [SeriesPoint] {
+        zip(data.labels, data.values).map { SeriesPoint(label: $0.0, value: $0.1) }
+    }
+
+    private var chartHeight: CGFloat { 260 }
+
+    private var yDomain: ClosedRange<Double> {
+        let maxValue = points.map { $0.value }.max() ?? 0
+        let upper = maxValue == 0 ? 1 : maxValue * 1.12
+        return 0...upper
+    }
+
+    private var shouldRotateLabels: Bool { points.count > 5 }
+
+    private var averageValue: Double {
+        guard !points.isEmpty else { return 0 }
+        let total = points.reduce(0) { $0 + $1.value }
+        return total / Double(points.count)
+    }
+
+    private var highestPoint: SeriesPoint? {
+        points.max { $0.value < $1.value }
+    }
+
+    private var lowestPoint: SeriesPoint? {
+        points.min { $0.value < $1.value }
+    }
+
+    private var latestPoint: SeriesPoint? { points.last }
+
+    private var trendChange: Double? {
+        guard points.count > 1, let first = points.first, let last = points.last else { return nil }
+        return last.value - first.value
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(data.label).font(.title3).bold()
-            switch style {
-            case .bar, .comparisonBars:
-                barChart
-            case .line:
-                lineChart
-            case .donut:
-                barChart
+            Text(data.label)
+                .font(.title3)
+                .bold()
+
+            if points.isEmpty {
+                Text("No data available for the selected filters.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: chartHeight)
+            } else {
+                chart
+                    .frame(height: chartHeight)
             }
-            Text("Total: \(currency(data.total))")
+
+            summary
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+
+    @ViewBuilder
+    private var chart: some View {
+        switch style {
+        case .line:
+            configuredChart(lineChart)
+        case .bar, .comparisonBars, .donut:
+            configuredChart(barChart)
+        }
     }
 
     private var barChart: some View {
-        GeometryReader { geometry in
-            let maxValue = data.values.max() ?? 1
-            HStack(alignment: .bottom, spacing: 12) {
-                ForEach(Array(data.values.enumerated()), id: \.offset) { index, value in
-                    VStack {
-                        Spacer()
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.accentColor)
-                            .frame(height: maxValue == 0 ? 0 : CGFloat(value / maxValue) * (geometry.size.height - 40))
-                        Text(data.labels[index]).font(.caption2).rotationEffect(.degrees(-45))
-                            .frame(maxHeight: 40)
-                    }
+        let lastId = latestPoint?.id
+        return Chart(points) { point in
+            BarMark(
+                x: .value("Month", point.label),
+                y: .value("Amount", point.value)
+            )
+            .cornerRadius(8)
+            .foregroundStyle(Color.accentColor)
+            .annotation(position: .top, alignment: .center) {
+                if points.count <= 6 || point.id == lastId {
+                    Text(currency(point.value))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.bottom, 4)
                 }
             }
         }
-        .frame(height: 220)
     }
 
     private var lineChart: some View {
-        GeometryReader { geometry in
-            let maxValue = data.values.max() ?? 1
-            let minValue = data.values.min() ?? 0
-            let range = max(maxValue - minValue, 1)
-            Path { path in
-                for (index, value) in data.values.enumerated() {
-                    let x = geometry.size.width * CGFloat(index) / CGFloat(max(data.values.count - 1, 1))
-                    let yRatio = (value - minValue) / range
-                    let y = geometry.size.height - CGFloat(yRatio) * geometry.size.height
-                    if index == 0 {
-                        path.move(to: CGPoint(x: x, y: y))
-                    } else {
-                        path.addLine(to: CGPoint(x: x, y: y))
+        let lastId = latestPoint?.id
+        return Chart(points) { point in
+            AreaMark(
+                x: .value("Month", point.label),
+                y: .value("Amount", point.value)
+            )
+            .interpolationMethod(.catmullRom)
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [Color.accentColor.opacity(0.25), Color.accentColor.opacity(0.05)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+
+            LineMark(
+                x: .value("Month", point.label),
+                y: .value("Amount", point.value)
+            )
+            .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+            .interpolationMethod(.catmullRom)
+            .foregroundStyle(Color.accentColor)
+
+            PointMark(
+                x: .value("Month", point.label),
+                y: .value("Amount", point.value)
+            )
+            .symbol(.circle)
+            .symbolSize(60)
+            .foregroundStyle(Color.accentColor)
+            .annotation(position: .top, alignment: .center) {
+                if point.id == lastId {
+                    VStack(spacing: 2) {
+                        Text(point.label)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text(currency(point.value))
+                            .font(.caption)
+                            .bold()
+                    }
+                    .padding(6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
+                    )
+                }
+            }
+        }
+    }
+
+    private func configuredChart<Content: ChartContent>(_ chart: Chart<Content>) -> some View {
+        chart
+            .chartYAxis {
+                AxisMarks(position: .leading) { value in
+                    AxisGridLine()
+                    AxisTick()
+                    if let amount = value.as(Double.self) {
+                        AxisValueLabel {
+                            Text(shortCurrency(amount))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }
-            .stroke(Color.accentColor, lineWidth: 2)
+            .chartXAxis {
+                AxisMarks(position: .bottom, values: points.map { $0.label }) { value in
+                    AxisGridLine()
+                    AxisTick()
+                    if let label = value.as(String.self) {
+                        AxisValueLabel {
+                            Text(label)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .rotationEffect(.degrees(shouldRotateLabels ? -45 : 0), anchor: .topLeading)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                        }
+                    }
+                }
+            }
+            .chartYScale(domain: yDomain)
+            .chartPlotStyle { plot in
+                plot
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemBackground))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.primary.opacity(0.05))
+                    )
+            }
+    }
+
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Highlights")
+                .font(.headline)
+
+            LazyVGrid(columns: summaryColumns, alignment: .leading, spacing: 8) {
+                SeriesSummaryCard(title: "Total", value: currency(data.total))
+                SeriesSummaryCard(title: "Monthly Average", value: currency(averageValue))
+                if let latest = latestPoint {
+                    SeriesSummaryCard(title: latest.label, value: currency(latest.value), subtitle: "Latest Month")
+                }
+            }
+
+            if let change = trendChange, let first = points.first, let last = latestPoint {
+                let valueText = (change >= 0 ? "+" : "-") + currency(abs(change))
+                SeriesHighlightRow(
+                    iconName: change >= 0 ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis",
+                    title: change >= 0 ? "Upward Trend" : "Downward Trend",
+                    subtitle: "\(first.label) → \(last.label)",
+                    value: valueText,
+                    tint: change >= 0 ? .green : .orange
+                )
+            }
+
+            if let highest = highestPoint {
+                SeriesHighlightRow(
+                    iconName: "arrow.up.right.circle.fill",
+                    title: highest.label,
+                    subtitle: "Highest Month",
+                    value: currency(highest.value),
+                    tint: .blue
+                )
+            }
+
+            if let lowest = lowestPoint, lowest.id != highestPoint?.id {
+                SeriesHighlightRow(
+                    iconName: "arrow.down.right.circle.fill",
+                    title: lowest.label,
+                    subtitle: "Lowest Month",
+                    value: currency(lowest.value),
+                    tint: .purple
+                )
+            }
         }
-        .frame(height: 220)
+    }
+
+    private var summaryColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 150), spacing: 8)]
     }
 
     private func currency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = Locale.current.currency?.identifier ?? "USD"
+        formatter.maximumFractionDigits = abs(value) < 1000 ? 2 : 0
+        formatter.minimumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
     }
+
+    private func shortCurrency(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = Locale.current.currency?.identifier ?? "USD"
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+    }
+}
+
+private struct SeriesSummaryCard: View {
+    let title: String
+    let value: String
+    var subtitle: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.subheadline)
+                .bold()
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.primary.opacity(0.08))
+        )
+    }
+}
+
+private struct SeriesHighlightRow: View {
+    let iconName: String
+    let title: String
+    let subtitle: String
+    let value: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(0.12))
+                    .frame(width: 34, height: 34)
+                Image(systemName: iconName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(tint)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(title)
+                    .font(.subheadline)
+                    .bold()
+            }
+
+            Spacer()
+
+            Text(value)
+                .font(.subheadline)
+                .bold()
+                .foregroundColor(tint)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(tint.opacity(0.18))
+        )
+    }
+}
+
+private struct SeriesPoint: Identifiable {
+    let label: String
+    let value: Double
+
+    var id: String { label }
 }
 
 private struct BudgetSummaryCard: View {
@@ -521,6 +797,26 @@ private extension BudgetSpreadRow {
 }
 
 #if DEBUG
+private struct SeriesChartView_Previews: PreviewProvider {
+    static var incomeData: SeriesData {
+        let labels = ["Jan 2023", "Feb 2023", "Mar 2023", "Apr 2023", "May 2023", "Jun 2023"]
+        let values: [Double] = [4200, 4800, 5150, 4700, 5300, 5600]
+        return SeriesData(labels: labels, values: values, label: "Total Income", total: values.reduce(0, +))
+    }
+
+    static var previews: some View {
+        Group {
+            SeriesChartView(data: incomeData, style: .line)
+                .previewDisplayName("Money In • Line")
+            SeriesChartView(data: incomeData, style: .bar)
+                .previewDisplayName("Money In • Bar")
+        }
+        .padding()
+        .background(Color(.systemGroupedBackground))
+        .previewDevice("iPhone 13 mini")
+    }
+}
+
 private struct BudgetSpreadView_Previews: PreviewProvider {
     static var sampleData: BudgetSpreadData {
         let labels = ["Housing", "Food", "Utilities", "Leisure", "Savings"]
