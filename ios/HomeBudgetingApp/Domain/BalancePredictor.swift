@@ -61,7 +61,11 @@ private func determineObservationDay(monthKey: String, transactions: [BudgetTran
     let monthLength = calendar.range(of: .day, in: .month, for: date)?.count ?? 31
     let todayComponents = calendar.dateComponents([.year, .month, .day], from: today)
     let currentKey = String(format: "%04d-%02d", todayComponents.year ?? year, todayComponents.month ?? month)
-    let validDays = transactions.compactMap { Int($0.date.suffix(2)) }.filter { $0 >= 1 && $0 <= monthLength }
+    let validDays = transactions.compactMap { tx -> Int? in
+        guard let date = parseDate(tx.date) else { return nil }
+        let day = calendar.component(.day, from: date)
+        return (1...monthLength).contains(day) ? day : nil
+    }
     if monthKey < currentKey {
         return Observation(day: monthLength, monthLength: monthLength)
     }
@@ -77,9 +81,12 @@ private func determineObservationDay(monthKey: String, transactions: [BudgetTran
 }
 
 private func accumulateByDay(transactions: [BudgetTransaction], monthLength: Int) -> [Double] {
+    let calendar = Calendar(identifier: .gregorian)
     var totals = Array(repeating: 0.0, count: monthLength + 1)
     transactions.forEach { tx in
-        guard let day = Int(tx.date.suffix(2)), day >= 1, day <= monthLength else { return }
+        guard let date = parseDate(tx.date) else { return }
+        let day = calendar.component(.day, from: date)
+        guard day >= 1, day <= monthLength else { return }
         totals[day] += tx.amount
     }
     var cumulative = Array(repeating: 0.0, count: monthLength + 1)

@@ -11,6 +11,14 @@ private let dateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.calendar = calendar
     formatter.locale = Locale(identifier: "en_GB")
+    formatter.dateFormat = "dd-MM-yyyy"
+    return formatter
+}()
+
+private let legacyDateFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.calendar = calendar
+    formatter.locale = Locale(identifier: "en_GB")
     formatter.dateFormat = "yyyy-MM-dd"
     return formatter
 }()
@@ -25,7 +33,10 @@ private let headerFormatter: DateFormatter = {
 
 func parseDate(_ value: String?) -> Date? {
     guard let value, !value.isEmpty else { return nil }
-    return dateFormatter.date(from: value)
+    if let date = dateFormatter.date(from: value) {
+        return date
+    }
+    return legacyDateFormatter.date(from: value)
 }
 
 struct CategorySummary: Identifiable, Hashable {
@@ -127,7 +138,12 @@ func groupTransactions(month: BudgetMonth?, filter: TransactionFilter) -> ([Tran
             let matchesCategory = (categoryFilter?.isEmpty ?? true) || tx.category == categoryFilter
             return matchesSearch && matchesCategory
         }
-        .sorted { $0.date < $1.date }
+        .sorted { lhs, rhs in
+            guard let lhsDate = parseDate(lhs.date), let rhsDate = parseDate(rhs.date) else {
+                return lhs.date < rhs.date
+            }
+            return lhsDate < rhsDate
+        }
 
     var grouped: [Date: [BudgetTransaction]] = [:]
     filtered.forEach { tx in
@@ -176,20 +192,20 @@ struct CalendarMonth {
 
 func buildCalendar(monthKey: String?, month: BudgetMonth?, today: Date = Date()) -> CalendarMonth {
     guard let monthKey, !monthKey.isEmpty else { return .empty }
-    guard let startDate = dateFormatter.date(from: monthKey + "-01") else {
-        return CalendarMonth(title: monthKey, weeks: [])
-    }
-    let components = calendar.dateComponents([.year, .month], from: startDate)
-    guard let year = components.year, let monthValue = components.month else {
+    let parts = monthKey.split(separator: "-")
+    guard parts.count == 2,
+          let year = Int(parts[0]),
+          let monthValue = Int(parts[1]),
+          let firstDay = calendar.date(from: DateComponents(year: year, month: monthValue, day: 1)) else {
         return CalendarMonth(title: monthKey, weeks: [])
     }
     var totalsByDay: [Int: Double] = [:]
     month?.transactions.forEach { tx in
-        guard let day = Int(tx.date.suffix(2)), day > 0 else { return }
+        guard let date = parseDate(tx.date) else { return }
+        let day = calendar.component(.day, from: date)
         let amount = abs(tx.amount)
         totalsByDay[day, default: 0] += amount
     }
-    let firstDay = calendar.date(from: DateComponents(year: year, month: monthValue, day: 1))!
     let daysInMonth = calendar.range(of: .day, in: .month, for: firstDay)?.count ?? 30
     let startOffset = (calendar.component(.weekday, from: firstDay) + 5) % 7
     var weeks: [[CalendarDay]] = []
