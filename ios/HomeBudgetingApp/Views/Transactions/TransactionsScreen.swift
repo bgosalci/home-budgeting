@@ -14,15 +14,6 @@ struct TransactionsScreen: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
-                    GeometryReader { geometry in
-                        Color.clear
-                            .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
-                    }
-                    .frame(height: 0)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets())
-                    
                     Section {
                         HStack {
                             Text("Total")
@@ -33,8 +24,17 @@ struct TransactionsScreen: View {
                                 .fontWeight(.semibold)
                         }
                         .padding(.vertical, 8)
+                        .background(
+                            GeometryReader { geometry in
+                                Color.clear
+                                    .preference(
+                                        key: ScrollOffsetPreferenceKey.self,
+                                        value: geometry.frame(in: .named("scroll")).minY
+                                    )
+                            }
+                        )
                     }
-                    
+
                     transactionSections
                 }
                 .listStyle(.insetGrouped)
