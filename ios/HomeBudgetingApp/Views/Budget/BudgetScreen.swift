@@ -103,17 +103,6 @@ struct BudgetScreen: View {
         .frame(height: 76)
     }
 
-    @ViewBuilder
-    private var monthSectionHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            floatingMonthSelector
-            Text("Months")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .textCase(nil)
-    }
-
     private enum Field: Hashable {
         case incomeName
         case incomeAmount
@@ -133,7 +122,11 @@ struct BudgetScreen: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Budget")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    floatingMonthSelector
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { focusedField = nil }
@@ -205,8 +198,11 @@ struct BudgetScreen: View {
             }
             .disabled(deletableFutureMonthKey == nil)
         } header: {
-            monthSectionHeader
+            Text("Months")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+        .textCase(nil)
     }
 
     private var summarySection: some View {
