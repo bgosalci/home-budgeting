@@ -189,12 +189,15 @@ private struct TransactionEditor: View {
     var transaction: BudgetTransaction?
     var onSave: (String, String, Double, String?, String?) -> Void
 
+    @EnvironmentObject private var viewModel: BudgetViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var date: String = ""
     @State private var desc: String = ""
     @State private var amount: String = ""
     @State private var category: String = ""
+    @State private var predictedCategory: String = ""
+    @State private var predictionTask: Task<Void, Never>? = nil
 
     var body: some View {
         NavigationStack {
@@ -206,6 +209,24 @@ private struct TransactionEditor: View {
                     TextField("Description", text: $desc)
                     TextField("Amount", text: $amount)
                         .signedDecimalKeyboard(text: $amount)
+                    if !predictedCategory.isEmpty {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Image(systemName: "sparkles")
+                                .foregroundColor(.secondary)
+                            Text("Suggested: \(predictedCategory)")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            if category != predictedCategory {
+                                Button("Apply") {
+                                    category = predictedCategory
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
                     Picker("Category", selection: $category) {
                         Text("Uncategorised").tag("")
                         ForEach(categories, id: \.self) { value in
@@ -237,7 +258,41 @@ private struct TransactionEditor: View {
                     let formatter = DateFormatter()
                     formatter.dateFormat = "yyyy-MM-dd"
                     date = formatter.string(from: Date())
+                    predictedCategory = ""
                 }
+                refreshPrediction()
+            }
+            .onChange(of: desc) { _ in refreshPrediction() }
+            .onChange(of: amount) { _ in refreshPrediction() }
+            .onDisappear {
+                predictionTask?.cancel()
+                predictionTask = nil
+            }
+        }
+    }
+
+    private func refreshPrediction() {
+        let normalizedDesc = desc.trimmingCharacters(in: .whitespacesAndNewlines)
+        predictionTask?.cancel()
+        guard !normalizedDesc.isEmpty else {
+            predictedCategory = ""
+            predictionTask = nil
+            return
+        }
+        let amountValue = Double(amount)
+        let requestDesc = normalizedDesc
+        let requestAmount = amountValue
+        predictionTask = Task {
+            let suggestion = await viewModel.predictCategory(desc: requestDesc, amount: requestAmount)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard !Task.isCancelled else { return }
+                let currentDesc = desc.trimmingCharacters(in: .whitespacesAndNewlines)
+                let currentAmount = Double(amount)
+                if currentDesc == requestDesc, currentAmount == requestAmount {
+                    predictedCategory = suggestion
+                }
+                predictionTask = nil
             }
         }
     }
