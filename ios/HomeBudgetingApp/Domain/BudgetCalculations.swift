@@ -106,6 +106,7 @@ struct TransactionGroup: Identifiable {
     let date: Date
     let label: String
     let transactions: [BudgetTransaction]
+    let transactionCount: Int
     let dayTotal: Double
     let runningTotal: Double
     let startIndex: Int
@@ -147,6 +148,7 @@ func groupTransactions(month: BudgetMonth?, filter: TransactionFilter) -> ([Tran
                 date: date,
                 label: label,
                 transactions: list,
+                transactionCount: list.count,
                 dayTotal: dayTotal,
                 runningTotal: runningTotal,
                 startIndex: runningIndex
