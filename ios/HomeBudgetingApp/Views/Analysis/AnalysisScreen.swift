@@ -1,3 +1,4 @@
+#if canImport(SwiftUI) && canImport(Charts) && canImport(Combine)
 import SwiftUI
 import Charts
 
@@ -904,3 +905,4 @@ struct AnalysisScreen_Previews: PreviewProvider {
         }
     }
 }
+#endif

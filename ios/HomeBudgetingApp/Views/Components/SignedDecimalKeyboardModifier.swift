@@ -1,3 +1,4 @@
+#if canImport(SwiftUI) && canImport(Combine)
 import SwiftUI
 
 struct SignedDecimalKeyboardModifier: ViewModifier {
@@ -38,3 +39,4 @@ extension View {
         modifier(SignedDecimalKeyboardModifier(text: text))
     }
 }
+#endif

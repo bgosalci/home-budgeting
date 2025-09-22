@@ -220,8 +220,7 @@ func buildCalendar(monthKey: String?, month: BudgetMonth?, today: Date = Date())
     month?.transactions.forEach { tx in
         guard let date = parseDate(tx.date) else { return }
         let day = calendar.component(.day, from: date)
-        let amount = abs(tx.amount)
-        totalsByDay[day, default: 0] += amount
+        totalsByDay[day, default: 0] += tx.amount
         transactionsByDay[day, default: []].append(tx)
     }
     let daysInMonth = calendar.range(of: .day, in: .month, for: firstDay)?.count ?? 30
