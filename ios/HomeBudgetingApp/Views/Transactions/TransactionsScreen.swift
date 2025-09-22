@@ -205,7 +205,7 @@ private struct TransactionEditor: View {
                         .disableAutocorrection(true)
                     TextField("Description", text: $desc)
                     TextField("Amount", text: $amount)
-                        .keyboardType(.decimalPad)
+                        .signedDecimalKeyboard(text: $amount)
                     Picker("Category", selection: $category) {
                         Text("Uncategorised").tag("")
                         ForEach(categories, id: \.self) { value in

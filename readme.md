@@ -55,6 +55,8 @@ Open the **Budget** tab to access matching import/export options for transaction
 
 The iOS interface now follows your system appearance, automatically switching between light and dark mode.
 
+Amount fields now include a ± toggle on the numeric keypad so you can enter refunds or other negative values directly from the keyboard.
+
 ## Usage
 Open `web-app/index.html` in a browser to track your income and expenses for each month. The app now uses 95% of your screen width to provide a wider workspace.
 
