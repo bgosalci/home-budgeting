@@ -6,6 +6,7 @@ struct TransactionsScreen: View {
     @State private var editingTransaction: BudgetTransaction?
     @State private var activeDialog: AppDialog?
     @State private var isScrolled = false
+    @State private var isSearchPresented = false
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
@@ -63,7 +64,7 @@ struct TransactionsScreen: View {
                 }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     categoryFilter
-                    Button(action: { viewModel.updateTransactionSearch("") }) {
+                    Button(action: { isSearchPresented = true }) {
                         Image(systemName: "magnifyingglass")
                     }
                     .controlSize(.small)
@@ -72,6 +73,7 @@ struct TransactionsScreen: View {
             }
             .searchable(
                 text: searchBinding,
+                isPresented: $isSearchPresented,
                 placement: .toolbar,
                 prompt: "Search description"
             )
