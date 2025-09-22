@@ -64,11 +64,7 @@ struct BudgetScreen: View {
                 Text(key).tag(key)
             }
         } label: {
-            Label {
-                Text(selectedMonthLabel)
-            } icon: {
-                Image(systemName: "calendar")
-            }
+            Label("Month", systemImage: "calendar")
         }
         .pickerStyle(.menu)
         .disabled(viewModel.uiState.monthKeys.isEmpty)
