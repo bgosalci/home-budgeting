@@ -382,9 +382,9 @@ private struct SeriesChartView: View {
     private var chart: some View {
         switch style {
         case .line:
-            configuredChart(lineChart)
+            lineChart
         case .bar, .comparisonBars, .donut:
-            configuredChart(barChart)
+            barChart
         }
     }
 
@@ -405,6 +405,47 @@ private struct SeriesChartView: View {
                         .padding(.bottom, 4)
                 }
             }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisGridLine()
+                AxisTick()
+                if let amount = value.as(Double.self) {
+                    AxisValueLabel {
+                        Text(shortCurrency(amount))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(position: .bottom, values: points.map { $0.label }) { value in
+                AxisGridLine()
+                AxisTick()
+                if let label = value.as(String.self) {
+                    AxisValueLabel {
+                        Text(label)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(shouldRotateLabels ? -45 : 0), anchor: .topLeading)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+            }
+        }
+        .chartYScale(domain: yDomain)
+        .chartPlotStyle { plot in
+            plot
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.primary.opacity(0.05))
+                )
         }
     }
 
@@ -458,51 +499,47 @@ private struct SeriesChartView: View {
                 }
             }
         }
-    }
-
-    private func configuredChart<Content: ChartContent>(_ chart: Chart<Content>) -> some View {
-        chart
-            .chartYAxis {
-                AxisMarks(position: .leading) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    if let amount = value.as(Double.self) {
-                        AxisValueLabel {
-                            Text(shortCurrency(amount))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisGridLine()
+                AxisTick()
+                if let amount = value.as(Double.self) {
+                    AxisValueLabel {
+                        Text(shortCurrency(amount))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
-            .chartXAxis {
-                AxisMarks(position: .bottom, values: points.map { $0.label }) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    if let label = value.as(String.self) {
-                        AxisValueLabel {
-                            Text(label)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                                .rotationEffect(.degrees(shouldRotateLabels ? -45 : 0), anchor: .topLeading)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.leading)
-                        }
+        }
+        .chartXAxis {
+            AxisMarks(position: .bottom, values: points.map { $0.label }) { value in
+                AxisGridLine()
+                AxisTick()
+                if let label = value.as(String.self) {
+                    AxisValueLabel {
+                        Text(label)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(shouldRotateLabels ? -45 : 0), anchor: .topLeading)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                     }
                 }
             }
-            .chartYScale(domain: yDomain)
-            .chartPlotStyle { plot in
-                plot
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemBackground))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.primary.opacity(0.05))
-                    )
-            }
+        }
+        .chartYScale(domain: yDomain)
+        .chartPlotStyle { plot in
+            plot
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.primary.opacity(0.05))
+                )
+        }
     }
 
     private var summary: some View {
