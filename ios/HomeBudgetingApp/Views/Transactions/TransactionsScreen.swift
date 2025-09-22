@@ -11,12 +11,16 @@ struct TransactionsScreen: View {
     var body: some View {
         NavigationStack {
             List {
-                filterSection
                 transactionSections
             }
             .listStyle(.insetGrouped)
+            .searchable(text: searchBinding, prompt: "Search description")
             .navigationTitle("Transactions")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    titleContent
+                }
                 ToolbarItem(placement: .navigationBarLeading) {
                     if !transactionsState.groups.isEmpty {
                         Button("Clear") {
@@ -32,7 +36,8 @@ struct TransactionsScreen: View {
                             .tint(.red)
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    categoryFilter
                     Button(action: { editingTransaction = nil; showEditor = true }) {
                         Image(systemName: "plus")
                     }
@@ -51,28 +56,42 @@ struct TransactionsScreen: View {
         }
     }
 
-    private var filterSection: some View {
-        Section(header: Text("Filters")) {
-            TextField("Search description", text: Binding(
-                get: { transactionsState.search },
-                set: { viewModel.updateTransactionSearch($0) }
-            ))
-            Picker("Category", selection: Binding(
-                get: { transactionsState.category ?? "" },
-                set: { viewModel.updateTransactionFilter($0.isEmpty ? nil : $0) }
-            )) {
-                Text("All").tag("")
-                ForEach(transactionsState.availableCategories, id: \.self) { category in
-                    Text(category).tag(category)
-                }
-            }
-            .pickerStyle(.menu)
-            HStack {
-                Text("Total")
-                Spacer()
-                Text(currency(transactionsState.total)).bold()
+    private var searchBinding: Binding<String> {
+        Binding(
+            get: { transactionsState.search },
+            set: { viewModel.updateTransactionSearch($0) }
+        )
+    }
+
+    private var categoryBinding: Binding<String> {
+        Binding(
+            get: { transactionsState.category ?? "" },
+            set: { viewModel.updateTransactionFilter($0.isEmpty ? nil : $0) }
+        )
+    }
+
+    private var titleContent: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Transactions")
+                .font(.headline)
+            Text("Total \(currency(transactionsState.total))")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private var categoryFilter: some View {
+        Picker(
+            selection: categoryBinding,
+            label: Label("Filter category", systemImage: "line.3.horizontal.decrease.circle")
+                .labelStyle(.iconOnly)
+        ) {
+            Text("All").tag("")
+            ForEach(transactionsState.availableCategories, id: \.self) { category in
+                Text(category).tag(category)
             }
         }
+        .pickerStyle(.menu)
     }
 
     private var transactionSections: some View {
