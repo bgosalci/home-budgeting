@@ -12,6 +12,7 @@ struct TransactionsScreen: View {
         NavigationStack {
             List {
                 filterSection
+                monthSection
                 transactionSections
             }
             .listStyle(.insetGrouped)
@@ -71,6 +72,32 @@ struct TransactionsScreen: View {
                 Text("Total")
                 Spacer()
                 Text(currency(transactionsState.total)).bold()
+            }
+        }
+    }
+
+    private var monthSection: some View {
+        Section(header: Text("Month")) {
+            if viewModel.uiState.monthKeys.isEmpty {
+                Text("No months available")
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker("Selected Month", selection: Binding(
+                    get: {
+                        viewModel.uiState.selectedMonthKey
+                            ?? viewModel.uiState.monthKeys.last
+                            ?? ""
+                    },
+                    set: { newValue in
+                        guard !newValue.isEmpty else { return }
+                        viewModel.selectMonth(newValue)
+                    }
+                )) {
+                    ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
+                        Text(key).tag(key)
+                    }
+                }
+                .pickerStyle(.menu)
             }
         }
     }
