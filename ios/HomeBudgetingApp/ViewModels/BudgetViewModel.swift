@@ -681,11 +681,14 @@ public final class BudgetViewModel: ObservableObject {
 
     private func makeCsv(for transactions: [BudgetTransaction]) -> String {
         var lines = ["Date,Description,Category,Amount"]
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.dateFormat = "dd/MM/yyyy"
         for tx in transactions {
-            let parts = tx.date.split(separator: "-")
             let date: String
-            if parts.count == 3 {
-                date = "\(parts[2])/\(parts[1])/\(parts[0])"
+            if let parsed = parseDate(tx.date) {
+                date = formatter.string(from: parsed)
             } else {
                 date = ""
             }
@@ -750,13 +753,16 @@ public final class BudgetViewModel: ObservableObject {
 
     private func normalizeDate(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parts = trimmed.split(whereSeparator: { $0 == "/" || $0 == "-" })
-        if parts.count == 3 {
-            let day = parts[0]
-            let month = parts[1]
-            let year = parts[2]
-            if year.count == 4 {
-                return "\(year)-\(month)-\(day)"
+        guard !trimmed.isEmpty else { return "" }
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_GB")
+        let acceptedFormats = ["dd/MM/yyyy", "dd-MM-yyyy", "yyyy-MM-dd", "yyyy/MM/dd"]
+        for format in acceptedFormats {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: trimmed) {
+                formatter.dateFormat = "dd-MM-yyyy"
+                return formatter.string(from: date)
             }
         }
         return ""

@@ -192,7 +192,7 @@ private struct TransactionEditor: View {
     @EnvironmentObject private var viewModel: BudgetViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @State private var date: String = ""
+    @State private var selectedDate = Date()
     @State private var desc: String = ""
     @State private var amount: String = ""
     @State private var category: String = ""
@@ -203,9 +203,12 @@ private struct TransactionEditor: View {
         NavigationStack {
             Form {
                 Section(header: Text("Transaction")) {
-                    TextField("Date (yyyy-MM-dd)", text: $date)
-                        .textInputAutocapitalization(.never)
-                        .disableAutocorrection(true)
+                    DatePicker(
+                        "Date",
+                        selection: $selectedDate,
+                        displayedComponents: [.date]
+                    )
+                    .datePickerStyle(.compact)
                     TextField("Description", text: $desc)
                     TextField("Amount", text: $amount)
                         .signedDecimalKeyboard(text: $amount)
@@ -243,21 +246,20 @@ private struct TransactionEditor: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         guard let value = Double(amount) else { return }
-                        onSave(date, desc, value, category.isEmpty ? nil : category, transaction?.id)
+                        let formattedDate = formattedDate(from: selectedDate)
+                        onSave(formattedDate, desc, value, category.isEmpty ? nil : category, transaction?.id)
                         dismiss()
                     }
                 }
             }
             .onAppear {
                 if let tx = transaction {
-                    date = tx.date
+                    selectedDate = parseDate(tx.date) ?? Date()
                     desc = tx.desc
                     amount = String(tx.amount)
                     category = tx.category
-                } else if date.isEmpty {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "yyyy-MM-dd"
-                    date = formatter.string(from: Date())
+                } else {
+                    selectedDate = Date()
                     predictedCategory = ""
                 }
                 refreshPrediction()
@@ -269,6 +271,22 @@ private struct TransactionEditor: View {
                 predictionTask = nil
             }
         }
+    }
+
+    private func formattedDate(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd-MM-yyyy"
+        return formatter.string(from: date)
+    }
+
+    private func parseDate(_ value: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd-MM-yyyy"
+        if let date = formatter.date(from: value) {
+            return date
+        }
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: value)
     }
 
     private func refreshPrediction() {
