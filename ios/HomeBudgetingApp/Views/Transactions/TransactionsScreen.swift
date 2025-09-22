@@ -44,16 +44,11 @@ struct TransactionsScreen: View {
                     }
                 }
             }
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(
-                text: searchBinding,
-                placement: .toolbar,
-                prompt: "Search description"
-            )
+            .navigationTitle("Transactions")
+            .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    if isScrolled {
+                if isScrolled {
+                    ToolbarItem(placement: .principal) {
                         VStack(alignment: .center, spacing: 1) {
                             Text("Transactions")
                                 .font(.headline)
@@ -64,10 +59,6 @@ struct TransactionsScreen: View {
                         }
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
-                    } else {
-                        Text("Transactions")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
                     }
                 }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -79,6 +70,11 @@ struct TransactionsScreen: View {
                     addButton
                 }
             }
+            .searchable(
+                text: searchBinding,
+                placement: .toolbar,
+                prompt: "Search description"
+            )
             .sheet(isPresented: $showEditor) {
                 TransactionEditor(
                     categories: transactionsState.availableCategories,
