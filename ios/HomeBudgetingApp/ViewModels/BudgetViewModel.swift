@@ -206,11 +206,10 @@ public final class BudgetViewModel: ObservableObject {
             return
         }
         let nextKey = months[idx + 1]
-        if let date = validateMonthKey(nextKey), date > currentMonthKey() {
-            Task {
-                let state = await repository.deleteMonth(nextKey)
-                await MainActor.run { self.applyState(state) }
-            }
+        guard let nextCalendarMonth = nextMonthKey(after: currentMonthKey()), nextKey == nextCalendarMonth else { return }
+        Task {
+            let state = await repository.deleteMonth(nextKey)
+            await MainActor.run { self.applyState(state) }
         }
     }
 
@@ -601,19 +600,39 @@ public final class BudgetViewModel: ObservableObject {
         }
     }
 
+    private static var monthCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        if let gmt = TimeZone(secondsFromGMT: 0) {
+            calendar.timeZone = gmt
+        }
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        return calendar
+    }()
+
+    private static let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = monthCalendar
+        formatter.dateFormat = "yyyy-MM"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
+
+    private func nextMonthKey(after month: String) -> String? {
+        guard let date = Self.monthFormatter.date(from: month) else { return nil }
+        guard let next = Self.monthCalendar.date(byAdding: DateComponents(month: 1), to: date) else { return nil }
+        return Self.monthFormatter.string(from: next)
+    }
+
     private func validateMonthKey(_ raw: String) -> String? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count == 7 else { return nil }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        guard formatter.date(from: trimmed) != nil else { return nil }
+        guard Self.monthFormatter.date(from: trimmed) != nil else { return nil }
         return trimmed
     }
 
     private func currentMonthKey() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        return formatter.string(from: Date())
+        Self.monthFormatter.string(from: Date())
     }
 
     private func normalizeMonthKey(_ raw: String?) -> String? {

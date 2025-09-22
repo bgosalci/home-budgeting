@@ -30,6 +30,17 @@ struct BudgetScreen: View {
 
     private var totals: MonthTotals { viewModel.uiState.totals }
 
+    private var deletableFutureMonthKey: String? {
+        guard let selected = viewModel.uiState.selectedMonthKey else { return nil }
+        let months = viewModel.uiState.monthKeys
+        guard let index = months.firstIndex(of: selected), index + 1 < months.count else { return nil }
+        let candidate = months[index + 1]
+        guard let nextCalendarMonth = nextMonthKey(after: Self.defaultMonthKey()), candidate == nextCalendarMonth else {
+            return nil
+        }
+        return candidate
+    }
+
     private enum Field: Hashable {
         case incomeName
         case incomeAmount
@@ -96,17 +107,7 @@ struct BudgetScreen: View {
     }
 
     private var monthSection: some View {
-        Section(header: Text("Month")) {
-            Picker("Selected Month", selection: Binding(
-                get: { viewModel.uiState.selectedMonthKey ?? "" },
-                set: { viewModel.selectMonth($0) }
-            )) {
-                ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
-                    Text(key).tag(key)
-                }
-            }
-            .pickerStyle(.menu)
-
+        Section {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Create Month").font(.subheadline).foregroundStyle(.secondary)
                 MonthPickerField(month: $newMonthKey)
@@ -117,26 +118,36 @@ struct BudgetScreen: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
-            if let selected = viewModel.uiState.selectedMonthKey {
-                Button(role: .destructive) {
-                    let months = viewModel.uiState.monthKeys
-                    if let selected = viewModel.uiState.selectedMonthKey,
-                       let index = months.firstIndex(of: selected),
-                       index + 1 < months.count {
-                        let nextKey = months[index + 1]
-                        activeDialog = AppDialog.confirm(
-                            title: "Delete \(nextKey)?",
-                            message: "Are you sure you want to delete the future month \(nextKey)? This action cannot be undone.",
-                            confirmTitle: "Delete",
-                            destructive: true,
-                            onConfirm: { viewModel.deleteNextMonth() }
-                        )
-                    }
-                } label: {
-                    Label("Delete next future month", systemImage: "trash")
-                }
-                .disabled(viewModel.uiState.monthKeys.last == selected)
+            Button(role: .destructive) {
+                guard let nextKey = deletableFutureMonthKey else { return }
+                activeDialog = AppDialog.confirm(
+                    title: "Delete \(nextKey)?",
+                    message: "Are you sure you want to delete the future month \(nextKey)? This action cannot be undone.",
+                    confirmTitle: "Delete",
+                    destructive: true,
+                    onConfirm: { viewModel.deleteNextMonth() }
+                )
+            } label: {
+                Label("Delete next future month", systemImage: "trash")
             }
+            .disabled(deletableFutureMonthKey == nil)
+        } header: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Selected Month")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Picker("Selected Month", selection: Binding(
+                    get: { viewModel.uiState.selectedMonthKey ?? "" },
+                    set: { viewModel.selectMonth($0) }
+                )) {
+                    ForEach(viewModel.uiState.monthKeys, id: \.self) { key in
+                        Text(key).tag(key)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+            }
+            .textCase(nil)
         }
     }
 
