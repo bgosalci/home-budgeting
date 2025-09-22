@@ -5,34 +5,33 @@ struct TransactionsScreen: View {
     @State private var showEditor = false
     @State private var editingTransaction: BudgetTransaction?
     @State private var activeDialog: AppDialog?
+    @State private var isSearchPresented = false
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
     var body: some View {
         NavigationStack {
             List {
-                filterSection
                 transactionSections
             }
             .listStyle(.insetGrouped)
+            .searchable(
+                text: searchBinding,
+                isPresented: $isSearchPresented,
+                placement: .toolbar,
+                prompt: "Search description"
+            )
             .navigationTitle("Transactions")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if !transactionsState.groups.isEmpty {
-                        Button("Clear") {
-                            let monthName = viewModel.uiState.selectedMonthKey ?? "this month"
-                            activeDialog = AppDialog.confirm(
-                                title: "Clear Transactions",
-                                message: "Are you sure you want to delete all transactions for \(monthName)?",
-                                confirmTitle: "Clear",
-                                destructive: true,
-                                onConfirm: { viewModel.deleteAllTransactions() }
-                            )
-                        }
-                            .tint(.red)
-                    }
+                ToolbarItem(placement: .principal) {
+                    titleContent
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    categoryFilter
+                    Button(action: { isSearchPresented = true }) {
+                        Image(systemName: "magnifyingglass")
+                    }
                     Button(action: { editingTransaction = nil; showEditor = true }) {
                         Image(systemName: "plus")
                     }
@@ -51,30 +50,45 @@ struct TransactionsScreen: View {
         }
     }
 
-    private var filterSection: some View {
-        Section(header: Text("Filters")) {
-            TextField("Search description", text: Binding(
-                get: { transactionsState.search },
-                set: { viewModel.updateTransactionSearch($0) }
-            ))
-            Picker("Category", selection: Binding(
-                get: { transactionsState.category ?? "" },
-                set: { viewModel.updateTransactionFilter($0.isEmpty ? nil : $0) }
-            )) {
-                Text("All").tag("")
-                ForEach(transactionsState.availableCategories, id: \.self) { category in
-                    Text(category).tag(category)
-                }
-            }
-            .pickerStyle(.menu)
-            HStack {
-                Text("Total")
-                Spacer()
-                Text(currency(transactionsState.total)).bold()
-            }
+    private var searchBinding: Binding<String> {
+        Binding(
+            get: { transactionsState.search },
+            set: { viewModel.updateTransactionSearch($0) }
+        )
+    }
+
+    private var categoryBinding: Binding<String> {
+        Binding(
+            get: { transactionsState.category ?? "" },
+            set: { viewModel.updateTransactionFilter($0.isEmpty ? nil : $0) }
+        )
+    }
+
+    private var titleContent: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Transactions")
+                .font(.headline)
+            Text("Total \(currency(transactionsState.total))")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
         }
     }
 
+    private var categoryFilter: some View {
+        Picker(
+            selection: categoryBinding,
+            label: Label("Filter category", systemImage: "line.3.horizontal.decrease.circle")
+                .labelStyle(.iconOnly)
+        ) {
+            Text("All").tag("")
+            ForEach(transactionsState.availableCategories, id: \.self) { category in
+                Text(category).tag(category)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+
+    @ViewBuilder
     private var transactionSections: some View {
         ForEach(transactionsState.groups) { group in
             Section(header: sectionHeader(for: group)) {
@@ -124,6 +138,26 @@ struct TransactionsScreen: View {
                     Spacer()
                     Text(currency(group.runningTotal))
                 }.font(.caption)
+            }
+        }
+        if !transactionsState.groups.isEmpty {
+            clearTransactionsSection
+        }
+    }
+
+    private var clearTransactionsSection: some View {
+        Section {
+            Button(role: .destructive) {
+                let monthName = viewModel.uiState.selectedMonthKey ?? "this month"
+                activeDialog = AppDialog.confirm(
+                    title: "Clear Transactions",
+                    message: "Are you sure you want to delete all transactions for \(monthName)?",
+                    confirmTitle: "Clear",
+                    destructive: true,
+                    onConfirm: { viewModel.deleteAllTransactions() }
+                )
+            } label: {
+                Text("Clear Transactions")
             }
         }
     }
