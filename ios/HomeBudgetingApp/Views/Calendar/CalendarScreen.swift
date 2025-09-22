@@ -81,7 +81,7 @@ struct CalendarScreen: View {
         .sheet(item: $activeDay) { day in
             CalendarDayDetailView(day: day, monthTitle: viewModel.uiState.calendar.title)
         }
-        .onChange(of: selectedMonthKey) { _ in
+        .onChange(of: selectedMonthKey) {
             activeDay = nil
         }
     }
