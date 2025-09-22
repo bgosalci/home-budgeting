@@ -181,6 +181,22 @@ struct CalendarDay: Identifiable {
     let dayOfMonth: Int?
     let total: Double?
     let isToday: Bool
+    let date: Date?
+    let transactions: [BudgetTransaction]
+
+    init(
+        dayOfMonth: Int?,
+        total: Double?,
+        isToday: Bool,
+        date: Date? = nil,
+        transactions: [BudgetTransaction] = []
+    ) {
+        self.dayOfMonth = dayOfMonth
+        self.total = total
+        self.isToday = isToday
+        self.date = date
+        self.transactions = transactions
+    }
 }
 
 struct CalendarMonth {
@@ -200,11 +216,13 @@ func buildCalendar(monthKey: String?, month: BudgetMonth?, today: Date = Date())
         return CalendarMonth(title: monthKey, weeks: [])
     }
     var totalsByDay: [Int: Double] = [:]
+    var transactionsByDay: [Int: [BudgetTransaction]] = [:]
     month?.transactions.forEach { tx in
         guard let date = parseDate(tx.date) else { return }
         let day = calendar.component(.day, from: date)
         let amount = abs(tx.amount)
         totalsByDay[day, default: 0] += amount
+        transactionsByDay[day, default: []].append(tx)
     }
     let daysInMonth = calendar.range(of: .day, in: .month, for: firstDay)?.count ?? 30
     let startOffset = (calendar.component(.weekday, from: firstDay) + 5) % 7
@@ -220,7 +238,16 @@ func buildCalendar(monthKey: String?, month: BudgetMonth?, today: Date = Date())
                 week.append(CalendarDay(dayOfMonth: nil, total: nil, isToday: false))
             } else if day <= daysInMonth {
                 let todayMatch = isCurrentMonth && todayComponents.day == day
-                week.append(CalendarDay(dayOfMonth: day, total: totalsByDay[day], isToday: todayMatch))
+                let dayDate = calendar.date(from: DateComponents(year: year, month: monthValue, day: day))
+                week.append(
+                    CalendarDay(
+                        dayOfMonth: day,
+                        total: totalsByDay[day],
+                        isToday: todayMatch,
+                        date: dayDate,
+                        transactions: transactionsByDay[day] ?? []
+                    )
+                )
                 day += 1
             } else {
                 week.append(CalendarDay(dayOfMonth: nil, total: nil, isToday: false))
