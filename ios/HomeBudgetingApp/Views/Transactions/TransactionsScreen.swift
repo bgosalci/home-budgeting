@@ -5,38 +5,78 @@ struct TransactionsScreen: View {
     @State private var showEditor = false
     @State private var editingTransaction: BudgetTransaction?
     @State private var activeDialog: AppDialog?
+    @State private var isScrolled = false
     @State private var isSearchPresented = false
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
     var body: some View {
         NavigationStack {
-            List {
-                transactionSections
+            ScrollViewReader { proxy in
+                List {
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
+                    }
+                    .frame(height: 0)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+                    
+                    Section {
+                        HStack {
+                            Text("Total")
+                                .font(.headline)
+                            Spacer()
+                            Text(currency(transactionsState.total))
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    
+                    transactionSections
+                }
+                .listStyle(.insetGrouped)
+                .coordinateSpace(name: "scroll")
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isScrolled = value < -50
+                    }
+                }
             }
-            .listStyle(.insetGrouped)
-            .searchable(
-                text: searchBinding,
-                isPresented: $isSearchPresented,
-                placement: .toolbar,
-                prompt: "Search description"
-            )
             .navigationTitle("Transactions")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    titleContent
+                if isScrolled {
+                    ToolbarItem(placement: .principal) {
+                        VStack(alignment: .center, spacing: 1) {
+                            Text("Transactions")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            Text(currency(transactionsState.total))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
+                    }
                 }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     categoryFilter
                     Button(action: { isSearchPresented = true }) {
                         Image(systemName: "magnifyingglass")
                     }
-                    Button(action: { editingTransaction = nil; showEditor = true }) {
-                        Image(systemName: "plus")
-                    }
+                    .controlSize(.small)
+                    addButton
                 }
             }
+            .searchable(
+                text: searchBinding,
+                isPresented: $isSearchPresented,
+                placement: .toolbar,
+                prompt: "Search description"
+            )
             .sheet(isPresented: $showEditor) {
                 TransactionEditor(
                     categories: transactionsState.availableCategories,
@@ -64,20 +104,11 @@ struct TransactionsScreen: View {
         )
     }
 
-    private var titleContent: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Transactions")
-                .font(.headline)
-            Text("Total \(currency(transactionsState.total))")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-    }
 
     private var categoryFilter: some View {
         Picker(
             selection: categoryBinding,
-            label: Label("Filter category", systemImage: "line.3.horizontal.decrease.circle")
+            label: Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                 .labelStyle(.iconOnly)
         ) {
             Text("All").tag("")
@@ -86,6 +117,15 @@ struct TransactionsScreen: View {
             }
         }
         .pickerStyle(.menu)
+        .controlSize(.small)
+        .frame(maxWidth: 80)
+    }
+    
+    private var addButton: some View {
+        Button(action: { editingTransaction = nil; showEditor = true }) {
+            Image(systemName: "plus")
+        }
+        .controlSize(.small)
     }
 
     @ViewBuilder
@@ -140,6 +180,7 @@ struct TransactionsScreen: View {
                 }.font(.caption)
             }
         }
+        
         if !transactionsState.groups.isEmpty {
             clearTransactionsSection
         }
@@ -183,6 +224,14 @@ struct TransactionsScreen: View {
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
     }
 }
+
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 
 private struct TransactionEditor: View {
     var categories: [String]
