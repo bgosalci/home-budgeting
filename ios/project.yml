@@ -43,5 +43,6 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+        NSFaceIDUsageDescription: Use Face ID to unlock your budget securely.
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
