@@ -12,7 +12,7 @@ actor BudgetRepository {
 
     func currentState() -> BudgetState {
         ensureLoadedState()
-        state
+        return state
     }
 
     @discardableResult
