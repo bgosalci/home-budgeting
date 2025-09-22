@@ -244,6 +244,7 @@ private struct BudgetSpreadView: View {
 
     private var donutChart: some View {
         let slices = donutSlices(for: selectedSeries)
+        let totalAmount = slices.reduce(0) { $0 + $1.value }
         return VStack(alignment: .leading, spacing: 12) {
             Picker("Series", selection: $selectedSeries) {
                 ForEach(BudgetSpreadSeries.allCases) { series in
@@ -269,7 +270,7 @@ private struct BudgetSpreadView: View {
                     Text(selectedSeries.title)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text(currency(total(for: selectedSeries)))
+                    Text(currency(totalAmount))
                         .font(.headline)
                 }
             }
@@ -286,22 +287,23 @@ private struct BudgetSpreadView: View {
     }
 
     private func donutSlices(for series: BudgetSpreadSeries) -> [BudgetDonutSlice] {
-        rows.enumerated().map { index, row in
-            BudgetDonutSlice(
-                label: row.label,
-                value: row.value(for: series),
-                percentage: row.percentage(for: series),
-                color: sliceColors[index % sliceColors.count]
-            )
-        }
-    }
+        let sanitizedValues: [(index: Int, row: BudgetSpreadRow, value: Double)] =
+            rows.enumerated().map { index, row in
+                let rawValue = row.value(for: series)
+                let safeValue = rawValue.isFinite ? max(rawValue, 0) : 0
+                return (index: index, row: row, value: safeValue)
+            }
 
-    private func total(for series: BudgetSpreadSeries) -> Double {
-        switch series {
-        case .planned:
-            return data.plannedTotal
-        case .actual:
-            return data.actualTotal
+        let total = sanitizedValues.reduce(0) { $0 + $1.value }
+
+        return sanitizedValues.map { entry in
+            let percentage = total > 0 ? (entry.value / total) * 100 : 0
+            return BudgetDonutSlice(
+                label: entry.row.label,
+                value: entry.value,
+                percentage: percentage,
+                color: sliceColors[entry.index % sliceColors.count]
+            )
         }
     }
 
