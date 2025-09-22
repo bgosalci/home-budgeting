@@ -16,17 +16,39 @@ enum AnalysisMode: String, CaseIterable, Identifiable {
 }
 
 enum ChartStyle: String, CaseIterable, Identifiable {
+    case comparisonBars
+    case donut
     case bar
-    case pie
     case line
 
     var id: String { rawValue }
-    var title: String { rawValue.capitalized }
+
+    var title: String {
+        switch self {
+        case .comparisonBars: return "Comparison Bars"
+        case .donut: return "Donut"
+        case .bar: return "Bar"
+        case .line: return "Line"
+        }
+    }
+
+    static func availableStyles(for mode: AnalysisMode) -> [ChartStyle] {
+        switch mode {
+        case .budgetSpread:
+            return [.comparisonBars, .donut]
+        case .moneyIn, .monthlySpend:
+            return [.line, .bar]
+        }
+    }
+
+    static func defaultStyle(for mode: AnalysisMode) -> ChartStyle {
+        availableStyles(for: mode).first ?? .comparisonBars
+    }
 }
 
 struct AnalysisOptions {
     var mode: AnalysisMode = .budgetSpread
-    var chartStyle: ChartStyle = .bar
+    var chartStyle: ChartStyle = ChartStyle.defaultStyle(for: .budgetSpread)
     var selectedMonth: String?
     var selectedYear: String?
     var selectedGroup: String?

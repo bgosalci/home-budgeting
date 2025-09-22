@@ -1,9 +1,13 @@
 import SwiftUI
+import Charts
 
 struct AnalysisScreen: View {
     @EnvironmentObject private var viewModel: BudgetViewModel
 
     private var analysis: AnalysisUiState { viewModel.uiState.analysis }
+    private var chartStylesForCurrentMode: [ChartStyle] {
+        ChartStyle.availableStyles(for: analysis.options.mode)
+    }
 
     var body: some View {
         NavigationStack {
@@ -36,11 +40,12 @@ struct AnalysisScreen: View {
                 get: { analysis.options.chartStyle },
                 set: { viewModel.updateAnalysisChartStyle($0) }
             )) {
-                ForEach(ChartStyle.allCases) { style in
+                ForEach(chartStylesForCurrentMode) { style in
                     Text(style.title).tag(style)
                 }
             }
             .pickerStyle(.segmented)
+            .disabled(chartStylesForCurrentMode.count <= 1)
 
             if analysis.options.mode == .budgetSpread {
                 Picker("Month", selection: Binding(
@@ -134,55 +139,169 @@ private struct BudgetSpreadView: View {
     let data: BudgetSpreadData
     let style: ChartStyle
 
+    @State private var selectedSeries: BudgetSpreadSeries = .planned
+    @State private var highlightedCategory: String?
+
+    private let sliceColors: [Color] = [.blue, .green, .orange, .purple, .pink, .yellow, .cyan]
+
     private var rows: [BudgetSpreadRow] {
         zip(data.labels.indices, data.labels).map { index, label in
-            BudgetSpreadRow(label: label, planned: data.planned[index], actual: data.actual[index], plannedPercent: data.plannedPercent[index], actualPercent: data.actualPercent[index])
+            BudgetSpreadRow(
+                label: label,
+                planned: data.planned[index],
+                actual: data.actual[index],
+                plannedPercent: data.plannedPercent[index],
+                actualPercent: data.actualPercent[index]
+            )
         }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Budget vs Actual").font(.title3).bold()
-            switch style {
-            case .bar:
-                barChart
-            case .pie:
-                pieCharts
-            case .line:
-                barChart
+            Group {
+                switch style {
+                case .comparisonBars, .bar, .line:
+                    comparisonBarChart
+                case .donut:
+                    donutChart
+                }
             }
-            totals
+            summary
         }
         .padding()
         .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+        .onChange(of: style) { newStyle in
+            highlightedCategory = nil
+            if newStyle != .donut {
+                selectedSeries = .planned
+            }
+        }
     }
 
-    private var barChart: some View {
+    private var summary: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(rows) { row in
-                VStack(alignment: .leading) {
-                    Text(row.label).font(.headline)
-                    HStack(alignment: .bottom, spacing: 8) {
-                        BarView(value: row.planned, maxValue: data.planned.max() ?? 1, label: "Planned", color: .blue)
-                        BarView(value: row.actual, maxValue: data.actual.max() ?? 1, label: "Actual", color: .green)
+            Text("Totals").font(.headline)
+            LazyVGrid(columns: summaryColumns, alignment: .leading, spacing: 8) {
+                BudgetSummaryCard(series: .planned, amountText: currency(data.plannedTotal))
+                BudgetSummaryCard(series: .actual, amountText: currency(data.actualTotal))
+            }
+        }
+    }
+
+    private var summaryColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 150), spacing: 8)]
+    }
+
+    private var comparisonBarChart: some View {
+        let barRows = rows
+        let maxValue = max(data.planned.max() ?? 0, data.actual.max() ?? 0)
+        return Chart {
+            ForEach(barRows) { row in
+                ForEach(BudgetSpreadSeries.allCases) { series in
+                    let amount = row.value(for: series)
+                    BarMark(
+                        x: .value("Amount", amount),
+                        y: .value("Category", row.label)
+                    )
+                    .position(by: .value("Series", series.title))
+                    .foregroundStyle(by: .value("Series", series.title))
+                    .cornerRadius(6)
+                    .annotation(position: .trailing, alignment: .leading) {
+                        if amount > 0 {
+                            Text(currency(amount))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 4)
+                        }
                     }
                 }
             }
         }
+        .chartLegend(.hidden)
+        .chartForegroundStyleScale([
+            BudgetSpreadSeries.planned.title: BudgetSpreadSeries.planned.color,
+            BudgetSpreadSeries.actual.title: BudgetSpreadSeries.actual.color
+        ])
+        .chartXAxis {
+            AxisMarks(position: .bottom) { value in
+                AxisGridLine()
+                AxisTick()
+                if let amount = value.as(Double.self) {
+                    AxisValueLabel {
+                        Text(currency(amount))
+                            .font(.caption)
+                    }
+                }
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading)
+        }
+        .chartXScale(domain: 0...(maxValue == 0 ? 1 : maxValue * 1.1))
+        .frame(minHeight: CGFloat(barRows.count) * 44 + 32)
     }
 
-    private var pieCharts: some View {
-        HStack(alignment: .top, spacing: 32) {
-            PieChart(title: "Planned", values: data.planned, labels: data.labels)
-            PieChart(title: "Actual", values: data.actual, labels: data.labels)
+    private var donutChart: some View {
+        let slices = donutSlices(for: selectedSeries)
+        return VStack(alignment: .leading, spacing: 12) {
+            Picker("Series", selection: $selectedSeries) {
+                ForEach(BudgetSpreadSeries.allCases) { series in
+                    Text(series.title).tag(series)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            ZStack {
+                Chart(slices) { slice in
+                    SectorMark(
+                        angle: .value("Amount", slice.value),
+                        innerRadius: .ratio(highlightedCategory == slice.label ? 0.45 : 0.55),
+                        angularInset: 1.5
+                    )
+                    .foregroundStyle(slice.color)
+                    .opacity(highlightedCategory == nil || highlightedCategory == slice.label ? 1 : 0.35)
+                }
+                .chartLegend(.hidden)
+                .frame(height: 240)
+
+                VStack(spacing: 4) {
+                    Text(selectedSeries.title)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(currency(total(for: selectedSeries)))
+                        .font(.headline)
+                }
+            }
+
+            BudgetCategoryLegend(
+                slices: slices,
+                highlightedCategory: $highlightedCategory,
+                currencyFormatter: currency
+            )
+        }
+        .onChange(of: selectedSeries) { _ in
+            highlightedCategory = nil
         }
     }
 
-    private var totals: some View {
-        VStack(alignment: .leading) {
-            Text("Totals").font(.headline)
-            Text("Planned: \(currency(data.plannedTotal))")
-            Text("Actual: \(currency(data.actualTotal))")
+    private func donutSlices(for series: BudgetSpreadSeries) -> [BudgetDonutSlice] {
+        rows.enumerated().map { index, row in
+            BudgetDonutSlice(
+                label: row.label,
+                value: row.value(for: series),
+                percentage: row.percentage(for: series),
+                color: sliceColors[index % sliceColors.count]
+            )
+        }
+    }
+
+    private func total(for series: BudgetSpreadSeries) -> Double {
+        switch series {
+        case .planned:
+            return data.plannedTotal
+        case .actual:
+            return data.actualTotal
         }
     }
 
@@ -202,11 +321,11 @@ private struct SeriesChartView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(data.label).font(.title3).bold()
             switch style {
-            case .bar:
+            case .bar, .comparisonBars:
                 barChart
             case .line:
                 lineChart
-            case .pie:
+            case .donut:
                 barChart
             }
             Text("Total: \(currency(data.total))")
@@ -264,86 +383,111 @@ private struct SeriesChartView: View {
     }
 }
 
-private struct BarView: View {
-    let value: Double
-    let maxValue: Double
-    let label: String
-    let color: Color
+private struct BudgetSummaryCard: View {
+    let series: BudgetSpreadSeries
+    let amountText: String
 
     var body: some View {
-        VStack {
-            GeometryReader { geometry in
-                let ratio = maxValue == 0 ? 0 : value / maxValue
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(color.opacity(0.8))
-                    .frame(height: CGFloat(ratio) * geometry.size.height)
+        HStack(alignment: .center, spacing: 8) {
+            Circle()
+                .fill(series.color)
+                .frame(width: 10, height: 10)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(series.title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(amountText)
+                    .font(.subheadline)
+                    .bold()
             }
-            .frame(height: 120)
-            Text("\(label) \(value, specifier: "%.2f")").font(.caption2)
         }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.primary.opacity(0.08))
+        )
     }
 }
 
-private struct PieChart: View {
-    let title: String
-    let values: [Double]
-    let labels: [String]
+private struct BudgetCategoryLegend: View {
+    let slices: [BudgetDonutSlice]
+    @Binding var highlightedCategory: String?
+    let currencyFormatter: (Double) -> String
 
-    private var total: Double { values.reduce(0, +) }
+    private var columns: [GridItem] {
+        [GridItem(.adaptive(minimum: 150), spacing: 8)]
+    }
 
     var body: some View {
-        VStack {
-            Text(title).font(.headline)
-            GeometryReader { geometry in
-                let radius = min(geometry.size.width, geometry.size.height) / 2
-                ZStack {
-                    ForEach(Array(values.enumerated()), id: \.offset) { index, value in
-                        PieSlice(startAngle: angle(at: index), endAngle: angle(at: index + 1))
-                            .fill(color(for: index))
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Categories").font(.headline)
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+                ForEach(slices) { slice in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            highlightedCategory = highlightedCategory == slice.label ? nil : slice.label
+                        }
+                    } label: {
+                        HStack(alignment: .top, spacing: 8) {
+                            Circle()
+                                .fill(slice.color)
+                                .frame(width: 10, height: 10)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(slice.label)
+                                    .font(.caption)
+                                    .fontWeight(highlightedCategory == slice.label ? .semibold : .regular)
+                                    .multilineTextAlignment(.leading)
+                                Text("\(slice.percentage, specifier: "%.0f")% • \(currencyFormatter(slice.value))")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(highlightedCategory == slice.label ? slice.color.opacity(0.12) : Color(.secondarySystemBackground))
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
                     }
+                    .buttonStyle(.plain)
                 }
-                .frame(width: radius * 2, height: radius * 2)
-            }
-            .frame(height: 200)
-            ForEach(Array(values.enumerated()), id: \.offset) { index, value in
-                HStack {
-                    Circle().fill(color(for: index)).frame(width: 10, height: 10)
-                    Text("\(labels[index]): \(percentage(of: value))")
-                }
-                .font(.caption)
             }
         }
     }
-
-    private func angle(at index: Int) -> Angle {
-        guard total > 0 else { return .zero }
-        let cumulative = values.prefix(index).reduce(0, +)
-        return Angle(degrees: (cumulative / total) * 360)
-    }
-
-    private func percentage(of value: Double) -> String {
-        guard total > 0 else { return "0%" }
-        return String(format: "%.0f%%", (value / total) * 100)
-    }
-
-    private func color(for index: Int) -> Color {
-        let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .yellow, .cyan]
-        return colors[index % colors.count]
-    }
 }
 
-private struct PieSlice: Shape {
-    let startAngle: Angle
-    let endAngle: Angle
+private struct BudgetDonutSlice: Identifiable {
+    let id = UUID()
+    let label: String
+    let value: Double
+    let percentage: Double
+    let color: Color
+}
 
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let radius = min(rect.width, rect.height) / 2
-        path.move(to: center)
-        path.addArc(center: center, radius: radius, startAngle: startAngle - .degrees(90), endAngle: endAngle - .degrees(90), clockwise: false)
-        path.closeSubpath()
-        return path
+private enum BudgetSpreadSeries: String, CaseIterable, Identifiable {
+    case planned
+    case actual
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .planned: return "Planned"
+        case .actual: return "Actual"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .planned: return .blue
+        case .actual: return .green
+        }
     }
 }
 
@@ -356,9 +500,72 @@ private struct BudgetSpreadRow: Identifiable {
     let actualPercent: Double
 }
 
+private extension BudgetSpreadRow {
+    func value(for series: BudgetSpreadSeries) -> Double {
+        switch series {
+        case .planned:
+            return planned
+        case .actual:
+            return actual
+        }
+    }
+
+    func percentage(for series: BudgetSpreadSeries) -> Double {
+        switch series {
+        case .planned:
+            return plannedPercent
+        case .actual:
+            return actualPercent
+        }
+    }
+}
+
+#if DEBUG
+private struct BudgetSpreadView_Previews: PreviewProvider {
+    static var sampleData: BudgetSpreadData {
+        let labels = ["Housing", "Food", "Utilities", "Leisure", "Savings"]
+        let planned = [1200.0, 450.0, 160.0, 220.0, 300.0]
+        let actual = [1250.0, 410.0, 150.0, 260.0, 280.0]
+        let plannedTotal = planned.reduce(0, +)
+        let actualTotal = actual.reduce(0, +)
+        let plannedPercent = planned.map { plannedTotal == 0 ? 0 : ($0 / plannedTotal) * 100 }
+        let actualPercent = actual.map { actualTotal == 0 ? 0 : ($0 / actualTotal) * 100 }
+        return BudgetSpreadData(
+            labels: labels,
+            planned: planned,
+            actual: actual,
+            plannedPercent: plannedPercent,
+            actualPercent: actualPercent,
+            plannedTotal: plannedTotal,
+            actualTotal: actualTotal
+        )
+    }
+
+    static var previews: some View {
+        Group {
+            BudgetSpreadView(data: sampleData, style: .comparisonBars)
+                .previewDisplayName("Comparison Bars")
+            BudgetSpreadView(data: sampleData, style: .donut)
+                .previewDisplayName("Donut")
+        }
+        .padding()
+        .background(Color(.systemGroupedBackground))
+        .previewDevice("iPhone 13 mini")
+    }
+}
+#endif
+
 struct AnalysisScreen_Previews: PreviewProvider {
     static var previews: some View {
-        AnalysisScreen()
-            .environmentObject(BudgetViewModel())
+        Group {
+            AnalysisScreen()
+                .environmentObject(BudgetViewModel())
+                .previewDevice("iPhone SE (3rd generation)")
+                .previewDisplayName("Analysis • iPhone SE")
+            AnalysisScreen()
+                .environmentObject(BudgetViewModel())
+                .previewDevice("iPhone 14 Pro")
+                .previewDisplayName("Analysis • iPhone 14 Pro")
+        }
     }
 }
