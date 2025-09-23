@@ -2,7 +2,7 @@ import SwiftUI
 import LocalAuthentication
 
 @MainActor
-final class AppSettings: ObservableObject {
+public final class AppSettings: ObservableObject {
     struct BiometricState {
         let available: Bool
         let type: LABiometryType
@@ -66,7 +66,7 @@ final class AppSettings: ObservableObject {
     private let allowBiometricsKey = "app_lock_allow_biometrics"
     private let pinKey = "app_lock_pin"
 
-    init(
+    public init(
         defaults: UserDefaults = .standard,
         contextProvider: @escaping () -> LAContext = { LAContext() }
     ) {
