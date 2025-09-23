@@ -1,5 +1,5 @@
 (() => {
-  // app/js/modules/utils.js
+  // web-app/app/js/modules/utils.js
   var monthKey = (d) => {
     if (typeof d === "string") return d;
     const dt = d || /* @__PURE__ */ new Date();
@@ -8,7 +8,7 @@
   };
   var sum = (arr, fn = (x) => x) => arr.reduce((a, x) => a + fn(x), 0);
 
-  // app/js/modules/balancePredictor.js
+  // web-app/app/js/modules/balancePredictor.js
   var parseMonthKey = (mk) => {
     if (typeof mk !== "string") return null;
     const match = mk.match(/^(\d{4})-(\d{2})$/);
@@ -143,7 +143,37 @@
     };
   };
 
-  // app/js/app.js
+  // web-app/app/js/modules/calendar.js
+  var extractDay = (value) => {
+    if (typeof value !== "string" || value.length < 2) return null;
+    const parts = value.split("-");
+    if (parts.length !== 3) return null;
+    const [first, , third] = parts;
+    if (/^\d{4}$/.test(first)) {
+      const day = Number.parseInt(third, 10);
+      return Number.isFinite(day) ? day : null;
+    }
+    if (/^\d{4}$/.test(third)) {
+      const day = Number.parseInt(first, 10);
+      return Number.isFinite(day) ? day : null;
+    }
+    const fallback = Number.parseInt(third, 10);
+    return Number.isFinite(fallback) ? fallback : null;
+  };
+  var calculateDayTotals = (transactions = []) => {
+    const totals = {};
+    if (!Array.isArray(transactions)) return totals;
+    for (const tx of transactions) {
+      if (!tx) continue;
+      const day = extractDay(tx.date);
+      if (!Number.isFinite(day) || day < 1 || day > 31) continue;
+      const amount = Number(tx.amount);
+      totals[day] = (totals[day] || 0) + (Number.isFinite(amount) ? amount : 0);
+    }
+    return totals;
+  };
+
+  // web-app/app/js/app.js
   var Utils = (() => {
     console.log("Home Budgeting Utils module loaded");
     const fmt = (n) => `\xA3${(n || 0).toFixed(2)}`;
@@ -1682,11 +1712,7 @@
       const month = calendarDate.getMonth();
       const mk = Utils.monthKey(calendarDate);
       const m = Store.getMonth(mk) || { transactions: [] };
-      const totals = {};
-      for (const tx of m.transactions) {
-        const d = Number(tx.date.slice(8, 10));
-        totals[d] = (totals[d] || 0) + Math.abs(tx.amount);
-      }
+      const totals = calculateDayTotals(m.transactions);
       const first = new Date(year, month, 1);
       const start = (first.getDay() + 6) % 7;
       const days = new Date(year, month + 1, 0).getDate();
