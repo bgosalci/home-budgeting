@@ -1,4 +1,5 @@
 import { predictBalance as predictMonthBalance } from './modules/balancePredictor.js';
+import { calculateDayTotals } from './modules/calendar.js';
 
   // ===== Utils
   const Utils = (()=>{
@@ -1438,11 +1439,7 @@ import { predictBalance as predictMonthBalance } from './modules/balancePredicto
       const month = calendarDate.getMonth();
       const mk = Utils.monthKey(calendarDate);
       const m = Store.getMonth(mk) || {transactions:[]};
-      const totals = {};
-      for(const tx of m.transactions){
-        const d = Number(tx.date.slice(8,10));
-        totals[d] = (totals[d]||0) + Math.abs(tx.amount);
-      }
+      const totals = calculateDayTotals(m.transactions);
       const first = new Date(year, month, 1);
       const start = (first.getDay() + 6) % 7;
       const days = new Date(year, month + 1, 0).getDate();
