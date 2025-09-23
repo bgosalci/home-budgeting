@@ -53,7 +53,7 @@ swift build
 
 Open the **Budget** tab to access matching import/export options for transactions (JSON or CSV), categories, the prediction learning data, or a complete backup compatible with the web experience.
 
-The iOS interface now follows your system appearance, automatically switching between light and dark mode.
+Use the new Settings tab to choose between light, dark, or system themes (system remains the default) and to enable an optional app lock secured with a PIN and Face ID/Touch ID when available.
 
 Amount fields now include a ± toggle on the numeric keypad so you can enter refunds or other negative values directly from the keyboard.
 
