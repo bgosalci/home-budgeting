@@ -7,29 +7,51 @@ struct TransactionsScreen: View {
     @State private var editingTransaction: BudgetTransaction?
     @State private var activeDialog: AppDialog?
     @State private var isScrolled = false
+    @State private var isAtBottom = false
     @State private var isSearchPresented = false
+    @State private var scrollViewHeight: CGFloat = 0
+    @State private var scrollBottomPosition: CGFloat = 0
 
     private var transactionsState: TransactionsUiState { viewModel.uiState.transactions }
 
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
-                List {
-                    headerTotalSection
+                GeometryReader { geometry in
+                    List {
+                        topScrollAnchor
+                        headerTotalSection
 
-                    transactionSections
+                        transactionSections
 
-                    if !transactionsState.groups.isEmpty {
-                        footerTotalSection
-                        clearTransactionsSection
+                        if !transactionsState.groups.isEmpty {
+                            footerTotalSection
+                            clearTransactionsSection
+                        }
+
+                        bottomScrollAnchor
                     }
+                    .listStyle(.insetGrouped)
+                    .coordinateSpace(name: "scroll")
+                    .background(
+                        Color.clear.preference(
+                            key: ScrollContainerHeightPreferenceKey.self,
+                            value: geometry.size.height
+                        )
+                    )
                 }
-                .listStyle(.insetGrouped)
-                .coordinateSpace(name: "scroll")
                 .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isScrolled = value < -50
                     }
+                }
+                .onPreferenceChange(ScrollBottomPreferenceKey.self) { value in
+                    scrollBottomPosition = value
+                    refreshBottomState(bottom: value, containerHeight: scrollViewHeight)
+                }
+                .onPreferenceChange(ScrollContainerHeightPreferenceKey.self) { value in
+                    scrollViewHeight = value
+                    refreshBottomState(bottom: scrollBottomPosition, containerHeight: value)
                 }
             }
             .navigationTitle("Transactions")
@@ -50,6 +72,7 @@ struct TransactionsScreen: View {
                     }
                 }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    scrollToggleButton(proxy: proxy)
                     categoryFilter
                     Button(action: { isSearchPresented = true }) {
                         Image(systemName: "magnifyingglass")
@@ -112,6 +135,22 @@ struct TransactionsScreen: View {
         Button(action: { editingTransaction = nil; showEditor = true }) {
             Image(systemName: "plus")
         }
+        .controlSize(.small)
+    }
+
+    private func scrollToggleButton(proxy: ScrollViewProxy) -> some View {
+        Button(action: {
+            withAnimation(.easeInOut) {
+                if isAtBottom {
+                    proxy.scrollTo(ScrollAnchor.top, anchor: .top)
+                } else {
+                    proxy.scrollTo(ScrollAnchor.bottom, anchor: .bottom)
+                }
+            }
+        }) {
+            Image(systemName: isAtBottom ? "arrow.up.to.line" : "arrow.down.to.line")
+        }
+        .accessibilityLabel(isAtBottom ? "Scroll to top" : "Scroll to bottom")
         .controlSize(.small)
     }
 
@@ -219,6 +258,37 @@ struct TransactionsScreen: View {
         }
     }
 
+    private var topScrollAnchor: some View {
+        Color.clear
+            .frame(height: 0)
+            .listRowInsets(EdgeInsets())
+            .id(ScrollAnchor.top)
+    }
+
+    private var bottomScrollAnchor: some View {
+        Color.clear
+            .frame(height: 0)
+            .background(
+                GeometryReader { geometry in
+                    Color.clear.preference(
+                        key: ScrollBottomPreferenceKey.self,
+                        value: geometry.frame(in: .named("scroll")).maxY
+                    )
+                }
+            )
+            .listRowInsets(EdgeInsets())
+            .id(ScrollAnchor.bottom)
+    }
+
+    private func refreshBottomState(bottom: CGFloat, containerHeight: CGFloat) {
+        guard containerHeight > 0 else {
+            isAtBottom = false
+            return
+        }
+        let tolerance: CGFloat = 16
+        isAtBottom = bottom <= containerHeight + tolerance
+    }
+
     private func sectionHeader(for group: TransactionGroup) -> some View {
         HStack {
             Text(group.label)
@@ -243,6 +313,25 @@ struct TransactionsScreen: View {
 
 struct ScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private enum ScrollAnchor: String, Hashable {
+    case top
+    case bottom
+}
+
+struct ScrollBottomPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = .zero
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+struct ScrollContainerHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = .zero
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
     }
