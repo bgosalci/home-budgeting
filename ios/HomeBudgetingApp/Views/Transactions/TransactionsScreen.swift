@@ -17,87 +17,92 @@ struct TransactionsScreen: View {
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
-                GeometryReader { geometry in
-                    List {
-                        topScrollAnchor
-                        headerTotalSection
-
-                        transactionSections
-
-                        if !transactionsState.groups.isEmpty {
-                            footerTotalSection
-                            clearTransactionsSection
-                        }
-
-                        bottomScrollAnchor
-                    }
-                    .listStyle(.insetGrouped)
-                    .coordinateSpace(name: "scroll")
-                    .background(
-                        Color.clear.preference(
-                            key: ScrollContainerHeightPreferenceKey.self,
-                            value: geometry.size.height
-                        )
-                    )
-                }
-                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isScrolled = value < -50
-                    }
-                }
-                .onPreferenceChange(ScrollBottomPreferenceKey.self) { value in
-                    scrollBottomPosition = value
-                    refreshBottomState(bottom: value, containerHeight: scrollViewHeight)
-                }
-                .onPreferenceChange(ScrollContainerHeightPreferenceKey.self) { value in
-                    scrollViewHeight = value
-                    refreshBottomState(bottom: scrollBottomPosition, containerHeight: value)
-                }
+                transactionsContent(proxy: proxy)
             }
-            .navigationTitle("Transactions")
-            .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
-            .toolbar {
-                if isScrolled {
-                    ToolbarItem(placement: .principal) {
-                        VStack(alignment: .center, spacing: 1) {
-                            Text("Transactions")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                            Text(currency(transactionsState.total))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
-                    }
-                }
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    scrollToggleButton(proxy: proxy)
-                    categoryFilter
-                    Button(action: { isSearchPresented = true }) {
-                        Image(systemName: "magnifyingglass")
-                    }
-                    .controlSize(.small)
-                    addButton
-                }
-            }
-            .searchable(
-                text: searchBinding,
-                isPresented: $isSearchPresented,
-                placement: .toolbar,
-                prompt: "Search description"
-            )
-            .sheet(isPresented: $showEditor) {
-                TransactionEditor(
-                    categories: transactionsState.availableCategories,
-                    transaction: editingTransaction,
-                    onSave: { date, desc, amount, category, id in
-                        viewModel.addOrUpdateTransaction(date: date, desc: desc, amount: amount, category: category, editingId: id)
-                    }
-                )
-            }
-            .appDialog($activeDialog)
         }
+    }
+
+    @ViewBuilder
+    private func transactionsContent(proxy: ScrollViewProxy) -> some View {
+        GeometryReader { geometry in
+            List {
+                topScrollAnchor
+                headerTotalSection
+
+                transactionSections
+
+                if !transactionsState.groups.isEmpty {
+                    footerTotalSection
+                    clearTransactionsSection
+                }
+
+                bottomScrollAnchor
+            }
+            .listStyle(.insetGrouped)
+            .coordinateSpace(name: "scroll")
+            .background(
+                Color.clear.preference(
+                    key: ScrollContainerHeightPreferenceKey.self,
+                    value: geometry.size.height
+                )
+            )
+        }
+        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isScrolled = value < -50
+            }
+        }
+        .onPreferenceChange(ScrollBottomPreferenceKey.self) { value in
+            scrollBottomPosition = value
+            refreshBottomState(bottom: value, containerHeight: scrollViewHeight)
+        }
+        .onPreferenceChange(ScrollContainerHeightPreferenceKey.self) { value in
+            scrollViewHeight = value
+            refreshBottomState(bottom: scrollBottomPosition, containerHeight: value)
+        }
+        .navigationTitle("Transactions")
+        .navigationBarTitleDisplayMode(isScrolled ? .inline : .large)
+        .toolbar {
+            if isScrolled {
+                ToolbarItem(placement: .principal) {
+                    VStack(alignment: .center, spacing: 1) {
+                        Text("Transactions")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        Text(currency(transactionsState.total))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Transactions, Total \(currency(transactionsState.total))")
+                }
+            }
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                scrollToggleButton(proxy: proxy)
+                categoryFilter
+                Button(action: { isSearchPresented = true }) {
+                    Image(systemName: "magnifyingglass")
+                }
+                .controlSize(.small)
+                addButton
+            }
+        }
+        .searchable(
+            text: searchBinding,
+            isPresented: $isSearchPresented,
+            placement: .toolbar,
+            prompt: "Search description"
+        )
+        .sheet(isPresented: $showEditor) {
+            TransactionEditor(
+                categories: transactionsState.availableCategories,
+                transaction: editingTransaction,
+                onSave: { date, desc, amount, category, id in
+                    viewModel.addOrUpdateTransaction(date: date, desc: desc, amount: amount, category: category, editingId: id)
+                }
+            )
+        }
+        .appDialog($activeDialog)
     }
 
     private var searchBinding: Binding<String> {
