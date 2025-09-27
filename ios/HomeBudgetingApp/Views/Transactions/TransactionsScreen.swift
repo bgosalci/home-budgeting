@@ -93,19 +93,18 @@ struct TransactionsScreen: View {
 
 
     private var categoryFilter: some View {
-        Picker(
-            selection: categoryBinding,
-            label: Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .labelStyle(.iconOnly)
-        ) {
-            Text("All").tag("")
-            ForEach(transactionsState.availableCategories, id: \.self) { category in
-                Text(category).tag(category)
+        Menu {
+            Picker("Filter", selection: categoryBinding) {
+                Text("All").tag("")
+                ForEach(transactionsState.availableCategories, id: \.self) { category in
+                    Text(category).tag(category)
+                }
             }
+        } label: {
+            Image(systemName: "line.3.horizontal.decrease.circle")
         }
-        .pickerStyle(.menu)
+        .accessibilityLabel("Filter transactions")
         .controlSize(.small)
-        .frame(maxWidth: 80)
     }
     
     private var addButton: some View {
