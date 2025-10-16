@@ -39,9 +39,7 @@ struct CalendarScreen: View {
 
                     Spacer()
 
-                    Text(viewModel.uiState.calendar.title)
-                        .font(.title2)
-                        .bold()
+                    monthPicker
 
                     Spacer()
 
@@ -109,6 +107,39 @@ struct CalendarScreen: View {
 }
 
 private extension CalendarScreen {
+    private var monthPicker: some View {
+        Menu {
+            ForEach(monthKeys, id: \.self) { key in
+                Button {
+                    withAnimation { viewModel.selectMonth(key) }
+                } label: {
+                    if key == selectedMonthKey {
+                        Label(monthMenuTitle(for: key), systemImage: "checkmark")
+                    } else {
+                        Text(monthMenuTitle(for: key))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(viewModel.uiState.calendar.title)
+                    .font(.title2)
+                    .bold()
+                if monthKeys.count > 1 {
+                    Image(systemName: "chevron.down")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .menuIndicator(.hidden)
+        .disabled(monthKeys.isEmpty)
+        .accessibilityLabel("Selected Month")
+        .accessibilityValue(viewModel.uiState.calendar.title)
+        .accessibilityHint(monthKeys.count > 1 ? "Shows a list of available months" : "")
+    }
+
     static let weekdaySymbols: [String] = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: "en_GB")
@@ -120,6 +151,27 @@ private extension CalendarScreen {
         let prefix = Array(symbols[..<startIndex])
         return suffix + prefix
     }()
+
+    private static let monthKeyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.dateFormat = "yyyy-MM"
+        return formatter
+    }()
+
+    private static let monthTitleFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter
+    }()
+
+    private func monthMenuTitle(for key: String) -> String {
+        guard let date = CalendarScreen.monthKeyFormatter.date(from: key) else { return key }
+        return CalendarScreen.monthTitleFormatter.string(from: date)
+    }
 }
 
 private struct CalendarCell: View {
