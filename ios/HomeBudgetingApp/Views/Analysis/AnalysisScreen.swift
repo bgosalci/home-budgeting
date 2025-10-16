@@ -149,10 +149,10 @@ private struct BudgetSpreadView: View {
         zip(data.labels.indices, data.labels).map { index, label in
             BudgetSpreadRow(
                 label: label,
-                planned: data.planned[index],
-                actual: data.actual[index],
-                plannedPercent: data.plannedPercent[index],
-                actualPercent: data.actualPercent[index]
+                planned: sanitizedAmount(data.planned[index]),
+                actual: sanitizedAmount(data.actual[index]),
+                plannedPercent: sanitizedPercentage(data.plannedPercent[index]),
+                actualPercent: sanitizedPercentage(data.actualPercent[index])
             )
         }
     }
@@ -196,7 +196,8 @@ private struct BudgetSpreadView: View {
 
     private var comparisonBarChart: some View {
         let barRows = rows
-        let maxValue = max(data.planned.max() ?? 0, data.actual.max() ?? 0)
+        let maxValue = barRows.flatMap { [$0.planned, $0.actual] }.max() ?? 0
+        let safeUpperBound = max(maxValue, 0)
         return Chart {
             ForEach(barRows) { row in
                 ForEach(BudgetSpreadSeries.allCases) { series in
@@ -239,7 +240,7 @@ private struct BudgetSpreadView: View {
         .chartYAxis {
             AxisMarks(position: .leading)
         }
-        .chartXScale(domain: 0...(maxValue == 0 ? 1 : maxValue * 1.1))
+        .chartXScale(domain: 0...(safeUpperBound == 0 ? 1 : safeUpperBound * 1.1))
         .frame(minHeight: CGFloat(barRows.count) * 44 + 32)
     }
 
@@ -291,7 +292,7 @@ private struct BudgetSpreadView: View {
         let sanitizedValues: [(index: Int, row: BudgetSpreadRow, value: Double)] =
             rows.enumerated().map { index, row in
                 let rawValue = row.value(for: series)
-                let safeValue = rawValue.isFinite ? max(rawValue, 0) : 0
+                let safeValue = sanitizedAmount(rawValue)
                 return (index: index, row: row, value: safeValue)
             }
 
@@ -314,6 +315,16 @@ private struct BudgetSpreadView: View {
         formatter.currencyCode = Locale.current.currency?.identifier ?? "USD"
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
     }
+
+    private func sanitizedAmount(_ value: Double) -> Double {
+        guard value.isFinite else { return 0 }
+        return max(value, 0)
+    }
+
+    private func sanitizedPercentage(_ value: Double) -> Double {
+        guard value.isFinite else { return 0 }
+        return max(value, 0)
+    }
 }
 
 private struct SeriesChartView: View {
@@ -321,15 +332,48 @@ private struct SeriesChartView: View {
     let style: ChartStyle
 
     private var points: [SeriesPoint] {
-        zip(data.labels, data.values).map { SeriesPoint(label: $0.0, value: $0.1) }
+        zip(data.labels, data.values)
+            .map { label, rawValue in
+                let safeValue = rawValue.isFinite ? rawValue : 0
+                return SeriesPoint(label: label, value: safeValue)
+            }
     }
 
     private var chartHeight: CGFloat { 260 }
 
     private var yDomain: ClosedRange<Double> {
-        let maxValue = points.map { $0.value }.max() ?? 0
-        let upper = maxValue == 0 ? 1 : maxValue * 1.12
-        return 0...upper
+        let values = points.map { $0.value }
+        let minValue = values.min() ?? 0
+        let maxValue = values.max() ?? 0
+
+        if minValue == maxValue {
+            if maxValue == 0 {
+                return 0...1
+            }
+            let padding = abs(maxValue) * 0.12
+            let lower = min(0, maxValue - padding)
+            let upper = max(0, maxValue + padding)
+            return lower == upper ? lower...(upper + 1) : lower...upper
+        }
+
+        let span = maxValue - minValue
+        let padding = span * 0.12
+        var lower = minValue - padding
+        var upper = maxValue + padding
+
+        if minValue >= 0 {
+            lower = 0
+        }
+
+        if maxValue <= 0 {
+            upper = 0
+        }
+
+        if lower == upper {
+            upper += 1
+        }
+
+        return lower...upper
     }
 
     private var shouldRotateLabels: Bool { points.count > 5 }
