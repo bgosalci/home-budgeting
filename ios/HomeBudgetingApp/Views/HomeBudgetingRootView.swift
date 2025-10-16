@@ -9,32 +9,30 @@ public struct HomeBudgetingRootView: View {
     public init() {}
 
     public var body: some View {
-        ZStack {
-            TabView {
-                BudgetScreen()
-                    .tabItem { Label("Budget", systemImage: "chart.pie") }
-                TransactionsScreen()
-                    .tabItem { Label("Transactions", systemImage: "list.bullet.rectangle") }
-                AnalysisScreen()
-                    .tabItem { Label("Analysis", systemImage: "chart.bar.xaxis") }
-                CalendarScreen()
-                    .tabItem { Label("Calendar", systemImage: "calendar") }
-                NotesScreen()
-                    .tabItem { Label("Notes", systemImage: "note.text") }
-                PredictionScreen()
-                    .tabItem { Label("Predict", systemImage: "wand.and.rays") }
-                SettingsScreen()
-                    .tabItem { Label("Settings", systemImage: "gearshape") }
-            }
-            .tint(Color.accentColor)
-            .background(Color(.systemGroupedBackground))
-
-            if appSettings.isAppLockEnabled && !appSettings.isUnlocked {
-                AppLockView()
-                    .environmentObject(appSettings)
-            }
+        TabView {
+            BudgetScreen()
+                .tabItem { Label("Budget", systemImage: "chart.pie") }
+            TransactionsScreen()
+                .tabItem { Label("Transactions", systemImage: "list.bullet.rectangle") }
+            AnalysisScreen()
+                .tabItem { Label("Analysis", systemImage: "chart.bar.xaxis") }
+            CalendarScreen()
+                .tabItem { Label("Calendar", systemImage: "calendar") }
+            NotesScreen()
+                .tabItem { Label("Notes", systemImage: "note.text") }
+            PredictionScreen()
+                .tabItem { Label("Predict", systemImage: "wand.and.rays") }
+            SettingsScreen()
+                .tabItem { Label("Settings", systemImage: "gearshape") }
         }
+        .tint(Color.accentColor)
+        .background(Color(.systemGroupedBackground))
         .preferredColorScheme(appSettings.selectedTheme.colorScheme)
+        .fullScreenCover(isPresented: lockBinding) {
+            AppLockView()
+                .environmentObject(appSettings)
+                .interactiveDismissDisabled(true)
+        }
         .onAppear {
             appSettings.refreshBiometricState()
             appSettings.lock()
@@ -49,6 +47,15 @@ public struct HomeBudgetingRootView: View {
                 break
             }
         }
+    }
+}
+
+private extension HomeBudgetingRootView {
+    var lockBinding: Binding<Bool> {
+        Binding(
+            get: { appSettings.isAppLockEnabled && !appSettings.isUnlocked },
+            set: { _ in }
+        )
     }
 }
 
