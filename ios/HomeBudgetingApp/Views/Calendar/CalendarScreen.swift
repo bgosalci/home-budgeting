@@ -7,7 +7,7 @@ struct CalendarScreen: View {
     @State private var activeDay: CalendarDay?
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
     private let swipeThreshold: CGFloat = 50
-    private let weekdaySymbols = Calendar.current.shortWeekdaySymbols
+    private let weekdaySymbols = CalendarScreen.weekdaySymbols
     private var monthKeys: [String] { viewModel.uiState.monthKeys }
     private var selectedMonthKey: String? { viewModel.uiState.selectedMonthKey }
     private var previousMonthKey: String? {
@@ -106,6 +106,20 @@ struct CalendarScreen: View {
             }
         }
     }
+}
+
+private extension CalendarScreen {
+    static let weekdaySymbols: [String] = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_GB")
+        calendar.firstWeekday = 2
+        let symbols = calendar.shortWeekdaySymbols
+        guard calendar.firstWeekday > 1 else { return symbols }
+        let startIndex = symbols.index(symbols.startIndex, offsetBy: calendar.firstWeekday - 1)
+        let suffix = Array(symbols[startIndex...])
+        let prefix = Array(symbols[..<startIndex])
+        return suffix + prefix
+    }()
 }
 
 private struct CalendarCell: View {
