@@ -7,7 +7,7 @@ struct CalendarScreen: View {
     @State private var activeDay: CalendarDay?
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
     private let swipeThreshold: CGFloat = 50
-    private let weekdaySymbols = Calendar.current.shortWeekdaySymbols
+    private let weekdaySymbols = CalendarScreen.weekdaySymbols
     private var monthKeys: [String] { viewModel.uiState.monthKeys }
     private var selectedMonthKey: String? { viewModel.uiState.selectedMonthKey }
     private var previousMonthKey: String? {
@@ -39,9 +39,7 @@ struct CalendarScreen: View {
 
                     Spacer()
 
-                    Text(viewModel.uiState.calendar.title)
-                        .font(.title2)
-                        .bold()
+                    monthPicker
 
                     Spacer()
 
@@ -105,6 +103,74 @@ struct CalendarScreen: View {
                 withAnimation { viewModel.selectMonth(key) }
             }
         }
+    }
+}
+
+private extension CalendarScreen {
+    private var monthPicker: some View {
+        Menu {
+            ForEach(monthKeys, id: \.self) { key in
+                Button {
+                    withAnimation { viewModel.selectMonth(key) }
+                } label: {
+                    if key == selectedMonthKey {
+                        Label(monthMenuTitle(for: key), systemImage: "checkmark")
+                    } else {
+                        Text(monthMenuTitle(for: key))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(viewModel.uiState.calendar.title)
+                    .font(.title2)
+                    .bold()
+                if monthKeys.count > 1 {
+                    Image(systemName: "chevron.down")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .menuIndicator(.hidden)
+        .disabled(monthKeys.isEmpty)
+        .accessibilityLabel("Selected Month")
+        .accessibilityValue(viewModel.uiState.calendar.title)
+        .accessibilityHint(monthKeys.count > 1 ? "Shows a list of available months" : "")
+    }
+
+    static let weekdaySymbols: [String] = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_GB")
+        calendar.firstWeekday = 2
+        let symbols = calendar.shortWeekdaySymbols
+        guard calendar.firstWeekday > 1 else { return symbols }
+        let startIndex = symbols.index(symbols.startIndex, offsetBy: calendar.firstWeekday - 1)
+        let suffix = Array(symbols[startIndex...])
+        let prefix = Array(symbols[..<startIndex])
+        return suffix + prefix
+    }()
+
+    private static let monthKeyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.dateFormat = "yyyy-MM"
+        return formatter
+    }()
+
+    private static let monthTitleFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter
+    }()
+
+    private func monthMenuTitle(for key: String) -> String {
+        guard let date = CalendarScreen.monthKeyFormatter.date(from: key) else { return key }
+        return CalendarScreen.monthTitleFormatter.string(from: date)
     }
 }
 
