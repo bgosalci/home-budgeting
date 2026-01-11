@@ -41,6 +41,7 @@ actor BudgetRepository {
         updateState { state in
             state.months.removeValue(forKey: monthKey)
             state.ui.collapsed.removeValue(forKey: monthKey)
+            state.ui.incomeCollapsed.removeValue(forKey: monthKey)
         }
     }
 
@@ -101,6 +102,17 @@ actor BudgetRepository {
                 state.ui.collapsed.removeValue(forKey: monthKey)
             } else {
                 state.ui.collapsed[monthKey] = monthMap
+            }
+        }
+    }
+
+    @discardableResult
+    func setIncomeCollapsed(monthKey: String, collapsed: Bool) -> BudgetState {
+        updateState { state in
+            if collapsed {
+                state.ui.incomeCollapsed[monthKey] = true
+            } else {
+                state.ui.incomeCollapsed.removeValue(forKey: monthKey)
             }
         }
     }

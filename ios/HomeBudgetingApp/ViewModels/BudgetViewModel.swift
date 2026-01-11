@@ -22,6 +22,7 @@ struct BudgetUiState {
     var incomes: [Income] = []
     var categories: [CategorySummary] = []
     var collapsedGroups: Set<String> = []
+    var isIncomeCollapsed: Bool = false
     var transactions: TransactionsUiState = TransactionsUiState()
     var notes: [BudgetNote] = []
     var descSuggestions: [String] = []
@@ -73,6 +74,7 @@ public final class BudgetViewModel: ObservableObject {
         let month = baseState.months[selected]
         let totals = computeMonthTotals(month)
         let collapsed = baseState.ui.collapsed[selected]?.filter { $0.value }.map { $0.key } ?? []
+        let incomeCollapsed = baseState.ui.incomeCollapsed[selected] ?? false
         let categoryNames = month?.categories.keys.sorted { $0.lowercased() < $1.lowercased() } ?? []
         let filter = TransactionFilter(search: current.transactions.search, category: current.transactions.category)
         let (groups, total) = groupTransactions(month: month, filter: filter)
@@ -87,6 +89,7 @@ public final class BudgetViewModel: ObservableObject {
             incomes: month?.incomes ?? [],
             categories: totals.categories,
             collapsedGroups: Set(collapsed),
+            isIncomeCollapsed: incomeCollapsed,
             transactions: TransactionsUiState(
                 search: current.transactions.search,
                 category: current.transactions.category,
@@ -313,6 +316,15 @@ public final class BudgetViewModel: ObservableObject {
         let collapsed = uiState.collapsedGroups.contains(group)
         Task {
             let state = await repository.setCollapsed(monthKey: monthKey, group: group, collapsed: !collapsed)
+            await MainActor.run { self.applyState(state) }
+        }
+    }
+    
+    func toggleIncomeCollapsed() {
+        guard let monthKey = uiState.selectedMonthKey else { return }
+        let collapsed = uiState.isIncomeCollapsed
+        Task {
+            let state = await repository.setIncomeCollapsed(monthKey: monthKey, collapsed: !collapsed)
             await MainActor.run { self.applyState(state) }
         }
     }
@@ -984,3 +996,4 @@ private struct TransactionDraft {
     let category: String
 }
 #endif
+

@@ -176,71 +176,91 @@ struct BudgetScreen: View {
     }
 
     private var incomesSection: some View {
-        Section(header: Text("Income")) {
-            if viewModel.uiState.incomes.isEmpty {
-                Text("No income recorded").foregroundColor(.secondary)
-            }
-            ForEach(viewModel.uiState.incomes) { income in
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(income.name).font(.headline)
+        Section {
+            DisclosureGroup(
+                isExpanded: Binding(
+                    get: { !(viewModel.uiState.isIncomeCollapsed ?? false) },
+                    set: { _ in viewModel.toggleIncomeCollapsed() }
+                ),
+                content: {
+                    if viewModel.uiState.incomes.isEmpty {
+                        Text("No income recorded").foregroundColor(.secondary)
                     }
-                    Spacer()
-                    Text(currency(income.amount))
-                }
-                .swipeActions(edge: .trailing) {
-                    Button {
-                        editingIncomeId = income.id
-                        incomeName = income.name
-                        incomeAmount = String(format: "%.2f", income.amount)
-                        focusedField = .incomeName
-                    } label: {
-                        Label("Edit", systemImage: "pencil")
-                    }
-                    Button(role: .destructive) {
-                        activeDialog = AppDialog.confirm(
-                            title: "Delete Income",
-                            message: "Are you sure you want to delete \(income.name)?",
-                            confirmTitle: "Delete",
-                            destructive: true,
-                            onConfirm: { viewModel.deleteIncome(id: income.id) }
-                        )
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                    .tint(.red)
-                }
-            }
-            VStack {
-                TextField("Name", text: $incomeName)
-                    .focused($focusedField, equals: .incomeName)
-                TextField("Amount", text: $incomeAmount)
-                    .signedDecimalKeyboard(text: $incomeAmount)
-                    .focused($focusedField, equals: .incomeAmount)
-                Button(editingIncomeId == nil ? "Add Income" : "Save Income") {
-                    if let amount = Double(incomeAmount) {
-                        if let editingIncomeId {
-                            viewModel.updateIncome(id: editingIncomeId, name: incomeName, amount: amount)
-                        } else {
-                            viewModel.addIncome(name: incomeName, amount: amount)
+                    ForEach(viewModel.uiState.incomes) { income in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(income.name).font(.headline)
+                            }
+                            Spacer()
+                            Text(currency(income.amount))
                         }
-                        incomeName = ""
-                        incomeAmount = ""
-                        editingIncomeId = nil
-                        focusedField = nil
+                        .swipeActions(edge: .trailing) {
+                            Button {
+                                editingIncomeId = income.id
+                                incomeName = income.name
+                                incomeAmount = String(format: "%.2f", income.amount)
+                                focusedField = .incomeName
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            Button(role: .destructive) {
+                                activeDialog = AppDialog.confirm(
+                                    title: "Delete Income",
+                                    message: "Are you sure you want to delete \(income.name)?",
+                                    confirmTitle: "Delete",
+                                    destructive: true,
+                                    onConfirm: { viewModel.deleteIncome(id: income.id) }
+                                )
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .tint(.red)
+                        }
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                if editingIncomeId != nil {
-                    Button("Cancel") {
-                        incomeName = ""
-                        incomeAmount = ""
-                        editingIncomeId = nil
-                        focusedField = nil
+                    VStack {
+                        TextField("Name", text: $incomeName)
+                            .focused($focusedField, equals: .incomeName)
+                        TextField("Amount", text: $incomeAmount)
+                            .signedDecimalKeyboard(text: $incomeAmount)
+                            .focused($focusedField, equals: .incomeAmount)
+                        Button(editingIncomeId == nil ? "Add Income" : "Save Income") {
+                            if let amount = Double(incomeAmount) {
+                                if let editingIncomeId {
+                                    viewModel.updateIncome(id: editingIncomeId, name: incomeName, amount: amount)
+                                } else {
+                                    viewModel.addIncome(name: incomeName, amount: amount)
+                                }
+                                incomeName = ""
+                                incomeAmount = ""
+                                editingIncomeId = nil
+                                focusedField = nil
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        if editingIncomeId != nil {
+                            Button("Cancel") {
+                                incomeName = ""
+                                incomeAmount = ""
+                                editingIncomeId = nil
+                                focusedField = nil
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     }
-                    .buttonStyle(.bordered)
+                },
+                label: {
+                    HStack {
+                        Text("Income")
+                            .font(.headline)
+                        Spacer()
+                        Text(currency(totals.totalIncome))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Income, Total \(currency(totals.totalIncome))")
                 }
-            }
+            )
         }
     }
 
