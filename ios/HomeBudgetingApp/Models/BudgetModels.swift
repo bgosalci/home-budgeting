@@ -400,25 +400,30 @@ private func parseCount(from raw: String) -> Int? {
 
 struct UiPreferences: Codable {
     var collapsed: [String: [String: Bool]] = [:]
+    var incomeCollapsed: [String: Bool] = [:]
 
     private enum CodingKeys: String, CodingKey {
         case collapsed
+        case incomeCollapsed
     }
 
-    init(collapsed: [String: [String: Bool]] = [:]) {
+    init(collapsed: [String: [String: Bool]] = [:], incomeCollapsed: [String: Bool] = [:]) {
         self.collapsed = collapsed
+        self.incomeCollapsed = incomeCollapsed
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         collapsed = try container.decodeIfPresent([String: [String: Bool]].self, forKey: .collapsed) ?? [:]
+        incomeCollapsed = try container.decodeIfPresent([String: Bool].self, forKey: .incomeCollapsed) ?? [:]
     }
 
     func ensured() -> UiPreferences {
         UiPreferences(
             collapsed: collapsed.mapValues { groups in
                 groups.filter { $0.value }
-            }
+            },
+            incomeCollapsed: incomeCollapsed
         )
     }
 }
