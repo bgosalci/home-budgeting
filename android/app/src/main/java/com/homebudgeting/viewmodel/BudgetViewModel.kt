@@ -24,10 +24,13 @@ import com.homebudgeting.domain.PredictionEngine
 import com.homebudgeting.domain.TransactionFilter
 import com.homebudgeting.domain.TransactionGroup
 import com.homebudgeting.domain.availableIncomeCategories
+import com.homebudgeting.domain.BudgetSpreadLevel
 import com.homebudgeting.domain.buildBudgetSpread
 import com.homebudgeting.domain.buildCalendar
 import com.homebudgeting.domain.buildMonthlySpendSeries
 import com.homebudgeting.domain.buildMoneyInSeries
+import com.homebudgeting.domain.buildNetCashFlowSeries
+import com.homebudgeting.domain.buildSavingsRateSeries
 import com.homebudgeting.domain.computeMonthTotals
 import com.homebudgeting.domain.groupTransactions
 import com.homebudgeting.domain.predictBalance
@@ -197,9 +200,25 @@ class BudgetViewModel(
                     selectedCategory = selectedCategory
                 )
             }
+            AnalysisMode.NetCashFlow, AnalysisMode.SavingsRate -> {
+                val chartStyle = if (current.options.chartStyle == ChartStyle.Pie) ChartStyle.Bar else current.options.chartStyle
+                val selectedYear = current.options.selectedYear?.takeIf { it.isNullOrBlank() || years.contains(it) } ?: ""
+                current.options.copy(
+                    mode = current.options.mode,
+                    chartStyle = chartStyle,
+                    selectedMonth = null,
+                    selectedYear = selectedYear,
+                    selectedGroup = null,
+                    selectedCategory = null
+                )
+            }
         }
         val result = when (sanitizedOptions.mode) {
-            AnalysisMode.BudgetSpread -> buildBudgetSpread(sanitizedOptions.selectedMonth, state.months[sanitizedOptions.selectedMonth])
+            AnalysisMode.BudgetSpread -> buildBudgetSpread(
+                sanitizedOptions.selectedMonth,
+                state.months[sanitizedOptions.selectedMonth],
+                sanitizedOptions.budgetSpreadLevel
+            )
             AnalysisMode.MoneyIn -> buildMoneyInSeries(
                 state,
                 sanitizedOptions.selectedYear.takeIf { it?.isNotBlank() == true },
@@ -212,6 +231,14 @@ class BudgetViewModel(
                 sanitizedOptions.selectedCategory.takeIf { it?.isNotBlank() == true },
                 categoryMeta
             )
+            AnalysisMode.NetCashFlow -> buildNetCashFlowSeries(
+                state,
+                sanitizedOptions.selectedYear.takeIf { it?.isNotBlank() == true }
+            )
+            AnalysisMode.SavingsRate -> buildSavingsRateSeries(
+                state,
+                sanitizedOptions.selectedYear.takeIf { it?.isNotBlank() == true }
+            )
         }
         val availableCategories = when (sanitizedOptions.mode) {
             AnalysisMode.MoneyIn -> incomeCats
@@ -220,6 +247,7 @@ class BudgetViewModel(
                 .keys
                 .sortedBy { it.lowercase(Locale.UK) }
             AnalysisMode.BudgetSpread -> categoryMeta.keys.sortedBy { it.lowercase(Locale.UK) }
+            AnalysisMode.NetCashFlow, AnalysisMode.SavingsRate -> emptyList()
         }
         val availableGroups = when (sanitizedOptions.mode) {
             AnalysisMode.MonthlySpend -> groups
@@ -417,6 +445,11 @@ class BudgetViewModel(
             val notes = repository.state.value.notes.filterNot { it.id == id }
             repository.setNotes(notes)
         }
+    }
+
+    fun updateBudgetSpreadLevel(level: BudgetSpreadLevel) {
+        _uiState.update { it.copy(analysis = it.analysis.copy(options = it.analysis.options.copy(budgetSpreadLevel = level))) }
+        refreshDerivedState()
     }
 
     fun updateAnalysisMode(mode: AnalysisMode) {

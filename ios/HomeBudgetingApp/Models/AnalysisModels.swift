@@ -4,6 +4,8 @@ enum AnalysisMode: String, CaseIterable, Identifiable {
     case budgetSpread
     case moneyIn
     case monthlySpend
+    case netCashFlow
+    case savingsRate
 
     var id: String { rawValue }
     var title: String {
@@ -11,6 +13,8 @@ enum AnalysisMode: String, CaseIterable, Identifiable {
         case .budgetSpread: return "Budget Spread"
         case .moneyIn: return "Money In"
         case .monthlySpend: return "Monthly Spend"
+        case .netCashFlow: return "Cash Flow"
+        case .savingsRate: return "Savings Rate"
         }
     }
 }
@@ -38,6 +42,10 @@ enum ChartStyle: String, CaseIterable, Identifiable {
             return [.comparisonBars, .donut]
         case .moneyIn, .monthlySpend:
             return [.line, .bar]
+        case .netCashFlow:
+            return [.bar]
+        case .savingsRate:
+            return [.line]
         }
     }
 
@@ -46,9 +54,24 @@ enum ChartStyle: String, CaseIterable, Identifiable {
     }
 }
 
+enum BudgetSpreadLevel: String, CaseIterable, Identifiable {
+    case group
+    case category
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .group: return "Group"
+        case .category: return "Category"
+        }
+    }
+}
+
 struct AnalysisOptions {
     var mode: AnalysisMode = .budgetSpread
     var chartStyle: ChartStyle = ChartStyle.defaultStyle(for: .budgetSpread)
+    var budgetSpreadLevel: BudgetSpreadLevel = .group
     var selectedMonth: String?
     var selectedYear: String?
     var selectedGroup: String?
@@ -63,6 +86,9 @@ struct BudgetSpreadData {
     let actualPercent: [Double]
     let plannedTotal: Double
     let actualTotal: Double
+    let totalIncome: Double
+    let leftoverBudget: Double
+    let leftoverActual: Double
 }
 
 struct SeriesData {
@@ -70,11 +96,23 @@ struct SeriesData {
     let values: [Double]
     let label: String
     let total: Double
+    var isPercentage: Bool = false
+}
+
+struct NetCashFlowData {
+    let labels: [String]
+    let income: [Double]
+    let spend: [Double]
+    let net: [Double]
+    let totalNet: Double
+    let averageNet: Double
+    let savingsRate: Double
 }
 
 enum AnalysisResult {
     case budgetSpread(BudgetSpreadData)
     case series(SeriesData)
+    case netCashFlow(NetCashFlowData)
 }
 
 struct AnalysisUiState {

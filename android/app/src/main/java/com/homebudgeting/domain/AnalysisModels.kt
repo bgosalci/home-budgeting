@@ -1,12 +1,15 @@
 package com.homebudgeting.domain
 
-enum class AnalysisMode { BudgetSpread, MoneyIn, MonthlySpend }
+enum class AnalysisMode { BudgetSpread, MoneyIn, MonthlySpend, NetCashFlow, SavingsRate }
+
+enum class BudgetSpreadLevel { Group, Category }
 
 enum class ChartStyle { Pie, Bar, Line }
 
 data class AnalysisOptions(
     val mode: AnalysisMode = AnalysisMode.BudgetSpread,
     val chartStyle: ChartStyle = ChartStyle.Bar,
+    val budgetSpreadLevel: BudgetSpreadLevel = BudgetSpreadLevel.Group,
     val selectedMonth: String? = null,
     val selectedYear: String? = null,
     val selectedGroup: String? = null,
@@ -21,14 +24,28 @@ sealed class AnalysisResult {
         val plannedPercent: List<Double>,
         val actualPercent: List<Double>,
         val plannedTotal: Double,
-        val actualTotal: Double
+        val actualTotal: Double,
+        val totalIncome: Double,
+        val leftoverBudget: Double,
+        val leftoverActual: Double
     ) : AnalysisResult()
 
     data class Series(
         val labels: List<String>,
         val values: List<Double>,
         val label: String,
-        val total: Double
+        val total: Double,
+        val isPercentage: Boolean = false
+    ) : AnalysisResult()
+
+    data class NetCashFlow(
+        val labels: List<String>,
+        val income: List<Double>,
+        val spend: List<Double>,
+        val net: List<Double>,
+        val totalNet: Double,
+        val averageNet: Double,
+        val savingsRate: Double
     ) : AnalysisResult()
 }
 

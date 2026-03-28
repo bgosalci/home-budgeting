@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -34,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.homebudgeting.domain.AnalysisMode
 import com.homebudgeting.domain.AnalysisResult
+import com.homebudgeting.domain.BudgetSpreadLevel
 import com.homebudgeting.domain.ChartStyle
 import com.homebudgeting.viewmodel.BudgetUiState
 import com.homebudgeting.viewmodel.BudgetViewModel
@@ -51,11 +53,17 @@ fun AnalysisScreen(state: BudgetUiState, viewModel: BudgetViewModel) {
         ModeSelector(current = analysis.options.mode, onSelect = { viewModel.updateAnalysisMode(it) })
         ChartStyleSelector(analysis.options.mode, analysis.options.chartStyle, onSelect = { viewModel.updateAnalysisChartStyle(it) })
         when (analysis.options.mode) {
-            AnalysisMode.BudgetSpread -> MonthSelector(
-                months = analysis.availableMonths,
-                selected = analysis.options.selectedMonth ?: state.selectedMonthKey,
-                onSelect = { viewModel.updateAnalysisMonth(it) }
-            )
+            AnalysisMode.BudgetSpread -> {
+                LevelSelector(
+                    current = analysis.options.budgetSpreadLevel,
+                    onSelect = { viewModel.updateBudgetSpreadLevel(it) }
+                )
+                MonthSelector(
+                    months = analysis.availableMonths,
+                    selected = analysis.options.selectedMonth ?: state.selectedMonthKey,
+                    onSelect = { viewModel.updateAnalysisMonth(it) }
+                )
+            }
             AnalysisMode.MoneyIn -> YearCategorySelectors(
                 years = analysis.availableYears,
                 selectedYear = analysis.options.selectedYear ?: "",
@@ -78,6 +86,14 @@ fun AnalysisScreen(state: BudgetUiState, viewModel: BudgetViewModel) {
                 onGroupChange = { group -> viewModel.updateAnalysisGroup(group.takeIf { it != "All" }) },
                 onCategoryChange = { category -> viewModel.updateAnalysisCategory(category.takeIf { it != "All" }) }
             )
+            AnalysisMode.NetCashFlow, AnalysisMode.SavingsRate -> {
+                Dropdown(
+                    label = "Year",
+                    options = listOf("All") + analysis.availableYears,
+                    selected = (analysis.options.selectedYear ?: "").ifBlank { "All" },
+                    onSelect = { viewModel.updateAnalysisYear(if (it == "All") null else it) }
+                )
+            }
         }
         AnalysisContent(analysis.result, analysis.options.chartStyle)
     }
@@ -97,10 +113,25 @@ private fun ModeSelector(current: AnalysisMode, onSelect: (AnalysisMode) -> Unit
 }
 
 @Composable
+private fun LevelSelector(current: BudgetSpreadLevel, onSelect: (BudgetSpreadLevel) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        BudgetSpreadLevel.values().forEach { level ->
+            FilterChip(
+                selected = current == level,
+                onClick = { onSelect(level) },
+                label = { Text(level.name.lowercase().replaceFirstChar { it.titlecase(Locale.UK) }) }
+            )
+        }
+    }
+}
+
+@Composable
 private fun ChartStyleSelector(mode: AnalysisMode, style: ChartStyle, onSelect: (ChartStyle) -> Unit) {
     val available = when (mode) {
         AnalysisMode.BudgetSpread -> listOf(ChartStyle.Bar, ChartStyle.Pie)
         AnalysisMode.MoneyIn, AnalysisMode.MonthlySpend -> listOf(ChartStyle.Line, ChartStyle.Bar)
+        AnalysisMode.NetCashFlow -> listOf(ChartStyle.Bar)
+        AnalysisMode.SavingsRate -> listOf(ChartStyle.Line)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         available.forEach { opt ->
@@ -187,6 +218,7 @@ private fun AnalysisContent(result: AnalysisResult?, style: ChartStyle) {
     when (result) {
         is AnalysisResult.BudgetSpread -> BudgetSpreadContent(result, style)
         is AnalysisResult.Series -> SeriesContent(result, style)
+        is AnalysisResult.NetCashFlow -> NetCashFlowContent(result)
         else -> Text("No data available", style = MaterialTheme.typography.bodyMedium)
     }
 }
@@ -195,7 +227,7 @@ private fun AnalysisContent(result: AnalysisResult?, style: ChartStyle) {
 private fun BudgetSpreadContent(result: AnalysisResult.BudgetSpread, style: ChartStyle) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Planned Total £${result.plannedTotal.format()} / Actual £${result.actualTotal.format()}", fontWeight = FontWeight.SemiBold)
+            Text("Planned £${result.plannedTotal.format()} / Actual £${result.actualTotal.format()}", fontWeight = FontWeight.SemiBold)
             when (style) {
                 ChartStyle.Pie -> {
                     Text("Planned Spread")
@@ -205,6 +237,31 @@ private fun BudgetSpreadContent(result: AnalysisResult.BudgetSpread, style: Char
                 }
                 else -> GroupedBarChart(result.labels, result.planned, result.actual)
             }
+            if (result.totalIncome > 0) {
+                Text("Income & Leftover", fontWeight = FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column {
+                        Text("Income", style = MaterialTheme.typography.labelSmall)
+                        Text("£${result.totalIncome.format()}", fontWeight = FontWeight.Bold)
+                    }
+                    Column {
+                        Text("Leftover (Actual)", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            "£${result.leftoverActual.format()}",
+                            fontWeight = FontWeight.Bold,
+                            color = if (result.leftoverActual >= 0) Color(0xFF10B981) else Color(0xFFE11D48)
+                        )
+                    }
+                    Column {
+                        Text("Leftover (Budget)", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            "£${result.leftoverBudget.format()}",
+                            fontWeight = FontWeight.Bold,
+                            color = if (result.leftoverBudget >= 0) Color(0xFF0EA5E9) else Color(0xFFF97316)
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -213,10 +270,51 @@ private fun BudgetSpreadContent(result: AnalysisResult.BudgetSpread, style: Char
 private fun SeriesContent(result: AnalysisResult.Series, style: ChartStyle) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("${result.label}: £${result.total.format()}", fontWeight = FontWeight.SemiBold)
+            val totalLabel = if (result.isPercentage) {
+                "${result.label}: avg ${(result.total / result.values.size.coerceAtLeast(1)).format()}%"
+            } else {
+                "${result.label}: £${result.total.format()}"
+            }
+            Text(totalLabel, fontWeight = FontWeight.SemiBold)
             when (style) {
                 ChartStyle.Bar -> SimpleBarChart(result.labels, result.values)
                 else -> SimpleLineChart(result.labels, result.values)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NetCashFlowContent(result: AnalysisResult.NetCashFlow) {
+    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Net Cash Flow", fontWeight = FontWeight.SemiBold)
+            NetCashFlowBarChart(result.labels, result.net)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column {
+                    Text("Total Net", style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        "£${result.totalNet.format()}",
+                        fontWeight = FontWeight.Bold,
+                        color = if (result.totalNet >= 0) Color(0xFF10B981) else Color(0xFFE11D48)
+                    )
+                }
+                Column {
+                    Text("Monthly Avg", style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        "£${result.averageNet.format()}",
+                        fontWeight = FontWeight.Bold,
+                        color = if (result.averageNet >= 0) Color(0xFF10B981) else Color(0xFFE11D48)
+                    )
+                }
+                Column {
+                    Text("Savings Rate", style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        "${result.savingsRate.coerceAtLeast(0.0).formatPct()}%",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0EA5E9)
+                    )
+                }
             }
         }
     }
@@ -252,12 +350,13 @@ private fun GroupedBarChart(labels: List<String>, planned: List<Double>, actual:
         .height(220.dp)
         .padding(8.dp)) {
         val barWidth = size.width / (labels.size * 2.5f)
-        labels.forEachIndexed { index, label ->
+        labels.forEachIndexed { index, _ ->
             val xBase = index * barWidth * 2.5f + barWidth
             val plannedHeight = (planned[index] / maxValue * size.height).toFloat()
             val actualHeight = (actual[index] / maxValue * size.height).toFloat()
-            drawRect(Color(0xFF0EA5E9), topLeft = Offset(xBase, size.height - plannedHeight), size = androidx.compose.ui.geometry.Size(barWidth, plannedHeight))
-            drawRect(Color(0xFFF43F5E), topLeft = Offset(xBase + barWidth + 12f, size.height - actualHeight), size = androidx.compose.ui.geometry.Size(barWidth, actualHeight))
+            val actualColor = if (actual[index] > planned[index]) Color(0xFFF97316) else Color(0xFF10B981)
+            drawRect(Color(0xFF0EA5E9), topLeft = Offset(xBase, size.height - plannedHeight), size = Size(barWidth, plannedHeight))
+            drawRect(actualColor, topLeft = Offset(xBase + barWidth + 12f, size.height - actualHeight), size = Size(barWidth, actualHeight))
         }
     }
 }
@@ -272,8 +371,27 @@ private fun SimpleBarChart(labels: List<String>, values: List<Double>) {
         val barWidth = size.width / (labels.size * 1.8f)
         labels.forEachIndexed { index, _ ->
             val height = (values[index] / maxValue * size.height).toFloat()
-            drawRect(Color(0xFF0EA5E9), topLeft = Offset(index * barWidth * 1.8f, size.height - height), size = androidx.compose.ui.geometry.Size(barWidth, height))
+            drawRect(Color(0xFF0EA5E9), topLeft = Offset(index * barWidth * 1.8f, size.height - height), size = Size(barWidth, height))
         }
+    }
+}
+
+@Composable
+private fun NetCashFlowBarChart(labels: List<String>, net: List<Double>) {
+    val absMax = net.maxOfOrNull { kotlin.math.abs(it) }?.takeIf { it > 0 } ?: 1.0
+    Canvas(modifier = Modifier
+        .fillMaxWidth()
+        .height(220.dp)
+        .padding(8.dp)) {
+        val barWidth = size.width / (labels.size * 1.8f)
+        val midY = size.height / 2f
+        net.forEachIndexed { index, value ->
+            val barHeight = (kotlin.math.abs(value) / absMax * midY).toFloat()
+            val color = if (value >= 0) Color(0xFF10B981) else Color(0xFFE11D48)
+            val top = if (value >= 0) midY - barHeight else midY
+            drawRect(color, topLeft = Offset(index * barWidth * 1.8f, top), size = Size(barWidth, barHeight))
+        }
+        drawLine(Color.Gray, start = Offset(0f, midY), end = Offset(size.width, midY), strokeWidth = 1f)
     }
 }
 
@@ -304,9 +422,12 @@ private fun SimpleLineChart(labels: List<String>, values: List<Double>) {
 }
 
 private fun Double.format(): String = String.format(Locale.UK, "%,.2f", this)
+private fun Double.formatPct(): String = String.format(Locale.UK, "%.1f", this)
 
 private fun modeLabel(mode: AnalysisMode): String = when (mode) {
-    AnalysisMode.BudgetSpread -> "Budget Spread"
-    AnalysisMode.MoneyIn -> "Money In"
-    AnalysisMode.MonthlySpend -> "Monthly Spend"
+    AnalysisMode.BudgetSpread -> "Budget"
+    AnalysisMode.MoneyIn -> "Income"
+    AnalysisMode.MonthlySpend -> "Spend"
+    AnalysisMode.NetCashFlow -> "Cash Flow"
+    AnalysisMode.SavingsRate -> "Savings Rate"
 }
