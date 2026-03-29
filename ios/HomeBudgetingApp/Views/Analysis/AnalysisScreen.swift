@@ -49,6 +49,16 @@ struct AnalysisScreen: View {
             .disabled(chartStylesForCurrentMode.count <= 1)
 
             if analysis.options.mode == .budgetSpread {
+                Picker("Level", selection: Binding(
+                    get: { analysis.options.budgetSpreadLevel },
+                    set: { viewModel.updateBudgetSpreadLevel($0) }
+                )) {
+                    ForEach(BudgetSpreadLevel.allCases) { level in
+                        Text(level.title).tag(level)
+                    }
+                }
+                .pickerStyle(.segmented)
+
                 Picker("Month", selection: Binding(
                     get: { analysis.options.selectedMonth ?? "" },
                     set: { viewModel.updateAnalysisMonth($0) }
@@ -78,6 +88,19 @@ struct AnalysisScreen: View {
                     Text("All").tag("")
                     ForEach(analysis.availableCategories, id: \.self) { category in
                         Text(category).tag(category)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+
+            if analysis.options.mode == .netCashFlow || analysis.options.mode == .savingsRate {
+                Picker("Year", selection: Binding(
+                    get: { analysis.options.selectedYear ?? "" },
+                    set: { viewModel.updateAnalysisYear($0) }
+                )) {
+                    Text("All").tag("")
+                    ForEach(analysis.availableYears, id: \.self) { year in
+                        Text(year).tag(year)
                     }
                 }
                 .pickerStyle(.menu)
@@ -126,6 +149,8 @@ struct AnalysisScreen: View {
                 BudgetSpreadView(data: data, style: analysis.options.chartStyle)
             case .series(let data):
                 SeriesChartView(data: data, style: analysis.options.chartStyle)
+            case .netCashFlow(let data):
+                NetCashFlowView(data: data)
             }
         } else {
             Text("No data available for the selected options.")
@@ -163,7 +188,10 @@ private struct BudgetSpreadView: View {
             Group {
                 switch style {
                 case .comparisonBars, .bar, .line:
-                    comparisonBarChart
+                    VStack(alignment: .leading, spacing: 8) {
+                        comparisonBarChart
+                        barChartLegend
+                    }
                 case .donut:
                     donutChart
                 }
@@ -187,11 +215,54 @@ private struct BudgetSpreadView: View {
                 BudgetSummaryCard(series: .planned, amountText: currency(data.plannedTotal))
                 BudgetSummaryCard(series: .actual, amountText: currency(data.actualTotal))
             }
+            if data.totalIncome > 0 {
+                Divider()
+                Text("Income & Leftover").font(.headline)
+                LazyVGrid(columns: summaryColumns, alignment: .leading, spacing: 8) {
+                    BudgetInfoCard(title: "Income", value: currency(data.totalIncome), tint: .teal)
+                    BudgetInfoCard(
+                        title: "Leftover (Actual)",
+                        value: currency(data.leftoverActual),
+                        tint: data.leftoverActual >= 0 ? .green : .red
+                    )
+                    BudgetInfoCard(
+                        title: "Leftover (Budget)",
+                        value: currency(data.leftoverBudget),
+                        tint: data.leftoverBudget >= 0 ? .blue : .orange
+                    )
+                }
+            }
         }
     }
 
     private var summaryColumns: [GridItem] {
         [GridItem(.adaptive(minimum: 150), spacing: 8)]
+    }
+
+    private var barChartLegend: some View {
+        let hasOverspend = rows.contains { $0.actual > $0.planned }
+        return HStack(spacing: 12) {
+            ForEach(BudgetSpreadSeries.allCases) { series in
+                HStack(spacing: 4) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(series.color)
+                        .frame(width: 12, height: 12)
+                    Text(series.title)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            if hasOverspend {
+                HStack(spacing: 4) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.orange)
+                        .frame(width: 12, height: 12)
+                    Text("Over Budget")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
     }
 
     private var comparisonBarChart: some View {
@@ -202,18 +273,24 @@ private struct BudgetSpreadView: View {
             ForEach(barRows) { row in
                 ForEach(BudgetSpreadSeries.allCases) { series in
                     let amount = row.value(for: series)
+                    let barColor: Color = {
+                        if series == .actual && row.actual > row.planned {
+                            return .orange
+                        }
+                        return series.color
+                    }()
                     BarMark(
                         x: .value("Amount", amount),
                         y: .value("Category", row.label)
                     )
                     .position(by: .value("Series", series.title))
-                    .foregroundStyle(by: .value("Series", series.title))
+                    .foregroundStyle(barColor)
                     .cornerRadius(6)
                     .annotation(position: .trailing, alignment: .leading) {
                         if amount > 0 {
                             Text(currency(amount))
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(series == .actual && row.actual > row.planned ? .orange : .secondary)
                                 .padding(.leading, 4)
                         }
                     }
@@ -221,10 +298,6 @@ private struct BudgetSpreadView: View {
             }
         }
         .chartLegend(.hidden)
-        .chartForegroundStyleScale([
-            BudgetSpreadSeries.planned.title: BudgetSpreadSeries.planned.color,
-            BudgetSpreadSeries.actual.title: BudgetSpreadSeries.actual.color
-        ])
         .chartXAxis {
             AxisMarks(position: .bottom) { value in
                 AxisGridLine()
@@ -326,6 +399,22 @@ private struct BudgetSpreadView: View {
         return max(value, 0)
     }
 }
+
+private let seriesCurrencyFormatter: NumberFormatter = {
+    let f = NumberFormatter()
+    f.numberStyle = .currency
+    f.currencyCode = Locale.current.currency?.identifier ?? "GBP"
+    f.minimumFractionDigits = 0
+    return f
+}()
+
+private let seriesShortCurrencyFormatter: NumberFormatter = {
+    let f = NumberFormatter()
+    f.numberStyle = .currency
+    f.currencyCode = Locale.current.currency?.identifier ?? "GBP"
+    f.maximumFractionDigits = 0
+    return f
+}()
 
 private struct SeriesChartView: View {
     let data: SeriesData
@@ -595,7 +684,9 @@ private struct SeriesChartView: View {
                 .font(.headline)
 
             LazyVGrid(columns: summaryColumns, alignment: .leading, spacing: 8) {
-                SeriesSummaryCard(title: "Total", value: currency(data.total))
+                if !data.isPercentage {
+                    SeriesSummaryCard(title: "Total", value: currency(data.total))
+                }
                 SeriesSummaryCard(title: "Monthly Average", value: currency(averageValue))
                 if let latest = latestPoint {
                     SeriesSummaryCard(title: latest.label, value: currency(latest.value), subtitle: "Latest Month")
@@ -603,7 +694,7 @@ private struct SeriesChartView: View {
             }
 
             if let change = trendChange, let first = points.first, let last = latestPoint {
-                let valueText = (change >= 0 ? "+" : "-") + currency(abs(change))
+                let valueText = (change >= 0 ? "+" : "") + currency(change)
                 SeriesHighlightRow(
                     iconName: change >= 0 ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis",
                     title: change >= 0 ? "Upward Trend" : "Downward Trend",
@@ -640,6 +731,153 @@ private struct SeriesChartView: View {
     }
 
     private func currency(_ value: Double) -> String {
+        if data.isPercentage { return String(format: "%.1f%%", value) }
+        seriesCurrencyFormatter.maximumFractionDigits = abs(value) < 1000 ? 2 : 0
+        return seriesCurrencyFormatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+
+    private func shortCurrency(_ value: Double) -> String {
+        if data.isPercentage { return String(format: "%.0f%%", value) }
+        return seriesShortCurrencyFormatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+    }
+}
+
+private struct NetCashFlowView: View {
+    let data: NetCashFlowData
+
+    private var points: [NetCashFlowPoint] {
+        zip(data.labels.indices, data.labels).map { index, label in
+            NetCashFlowPoint(
+                label: label,
+                net: data.net[index].isFinite ? data.net[index] : 0
+            )
+        }
+    }
+
+    private var highestSurplus: NetCashFlowPoint? { points.max { $0.net < $1.net } }
+    private var worstDeficit: NetCashFlowPoint? { points.min { $0.net < $1.net } }
+
+    private var yDomain: ClosedRange<Double> {
+        let values = points.map { $0.net }
+        let minVal = values.min() ?? 0
+        let maxVal = values.max() ?? 0
+        let span = maxVal - minVal
+        let pad = max(span * 0.12, 1)
+        let lower = minVal < 0 ? minVal - pad : min(0, minVal)
+        let upper = maxVal > 0 ? maxVal + pad : max(0, maxVal)
+        return lower == upper ? lower...(upper + 1) : lower...upper
+    }
+
+    private var shouldRotateLabels: Bool { points.count > 5 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Net Cash Flow")
+                .font(.title3)
+                .bold()
+
+            if points.isEmpty {
+                Text("No data available for the selected filters.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 260)
+            } else {
+                chart.frame(height: 260)
+            }
+            summary
+        }
+        .padding()
+        .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+    }
+
+    private var chart: some View {
+        Chart(points) { point in
+            BarMark(
+                x: .value("Month", point.label),
+                y: .value("Net", point.net)
+            )
+            .cornerRadius(6)
+            .foregroundStyle(point.net >= 0 ? Color.green : Color.red)
+            .annotation(position: point.net >= 0 ? .top : .bottom, alignment: .center) {
+                if points.count <= 6 || point.id == points.last?.id {
+                    Text(currency(point.net))
+                        .font(.caption2)
+                        .foregroundColor(point.net >= 0 ? .green : .red)
+                        .padding(.vertical, 2)
+                }
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisGridLine()
+                AxisTick()
+                if let amount = value.as(Double.self) {
+                    AxisValueLabel {
+                        Text(shortCurrency(amount))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(position: .bottom, values: points.map { $0.label }) { value in
+                AxisGridLine()
+                AxisTick()
+                if let label = value.as(String.self) {
+                    AxisValueLabel {
+                        Text(label)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(shouldRotateLabels ? -45 : 0), anchor: .topLeading)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+            }
+        }
+        .chartYScale(domain: yDomain)
+        .chartPlotStyle { plot in
+            plot
+                .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemBackground)))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary.opacity(0.05)))
+        }
+    }
+
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Highlights").font(.headline)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], alignment: .leading, spacing: 8) {
+                SeriesSummaryCard(title: "Total Net", value: currency(data.totalNet))
+                SeriesSummaryCard(title: "Monthly Average", value: currency(data.averageNet))
+                SeriesSummaryCard(
+                    title: "Savings Rate",
+                    value: String(format: "%.1f%%", max(data.savingsRate, 0))
+                )
+            }
+            if let best = highestSurplus {
+                SeriesHighlightRow(
+                    iconName: "arrow.up.right.circle.fill",
+                    title: best.label,
+                    subtitle: "Best Surplus",
+                    value: currency(best.net),
+                    tint: .green
+                )
+            }
+            if let worst = worstDeficit, worst.net < 0 {
+                SeriesHighlightRow(
+                    iconName: "arrow.down.right.circle.fill",
+                    title: worst.label,
+                    subtitle: "Worst Deficit",
+                    value: currency(worst.net),
+                    tint: .red
+                )
+            }
+        }
+    }
+
+    private func currency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = Locale.current.currency?.identifier ?? "USD"
@@ -655,6 +893,12 @@ private struct SeriesChartView: View {
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
     }
+}
+
+private struct NetCashFlowPoint: Identifiable {
+    let label: String
+    let net: Double
+    var id: String { label }
 }
 
 private struct SeriesSummaryCard: View {
@@ -741,6 +985,39 @@ private struct SeriesPoint: Identifiable {
     let value: Double
 
     var id: String { label }
+}
+
+private struct BudgetInfoCard: View {
+    let title: String
+    let value: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Circle()
+                .fill(tint)
+                .frame(width: 10, height: 10)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(value)
+                    .font(.subheadline)
+                    .bold()
+                    .foregroundColor(tint)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(tint.opacity(0.2))
+        )
+    }
 }
 
 private struct BudgetSummaryCard: View {
@@ -917,7 +1194,10 @@ private struct BudgetSpreadView_Previews: PreviewProvider {
             plannedPercent: plannedPercent,
             actualPercent: actualPercent,
             plannedTotal: plannedTotal,
-            actualTotal: actualTotal
+            actualTotal: actualTotal,
+            totalIncome: 2500,
+            leftoverBudget: 170,
+            leftoverActual: 130
         )
     }
 

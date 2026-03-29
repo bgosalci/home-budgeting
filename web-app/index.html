@@ -157,6 +157,16 @@
                   <option value="budget-spread" selected>Budget Spread</option>
                   <option value="money-in">Money In</option>
                   <option value="monthly-spend">Monthly Spend</option>
+                  <option value="net-cash-flow">Cash Flow</option>
+                  <option value="savings-rate">Savings Rate</option>
+                </select>
+              </label>
+            </div>
+            <div class="row hidden" id="analysis-level-row">
+              <label>Level
+                <select id="analysis-level">
+                  <option value="group" selected>Group</option>
+                  <option value="category">Category</option>
                 </select>
               </label>
             </div>
@@ -179,6 +189,12 @@
               <label>Category
                 <select id="analysis-category"></select>
               </label>
+            </div>
+            <div class="row hidden" id="analysis-income-cats-row">
+              <fieldset class="income-cats-fieldset">
+                <legend>Income Categories</legend>
+                <div id="analysis-income-cats"></div>
+              </fieldset>
             </div>
             <div class="row">
               <label>Chart Style

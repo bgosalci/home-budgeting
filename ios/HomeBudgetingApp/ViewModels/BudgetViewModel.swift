@@ -155,11 +155,18 @@ public final class BudgetViewModel: ObservableObject {
                 options.selectedCategory = ""
             }
             options.selectedMonth = nil
+        case .netCashFlow, .savingsRate:
+            if let year = options.selectedYear, !year.isEmpty, !years.contains(year) {
+                options.selectedYear = ""
+            }
+            options.selectedMonth = nil
+            options.selectedGroup = nil
+            options.selectedCategory = nil
         }
         let result: AnalysisResult?
         switch options.mode {
         case .budgetSpread:
-            result = buildBudgetSpread(monthKey: options.selectedMonth, month: baseState.months[options.selectedMonth ?? ""])
+            result = buildBudgetSpread(monthKey: options.selectedMonth, month: baseState.months[options.selectedMonth ?? ""], level: options.budgetSpreadLevel)
         case .moneyIn:
             let year = options.selectedYear?.isEmpty == true ? nil : options.selectedYear
             let category = options.selectedCategory?.isEmpty == true ? nil : options.selectedCategory
@@ -169,6 +176,12 @@ public final class BudgetViewModel: ObservableObject {
             let group = options.selectedGroup?.isEmpty == true ? nil : options.selectedGroup
             let category = options.selectedCategory?.isEmpty == true ? nil : options.selectedCategory
             result = buildMonthlySpendSeries(state: baseState, selectedYear: year, group: group, category: category, categoryMeta: categoryMeta)
+        case .netCashFlow:
+            let year = options.selectedYear?.isEmpty == true ? nil : options.selectedYear
+            result = buildNetCashFlowSeries(state: baseState, selectedYear: year)
+        case .savingsRate:
+            let year = options.selectedYear?.isEmpty == true ? nil : options.selectedYear
+            result = buildSavingsRateSeries(state: baseState, selectedYear: year)
         }
         let availableCategories: [String]
         switch options.mode {
@@ -181,6 +194,8 @@ public final class BudgetViewModel: ObservableObject {
                 .filter { options.selectedGroup?.isEmpty ?? true || $0.value == options.selectedGroup }
                 .keys
                 .sorted { $0.lowercased() < $1.lowercased() }
+        case .netCashFlow, .savingsRate:
+            availableCategories = []
         }
         let availableGroups = options.mode == .monthlySpend ? groups : []
         return AnalysisUiState(
@@ -468,6 +483,11 @@ public final class BudgetViewModel: ObservableObject {
             let state = await repository.setNotes(notes)
             await MainActor.run { self.applyState(state) }
         }
+    }
+
+    func updateBudgetSpreadLevel(_ level: BudgetSpreadLevel) {
+        uiState.analysis.options.budgetSpreadLevel = level
+        refreshDerivedState()
     }
 
     func updateAnalysisMode(_ mode: AnalysisMode) {

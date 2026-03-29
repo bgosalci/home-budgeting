@@ -1,5 +1,5 @@
 (() => {
-  // web-app/app/js/modules/utils.js
+  // app/js/modules/utils.js
   var monthKey = (d) => {
     if (typeof d === "string") return d;
     const dt = d || /* @__PURE__ */ new Date();
@@ -8,7 +8,7 @@
   };
   var sum = (arr, fn = (x) => x) => arr.reduce((a, x) => a + fn(x), 0);
 
-  // web-app/app/js/modules/balancePredictor.js
+  // app/js/modules/balancePredictor.js
   var parseMonthKey = (mk) => {
     if (typeof mk !== "string") return null;
     const match = mk.match(/^(\d{4})-(\d{2})$/);
@@ -143,7 +143,7 @@
     };
   };
 
-  // web-app/app/js/modules/calendar.js
+  // app/js/modules/calendar.js
   var extractDay = (value) => {
     if (typeof value !== "string" || value.length < 2) return null;
     const parts = value.split("-");
@@ -173,7 +173,7 @@
     return totals;
   };
 
-  // web-app/app/js/app.js
+  // app/js/app.js
   var Utils = (() => {
     console.log("Home Budgeting Utils module loaded");
     const fmt = (n) => `\xA3${(n || 0).toFixed(2)}`;
@@ -620,6 +620,8 @@
       analysisChartActual: document.getElementById("analysis-chart-actual"),
       analysisCharts: document.getElementById("analysis-charts"),
       analysisTotal: document.getElementById("analysis-total"),
+      analysisLevelRow: document.getElementById("analysis-level-row"),
+      analysisLevel: document.getElementById("analysis-level"),
       analysisMonthRow: document.getElementById("analysis-month-row"),
       analysisMonth: document.getElementById("analysis-month"),
       analysisYearRow: document.getElementById("analysis-year-row"),
@@ -628,6 +630,8 @@
       analysisGroup: document.getElementById("analysis-group"),
       analysisCategoryRow: document.getElementById("analysis-category-row"),
       analysisCategory: document.getElementById("analysis-category"),
+      analysisIncomeCatsRow: document.getElementById("analysis-income-cats-row"),
+      analysisIncomeCats: document.getElementById("analysis-income-cats"),
       // Income
       incomeList: document.getElementById("income-list"),
       incomeName: document.getElementById("income-name"),
@@ -1428,76 +1432,121 @@
       }
     };
     const runAnalysis = () => {
+      var _a, _b, _c, _d;
+      const EXCLUDED_INCOME = /* @__PURE__ */ new Set(["carried forward"]);
+      const isExcluded = (name) => EXCLUDED_INCOME.has((name || "").trim().toLowerCase());
       const opt = els.analysisSelect.value;
       els.analysisCharts.classList.remove("charts");
       els.analysisTotal.textContent = "";
+      els.analysisLevelRow.classList.add("hidden");
+      els.analysisMonthRow.classList.add("hidden");
+      els.analysisYearRow.classList.add("hidden");
+      els.analysisGroupRow.classList.add("hidden");
+      els.analysisCategoryRow.classList.add("hidden");
+      els.analysisIncomeCatsRow.classList.add("hidden");
+      const monthsAll = Store.allMonths();
+      const years = [...new Set(monthsAll.map((m) => m.slice(0, 4)))].sort();
+      const populateYears = () => {
+        const prev = els.analysisYear.value;
+        els.analysisYear.innerHTML = ['<option value="">All</option>', ...years.map((y) => `<option value="${y}">${y}</option>`)].join("");
+        els.analysisYear.value = years.includes(prev) ? prev : "";
+        els.analysisYearRow.classList.remove("hidden");
+      };
+      const prevType = els.analysisChartType.value;
       if (opt === "budget-spread") {
+        els.analysisLevelRow.classList.remove("hidden");
         els.analysisMonthRow.classList.remove("hidden");
-        els.analysisYearRow.classList.add("hidden");
-        els.analysisGroupRow.classList.add("hidden");
-        els.analysisCategoryRow.classList.add("hidden");
-        const months = Store.allMonths();
-        const opts = months.map((m) => `<option value="${m}">${(/* @__PURE__ */ new Date(m + "-01")).toLocaleString(void 0, { month: "short", year: "numeric" })}</option>`).join("");
+        const months = monthsAll;
         const prev = els.analysisMonth.value;
-        els.analysisMonth.innerHTML = opts;
+        els.analysisMonth.innerHTML = months.map((m) => `<option value="${m}">${(/* @__PURE__ */ new Date(m + "-01")).toLocaleString(void 0, { month: "short", year: "numeric" })}</option>`).join("");
         els.analysisMonth.value = months.includes(prev) ? prev : currentMonthKey;
-        const prevType = els.analysisChartType.value;
         els.analysisChartType.innerHTML = `<option value="pie">Pie Chart</option><option value="bar">Bar Chart</option>`;
         els.analysisChartType.value = ["pie", "bar"].includes(prevType) ? prevType : "bar";
       } else if (opt === "money-in") {
-        els.analysisMonthRow.classList.add("hidden");
-        els.analysisYearRow.classList.remove("hidden");
-        els.analysisGroupRow.classList.remove("hidden");
-        els.analysisCategoryRow.classList.remove("hidden");
-        const monthsAll = Store.allMonths();
-        const years = [...new Set(monthsAll.map((m) => m.slice(0, 4)))].sort();
-        const prevYear = els.analysisYear.value;
-        const yearOpts = ['<option value="">All</option>', ...years.map((y) => `<option value="${y}">${y}</option>`)];
-        els.analysisYear.innerHTML = yearOpts.join("");
-        els.analysisYear.value = years.includes(prevYear) ? prevYear : "";
-        const groupOpts = ['<option value="">All</option>'];
-        els.analysisGroup.innerHTML = groupOpts.join("");
-        els.analysisGroup.value = "";
-        const prevCat = els.analysisCategory.value;
+        populateYears();
+        els.analysisIncomeCatsRow.classList.remove("hidden");
         const allMonthsData = Store.exportData().months || {};
         const catSet = /* @__PURE__ */ new Set();
-        for (const m of Object.values(allMonthsData)) {
-          (m.incomes || []).forEach((i) => catSet.add(i.name));
-        }
+        for (const m of Object.values(allMonthsData)) (m.incomes || []).forEach((i) => {
+          if (!isExcluded(i.name)) catSet.add(i.name);
+        });
         const catList = [...catSet].sort();
-        const catOpts = ['<option value="">All</option>', ...catList.map((c) => `<option value="${c}">${c}</option>`)];
-        els.analysisCategory.innerHTML = catOpts.join("");
-        els.analysisCategory.value = catList.includes(prevCat) ? prevCat : "";
-        const prevType = els.analysisChartType.value;
+        const checkedBefore = new Set([...els.analysisIncomeCats.querySelectorAll("input[data-cat]:checked")].map((i) => i.value));
+        const allCheckedBefore = (_b = (_a = els.analysisIncomeCats.querySelector('input[value="__all__"]')) == null ? void 0 : _a.checked) != null ? _b : true;
+        els.analysisIncomeCats.innerHTML = `
+          <div class="income-cats-actions">
+            <label class="income-cats-all">
+              <input type="checkbox" value="__all__"${allCheckedBefore ? " checked" : ""}>
+              All
+            </label>
+            <span class="income-cats-btns">
+              <button type="button" class="link-btn" id="income-cats-select-all">Select all</button>
+              <button type="button" class="link-btn" id="income-cats-clear">Clear</button>
+            </span>
+          </div>
+          <hr class="income-cats-divider">
+          ${catList.map((c) => `
+          <label>
+            <input type="checkbox" data-cat="1" value="${c}"${!allCheckedBefore && checkedBefore.has(c) ? " checked" : ""}${allCheckedBefore ? " disabled" : ""}>
+            ${c}
+          </label>`).join("")}`;
+        const allCb = els.analysisIncomeCats.querySelector('input[value="__all__"]');
+        const catCbs = () => [...els.analysisIncomeCats.querySelectorAll("input[data-cat]")];
+        const syncAll = () => {
+          const on = allCb.checked;
+          catCbs().forEach((cb) => {
+            cb.disabled = on;
+            if (on) cb.checked = false;
+          });
+          runAnalysis();
+        };
+        allCb.onchange = syncAll;
+        catCbs().forEach((cb) => {
+          cb.onchange = runAnalysis;
+        });
+        document.getElementById("income-cats-select-all").onclick = () => {
+          allCb.checked = false;
+          catCbs().forEach((cb) => {
+            cb.disabled = false;
+            cb.checked = true;
+          });
+          runAnalysis();
+        };
+        document.getElementById("income-cats-clear").onclick = () => {
+          allCb.checked = true;
+          catCbs().forEach((cb) => {
+            cb.disabled = true;
+            cb.checked = false;
+          });
+          runAnalysis();
+        };
         els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
         els.analysisChartType.value = ["line", "bar"].includes(prevType) ? prevType : "line";
       } else if (opt === "monthly-spend") {
-        els.analysisMonthRow.classList.add("hidden");
-        els.analysisYearRow.classList.remove("hidden");
+        populateYears();
         els.analysisGroupRow.classList.remove("hidden");
         els.analysisCategoryRow.classList.remove("hidden");
-        const monthsAll = Store.allMonths();
-        const years = [...new Set(monthsAll.map((m) => m.slice(0, 4)))].sort();
-        const prevYear = els.analysisYear.value;
-        const yearOpts = ['<option value="">All</option>', ...years.map((y) => `<option value="${y}">${y}</option>`)];
-        els.analysisYear.innerHTML = yearOpts.join("");
-        els.analysisYear.value = years.includes(prevYear) ? prevYear : "";
         const catsCur = Store.categories(currentMonthKey);
         const groups = [...new Set(Object.values(catsCur).map((x) => x.group || "Other"))].sort();
         const prevGroup = els.analysisGroup.value;
-        const groupOpts = ['<option value="">All</option>', ...groups.map((g) => `<option value="${g}">${g}</option>`)];
-        els.analysisGroup.innerHTML = groupOpts.join("");
+        els.analysisGroup.innerHTML = ['<option value="">All</option>', ...groups.map((g) => `<option value="${g}">${g}</option>`)].join("");
         els.analysisGroup.value = groups.includes(prevGroup) ? prevGroup : "";
-        const prevCat = els.analysisCategory.value;
         const groupSel = els.analysisGroup.value;
         const allCats = Object.keys(catsCur).sort();
         const catList = allCats.filter((c) => !groupSel || (catsCur[c].group || "Other") === groupSel);
-        const catOpts = ['<option value="">All</option>', ...catList.map((c) => `<option value="${c}">${c}</option>`)];
-        els.analysisCategory.innerHTML = catOpts.join("");
+        const prevCat = els.analysisCategory.value;
+        els.analysisCategory.innerHTML = ['<option value="">All</option>', ...catList.map((c) => `<option value="${c}">${c}</option>`)].join("");
         els.analysisCategory.value = catList.includes(prevCat) ? prevCat : "";
-        const prevType = els.analysisChartType.value;
         els.analysisChartType.innerHTML = `<option value="line">Line Chart</option><option value="bar">Vertical Bar Chart</option>`;
         els.analysisChartType.value = ["line", "bar"].includes(prevType) ? prevType : "line";
+      } else if (opt === "net-cash-flow") {
+        populateYears();
+        els.analysisChartType.innerHTML = `<option value="bar">Bar Chart</option>`;
+        els.analysisChartType.value = "bar";
+      } else if (opt === "savings-rate") {
+        populateYears();
+        els.analysisChartType.innerHTML = `<option value="line">Line Chart</option>`;
+        els.analysisChartType.value = "line";
       }
       const style = els.analysisChartType.value;
       if (analysisChart) {
@@ -1513,20 +1562,17 @@
       els.analysisChartActual.classList.add("hidden");
       if (opt === "monthly-spend") {
         const yearSel = els.analysisYear.value;
-        const months = Store.allMonths().filter((m) => !yearSel || m.startsWith(yearSel));
-        const labels = months;
+        const months = monthsAll.filter((m) => !yearSel || m.startsWith(yearSel));
         const group = els.analysisGroup.value;
         const category = els.analysisCategory.value;
         const data = months.map((mk) => {
           const m = Store.getMonth(mk) || { transactions: [], categories: {} };
           const cats = m.categories || {};
-          const txs = m.transactions || [];
-          return Utils.sum(txs.filter((t) => {
+          return Utils.sum((m.transactions || []).filter((t) => {
+            var _a2;
             if (category) return t.category === category;
             if (!group) return true;
-            const meta = cats[t.category] || {};
-            const g = meta.group || "Other";
-            return g === group;
+            return (((_a2 = cats[t.category]) == null ? void 0 : _a2.group) || "Other") === group;
           }), (t) => t.amount);
         });
         const total = Utils.sum(data);
@@ -1534,63 +1580,58 @@
         const label = category ? `${category} Spend` : group ? `${group} Spend` : "Total Spend";
         analysisChart = new Chart(els.analysisChart.getContext("2d"), {
           type: style === "bar" ? "bar" : "line",
-          data: {
-            labels,
-            datasets: [{
-              label,
-              data,
-              borderColor: "#0ea5e9",
-              backgroundColor: "#0ea5e9",
-              tension: 0.2,
-              fill: false
-            }]
-          },
+          data: { labels: months, datasets: [{ label, data, borderColor: "#0ea5e9", backgroundColor: "#0ea5e9", tension: 0.2, fill: false }] },
           options: { scales: { y: { beginAtZero: true } } }
         });
       } else if (opt === "money-in") {
         const yearSel = els.analysisYear.value;
-        const months = Store.allMonths().filter((m) => !yearSel || m.startsWith(yearSel));
-        const labels = months;
-        const category = els.analysisCategory.value;
+        const months = monthsAll.filter((m) => !yearSel || m.startsWith(yearSel));
+        const isAll = (_d = (_c = els.analysisIncomeCats.querySelector('input[value="__all__"]')) == null ? void 0 : _c.checked) != null ? _d : true;
+        const checkedCats = isAll ? [] : [...els.analysisIncomeCats.querySelectorAll("input[data-cat]:checked")].map((i) => i.value);
+        const label = isAll || checkedCats.length === 0 ? "Total Income" : checkedCats.length === 1 ? `${checkedCats[0]} Income` : `${checkedCats.length} Sources`;
         const data = months.map((mk) => {
-          const m = Store.getMonth(mk) || { incomes: [] };
-          const incomes = m.incomes || [];
-          return Utils.sum(incomes.filter((i) => !category || i.name === category), (i) => i.amount);
+          var _a2;
+          const incomes = ((_a2 = Store.getMonth(mk)) == null ? void 0 : _a2.incomes) || [];
+          return Utils.sum(incomes.filter((i) => !isExcluded(i.name) && (isAll || checkedCats.includes(i.name))), (i) => i.amount);
         });
         const total = Utils.sum(data);
         els.analysisTotal.textContent = Utils.fmt(total);
-        const label = category ? `${category} Income` : "Total Income";
         analysisChart = new Chart(els.analysisChart.getContext("2d"), {
           type: style === "bar" ? "bar" : "line",
-          data: {
-            labels,
-            datasets: [{
-              label,
-              data,
-              borderColor: "#10b981",
-              backgroundColor: "#10b981",
-              tension: 0.2,
-              fill: false
-            }]
-          },
+          data: { labels: months, datasets: [{ label, data, borderColor: "#10b981", backgroundColor: "#10b981", tension: 0.2, fill: false }] },
           options: { scales: { y: { beginAtZero: true } } }
         });
       } else if (opt === "budget-spread") {
         const mk = els.analysisMonth.value || currentMonthKey;
         const monthForChart = Utils.clone(Store.getMonth(mk) || Model.emptyMonth());
         const totals = Model.totals(monthForChart);
-        const labels = Object.keys(totals.groups).sort();
-        const planned = labels.map((l) => {
-          var _a;
-          return ((_a = totals.groups[l]) == null ? void 0 : _a.budget) || 0;
-        });
-        const actual = labels.map((l) => {
-          var _a;
-          return ((_a = totals.groups[l]) == null ? void 0 : _a.actual) || 0;
-        });
+        const level = els.analysisLevel.value;
+        let labels, planned, actual;
+        if (level === "category") {
+          const cats = monthForChart.categories || {};
+          labels = Object.keys(cats).sort();
+          planned = labels.map((l) => {
+            var _a2;
+            return ((_a2 = cats[l]) == null ? void 0 : _a2.budget) || 0;
+          });
+          actual = labels.map((l) => totals.actualPerCat[l] || 0);
+        } else {
+          labels = Object.keys(totals.groups).sort();
+          planned = labels.map((l) => {
+            var _a2;
+            return ((_a2 = totals.groups[l]) == null ? void 0 : _a2.budget) || 0;
+          });
+          actual = labels.map((l) => {
+            var _a2;
+            return ((_a2 = totals.groups[l]) == null ? void 0 : _a2.actual) || 0;
+          });
+        }
         const plannedTot = Utils.sum(planned);
         const actualTot = Utils.sum(actual);
-        els.analysisTotal.textContent = `Planned ${Utils.fmt(plannedTot)} / Actual ${Utils.fmt(actualTot)}`;
+        const income = totals.income;
+        const leftover = totals.leftoverActual;
+        const leftoverFmt = leftover >= 0 ? `+${Utils.fmt(leftover)}` : Utils.fmt(leftover);
+        els.analysisTotal.textContent = `Planned ${Utils.fmt(plannedTot)} / Actual ${Utils.fmt(actualTot)}${income > 0 ? ` | Income ${Utils.fmt(income)} | Leftover ${leftoverFmt}` : ""}`;
         const plannedPct = planned.map((v) => plannedTot ? v / plannedTot * 100 : 0);
         const actualPct = actual.map((v) => actualTot ? v / actualTot * 100 : 0);
         const palette = ["#0ea5e9", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#22c55e", "#d946ef"];
@@ -1613,11 +1654,7 @@
             });
           }
         };
-        const pieOpts = {
-          plugins: {
-            tooltip: { callbacks: { label: (c) => `${c.label}: ${c.parsed.toFixed(1)}%` } }
-          }
-        };
+        const pieOpts = { plugins: { tooltip: { callbacks: { label: (c) => `${c.label}: ${c.parsed.toFixed(1)}%` } } } };
         const barOpts = {
           plugins: { tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${Utils.fmt(c.parsed.y)}` } } },
           scales: { y: { beginAtZero: true, ticks: { callback: (v) => Utils.fmt(v) } } }
@@ -1640,18 +1677,60 @@
             plugins: [percentPlugin]
           });
         } else {
+          const actualColors = actual.map((a, i) => a > planned[i] ? "#f97316" : "#10b981");
           analysisChart = new Chart(els.analysisChart.getContext("2d"), {
             type: "bar",
-            data: {
-              labels,
-              datasets: [
-                { label: "Planned", data: planned, backgroundColor: "#0ea5e9" },
-                { label: "Actual", data: actual, backgroundColor: "#f43f5e" }
-              ]
-            },
+            data: { labels, datasets: [
+              { label: "Planned", data: planned, backgroundColor: "#0ea5e9" },
+              { label: "Actual", data: actual, backgroundColor: actualColors }
+            ] },
             options: barOpts
           });
         }
+      } else if (opt === "net-cash-flow") {
+        const yearSel = els.analysisYear.value;
+        const months = monthsAll.filter((m) => !yearSel || m.startsWith(yearSel));
+        let totalIncome = 0;
+        const netData = months.map((mk) => {
+          const m = Store.getMonth(mk) || { incomes: [], transactions: [] };
+          const inc = Utils.sum(m.incomes || [], (i) => i.amount);
+          const spend = Utils.sum(m.transactions || [], (t) => t.amount);
+          totalIncome += inc;
+          return inc - spend;
+        });
+        const totalNet = Utils.sum(netData);
+        const avgNet = months.length ? totalNet / months.length : 0;
+        const savingsRate = totalIncome > 0 ? totalNet / totalIncome * 100 : 0;
+        const rateFmt = `${Math.max(savingsRate, 0).toFixed(1)}%`;
+        els.analysisTotal.textContent = `Net ${Utils.fmt(totalNet)} | Avg/month ${Utils.fmt(avgNet)} | Savings Rate ${rateFmt}`;
+        const barColors = netData.map((v) => v >= 0 ? "#10b981" : "#f43f5e");
+        analysisChart = new Chart(els.analysisChart.getContext("2d"), {
+          type: "bar",
+          data: { labels: months, datasets: [{ label: "Net Cash Flow", data: netData, backgroundColor: barColors }] },
+          options: {
+            plugins: { tooltip: { callbacks: { label: (c) => `${Utils.fmt(c.parsed.y)}` } } },
+            scales: { y: { ticks: { callback: (v) => Utils.fmt(v) } } }
+          }
+        });
+      } else if (opt === "savings-rate") {
+        const yearSel = els.analysisYear.value;
+        const months = monthsAll.filter((m) => !yearSel || m.startsWith(yearSel));
+        const rateData = months.map((mk) => {
+          const m = Store.getMonth(mk) || { incomes: [], transactions: [] };
+          const inc = Utils.sum(m.incomes || [], (i) => i.amount);
+          const spend = Utils.sum(m.transactions || [], (t) => t.amount);
+          return inc > 0 ? (inc - spend) / inc * 100 : 0;
+        });
+        const avgRate = months.length ? Utils.sum(rateData) / months.length : 0;
+        els.analysisTotal.textContent = `Avg Savings Rate: ${avgRate.toFixed(1)}%`;
+        analysisChart = new Chart(els.analysisChart.getContext("2d"), {
+          type: "line",
+          data: { labels: months, datasets: [{ label: "Savings Rate (%)", data: rateData, borderColor: "#8b5cf6", backgroundColor: "#8b5cf6", tension: 0.2, fill: false }] },
+          options: {
+            plugins: { tooltip: { callbacks: { label: (c) => `${c.parsed.y.toFixed(1)}%` } } },
+            scales: { y: { ticks: { callback: (v) => `${v.toFixed(0)}%` } } }
+          }
+        });
       }
     };
     function selectTab(key) {
@@ -1703,6 +1782,7 @@
     };
     els.analysisSelect.onchange = runAnalysis;
     els.analysisChartType.onchange = runAnalysis;
+    els.analysisLevel.onchange = runAnalysis;
     els.analysisMonth.onchange = runAnalysis;
     els.analysisYear.onchange = runAnalysis;
     els.analysisGroup.onchange = runAnalysis;
