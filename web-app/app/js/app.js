@@ -1280,14 +1280,21 @@ import { calculateDayTotals } from './modules/calendar.js';
         populateYears();
         els.analysisGroupRow.classList.remove('hidden');
         els.analysisCategoryRow.classList.remove('hidden');
-        const catsCur = Store.categories(currentMonthKey);
-        const groups = [...new Set(Object.values(catsCur).map(x=>x.group||'Other'))].sort();
+        // Union categories from all months so historical groups/categories remain filterable
+        const allMonthsCats = Store.exportData().months || {};
+        const catsMerged = {};
+        Object.values(allMonthsCats).forEach(m => {
+          Object.entries(m.categories || {}).forEach(([name, meta]) => {
+            if (!catsMerged[name]) catsMerged[name] = meta;
+          });
+        });
+        const groups = [...new Set(Object.values(catsMerged).map(x=>x.group||'Other'))].sort();
         const prevGroup = els.analysisGroup.value;
         els.analysisGroup.innerHTML = ['<option value="">All</option>', ...groups.map(g=>`<option value="${g}">${g}</option>`)].join('');
         els.analysisGroup.value = groups.includes(prevGroup) ? prevGroup : '';
         const groupSel = els.analysisGroup.value;
-        const allCats = Object.keys(catsCur).sort();
-        const catList = allCats.filter(c=>!groupSel || (catsCur[c].group||'Other')===groupSel);
+        const allCats = Object.keys(catsMerged).sort();
+        const catList = allCats.filter(c=>!groupSel || (catsMerged[c].group||'Other')===groupSel);
         const prevCat = els.analysisCategory.value;
         els.analysisCategory.innerHTML = ['<option value="">All</option>', ...catList.map(c=>`<option value="${c}">${c}</option>`)].join('');
         els.analysisCategory.value = catList.includes(prevCat) ? prevCat : '';

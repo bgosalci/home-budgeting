@@ -2,6 +2,7 @@ package com.homebudgeting.ui.screens.analysis
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -344,6 +345,12 @@ private fun PieChart(labels: List<String>, values: List<Double>) {
 
 @Composable
 private fun GroupedBarChart(labels: List<String>, planned: List<Double>, actual: List<Double>) {
+    if (labels.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
+            Text("No data available", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
     val maxValue = (planned + actual).maxOrNull()?.takeIf { it > 0 } ?: 1.0
     Canvas(modifier = Modifier
         .fillMaxWidth()
@@ -363,6 +370,12 @@ private fun GroupedBarChart(labels: List<String>, planned: List<Double>, actual:
 
 @Composable
 private fun SimpleBarChart(labels: List<String>, values: List<Double>) {
+    if (labels.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
+            Text("No data available", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
     val maxValue = values.maxOrNull()?.takeIf { it > 0 } ?: 1.0
     Canvas(modifier = Modifier
         .fillMaxWidth()
@@ -397,22 +410,26 @@ private fun NetCashFlowBarChart(labels: List<String>, net: List<Double>) {
 
 @Composable
 private fun SimpleLineChart(labels: List<String>, values: List<Double>) {
+    if (labels.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
+            Text("No data available", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
     val maxValue = values.maxOrNull()?.takeIf { it > 0 } ?: 1.0
     Canvas(modifier = Modifier
         .fillMaxWidth()
         .height(220.dp)
         .padding(8.dp)) {
-        val stepX = size.width / (values.size - 1).coerceAtLeast(1)
+        val stepX = if (values.size > 1) size.width / (values.size - 1) else size.width
         val points = values.mapIndexed { index, value ->
-            val x = index * stepX
+            val x = if (values.size == 1) size.width / 2f else index * stepX
             val y = size.height - (value / maxValue * size.height).toFloat()
             Offset(x, y)
         }
         val path = Path().apply {
-            if (points.isNotEmpty()) {
-                moveTo(points.first().x, points.first().y)
-                points.drop(1).forEach { lineTo(it.x, it.y) }
-            }
+            moveTo(points.first().x, points.first().y)
+            points.drop(1).forEach { lineTo(it.x, it.y) }
         }
         drawPath(path = path, color = Color(0xFF10B981), style = Stroke(width = 6f, cap = StrokeCap.Round))
         points.forEach { point ->

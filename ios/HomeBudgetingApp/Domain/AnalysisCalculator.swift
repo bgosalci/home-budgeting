@@ -29,6 +29,11 @@ func buildBudgetSpread(monthKey: String?, month: BudgetMonth?, level: BudgetSpre
     return .budgetSpread(data)
 }
 
+private let excludedIncomeNames: Set<String> = ["carried forward"]
+private func isExcludedIncome(_ name: String) -> Bool {
+    excludedIncomeNames.contains(name.trimmingCharacters(in: .whitespaces).lowercased())
+}
+
 func buildMoneyInSeries(state: BudgetState, selectedYear: String?, category: String?) -> AnalysisResult? {
     let months = state.months.keys.sorted().filter { key in
         guard let selectedYear, !selectedYear.isEmpty else { return true }
@@ -39,7 +44,7 @@ func buildMoneyInSeries(state: BudgetState, selectedYear: String?, category: Str
     let values = months.map { key -> Double in
         guard let month = state.months[key] else { return 0 }
         return month.incomes
-            .filter { category?.isEmpty ?? true || $0.name == category }
+            .filter { !isExcludedIncome($0.name) && (category?.isEmpty ?? true || $0.name == category) }
             .reduce(0) { $0 + $1.amount }
     }
     let label = (category?.isEmpty ?? true) ? "Total Income" : "\(category!) Income"
@@ -152,7 +157,7 @@ func availableIncomeCategories(_ state: BudgetState) -> [String] {
     state.months.values.forEach { month in
         month.incomes.forEach { income in
             let value = income.name
-            guard !value.isEmpty else { return }
+            guard !value.isEmpty, !isExcludedIncome(value) else { return }
             if !ordered.contains(where: { $0.caseInsensitiveCompare(value) == .orderedSame }) {
                 ordered.append(value)
             }
@@ -161,15 +166,23 @@ func availableIncomeCategories(_ state: BudgetState) -> [String] {
     return ordered.sorted { $0.lowercased() < $1.lowercased() }
 }
 
+private let monthLabelInputFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "en_GB")
+    f.dateFormat = "yyyy-MM"
+    return f
+}()
+
+private let monthLabelOutputFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "en_GB")
+    f.dateFormat = "MMM yyyy"
+    return f
+}()
+
 func formatMonthLabel(_ key: String) -> String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_GB")
-    formatter.dateFormat = "yyyy-MM"
-    if let date = formatter.date(from: key) {
-        let output = DateFormatter()
-        output.locale = formatter.locale
-        output.dateFormat = "MMM yyyy"
-        return output.string(from: date)
+    if let date = monthLabelInputFormatter.date(from: key) {
+        return monthLabelOutputFormatter.string(from: date)
     }
     return key
 }

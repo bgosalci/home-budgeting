@@ -8,6 +8,8 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 private val monthLocale = Locale.UK
+private val excludedIncomeNames = setOf("carried forward")
+private fun isExcludedIncome(name: String) = excludedIncomeNames.contains(name.trim().lowercase(monthLocale))
 
 fun buildBudgetSpread(
     monthKey: String?,
@@ -47,7 +49,7 @@ fun buildMoneyInSeries(
     val labels = months.map { formatMonthLabel(it) }
     val values = months.map { key ->
         val month = state.months[key]
-        month?.incomes?.filter { category.isNullOrBlank() || it.name == category }?.sumOf { it.amount } ?: 0.0
+        month?.incomes?.filter { !isExcludedIncome(it.name) && (category.isNullOrBlank() || it.name == category) }?.sumOf { it.amount } ?: 0.0
     }
     val label = if (category.isNullOrBlank()) "Total Income" else "$category Income"
     val total = values.sum()
@@ -143,7 +145,7 @@ private fun sumTransactions(
 fun availableIncomeCategories(state: BudgetState): List<String> {
     val set = linkedSetOf<String>()
     state.months.values.forEach { month ->
-        month.incomes.forEach { set += it.name }
+        month.incomes.forEach { if (!isExcludedIncome(it.name)) set += it.name }
     }
     return set.filter { it.isNotBlank() }.sortedBy { it.lowercase(Locale.UK) }
 }
