@@ -1324,11 +1324,10 @@ import { calculateDayTotals } from './modules/calendar.js';
         const category = els.analysisCategory.value;
         const data = months.map(mk=>{
           const m = Store.getMonth(mk) || {transactions:[], categories:{}};
-          const cats = m.categories || {};
           return Utils.sum((m.transactions||[]).filter(t=>{
             if(category) return t.category === category;
             if(!group) return true;
-            return (cats[t.category]?.group || 'Other') === group;
+            return (catsMerged[t.category]?.group || 'Other') === group;
           }), t=>t.amount);
         });
         const total = Utils.sum(data);
@@ -1428,7 +1427,7 @@ import { calculateDayTotals } from './modules/calendar.js';
         let totalIncome = 0;
         const netData = months.map(mk=>{
           const m = Store.getMonth(mk) || {incomes:[], transactions:[]};
-          const inc = Utils.sum(m.incomes||[], i=>i.amount);
+          const inc = Utils.sum((m.incomes||[]).filter(i=>!isExcluded(i.name)), i=>i.amount);
           const spend = Utils.sum(m.transactions||[], t=>t.amount);
           totalIncome += inc;
           return inc - spend;
@@ -1452,7 +1451,7 @@ import { calculateDayTotals } from './modules/calendar.js';
         const months = monthsAll.filter(m=>!yearSel || m.startsWith(yearSel));
         const rateData = months.map(mk=>{
           const m = Store.getMonth(mk) || {incomes:[], transactions:[]};
-          const inc = Utils.sum(m.incomes||[], i=>i.amount);
+          const inc = Utils.sum((m.incomes||[]).filter(i=>!isExcluded(i.name)), i=>i.amount);
           const spend = Utils.sum(m.transactions||[], t=>t.amount);
           return inc > 0 ? ((inc - spend) / inc * 100) : 0;
         });

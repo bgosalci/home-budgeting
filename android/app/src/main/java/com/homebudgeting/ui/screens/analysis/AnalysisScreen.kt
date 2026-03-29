@@ -391,6 +391,12 @@ private fun SimpleBarChart(labels: List<String>, values: List<Double>) {
 
 @Composable
 private fun NetCashFlowBarChart(labels: List<String>, net: List<Double>) {
+    if (net.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
+            Text("No data available", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
     val absMax = net.maxOfOrNull { kotlin.math.abs(it) }?.takeIf { it > 0 } ?: 1.0
     Canvas(modifier = Modifier
         .fillMaxWidth()

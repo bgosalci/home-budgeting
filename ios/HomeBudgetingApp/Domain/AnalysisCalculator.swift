@@ -113,7 +113,7 @@ func buildNetCashFlowSeries(state: BudgetState, selectedYear: String?) -> Analys
             incomeArr.append(0); spendArr.append(0); netArr.append(0)
             continue
         }
-        let income = month.incomes.reduce(0) { $0 + $1.amount }
+        let income = month.incomes.filter { !isExcludedIncome($0.name) }.reduce(0) { $0 + $1.amount }
         let spend = month.transactions.reduce(0) { $0 + $1.amount }
         incomeArr.append(income)
         spendArr.append(spend)
@@ -143,7 +143,7 @@ func buildSavingsRateSeries(state: BudgetState, selectedYear: String?) -> Analys
     let labels = months.map(formatMonthLabel)
     let values = months.map { key -> Double in
         guard let month = state.months[key] else { return 0 }
-        let income = month.incomes.reduce(0) { $0 + $1.amount }
+        let income = month.incomes.filter { !isExcludedIncome($0.name) }.reduce(0) { $0 + $1.amount }
         let spend = month.transactions.reduce(0) { $0 + $1.amount }
         guard income > 0 else { return 0 }
         return ((income - spend) / income) * 100

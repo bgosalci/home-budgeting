@@ -95,7 +95,7 @@ fun buildNetCashFlowSeries(
     val netList = mutableListOf<Double>()
     for (key in months) {
         val month = state.months[key]
-        val income = month?.incomes?.sumOf { it.amount } ?: 0.0
+        val income = month?.incomes?.filter { !isExcludedIncome(it.name) }?.sumOf { it.amount } ?: 0.0
         val spend = month?.transactions?.sumOf { it.amount } ?: 0.0
         incomeList += income
         spendList += spend
@@ -119,7 +119,7 @@ fun buildSavingsRateSeries(
     val labels = months.map { formatMonthLabel(it) }
     val values = months.map { key ->
         val month = state.months[key]
-        val income = month?.incomes?.sumOf { it.amount } ?: 0.0
+        val income = month?.incomes?.filter { !isExcludedIncome(it.name) }?.sumOf { it.amount } ?: 0.0
         val spend = month?.transactions?.sumOf { it.amount } ?: 0.0
         if (income == 0.0) 0.0 else ((income - spend) / income) * 100.0
     }

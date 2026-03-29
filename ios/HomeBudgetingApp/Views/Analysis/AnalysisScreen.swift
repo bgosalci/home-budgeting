@@ -400,6 +400,22 @@ private struct BudgetSpreadView: View {
     }
 }
 
+private let seriesCurrencyFormatter: NumberFormatter = {
+    let f = NumberFormatter()
+    f.numberStyle = .currency
+    f.currencyCode = Locale.current.currency?.identifier ?? "GBP"
+    f.minimumFractionDigits = 0
+    return f
+}()
+
+private let seriesShortCurrencyFormatter: NumberFormatter = {
+    let f = NumberFormatter()
+    f.numberStyle = .currency
+    f.currencyCode = Locale.current.currency?.identifier ?? "GBP"
+    f.maximumFractionDigits = 0
+    return f
+}()
+
 private struct SeriesChartView: View {
     let data: SeriesData
     let style: ChartStyle
@@ -715,26 +731,14 @@ private struct SeriesChartView: View {
     }
 
     private func currency(_ value: Double) -> String {
-        if data.isPercentage {
-            return String(format: "%.1f%%", value)
-        }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = Locale.current.currency?.identifier ?? "USD"
-        formatter.maximumFractionDigits = abs(value) < 1000 ? 2 : 0
-        formatter.minimumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+        if data.isPercentage { return String(format: "%.1f%%", value) }
+        seriesCurrencyFormatter.maximumFractionDigits = abs(value) < 1000 ? 2 : 0
+        return seriesCurrencyFormatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
     }
 
     private func shortCurrency(_ value: Double) -> String {
-        if data.isPercentage {
-            return String(format: "%.0f%%", value)
-        }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = Locale.current.currency?.identifier ?? "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+        if data.isPercentage { return String(format: "%.0f%%", value) }
+        return seriesShortCurrencyFormatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
     }
 }
 
